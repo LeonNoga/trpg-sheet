@@ -1,5 +1,6 @@
 import { STAT_LABELS, STAT_MIN, STAT_ORDER, PATH_RESOURCE_LABEL } from '../data/statsConfig';
 import { bonusSum, modifier, sumBaseStats, totalStat } from '../data/formulas';
+import { NumberField } from './NumberField';
 import type { Character, StatKey } from '../types';
 
 interface Props {
@@ -37,12 +38,7 @@ export function StatsEditor({ character, onChangeStat }: Props) {
               {label}
               {bonus !== 0 && <span className="muted"> ({total})</span>}
             </span>
-            <input
-              type="number"
-              min={STAT_MIN}
-              value={base}
-              onChange={(e) => onChangeStat(key, Number(e.target.value))}
-            />
+            <NumberField min={STAT_MIN} value={base} onChange={(v) => onChangeStat(key, v)} />
             <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
           </div>
         );

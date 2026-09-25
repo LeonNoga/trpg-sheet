@@ -26,6 +26,8 @@ export type BonusKey = StatKey | DerivedKey;
 
 export type KeyStat = 'agility' | 'strength' | 'intellect';
 
+export type InitiativeSource = 'auto' | 'agility' | 'intellect' | 'perception';
+
 export type SkillLevel = 0 | 5 | 10 | 15;
 
 export interface EquipItem {
@@ -64,6 +66,7 @@ export interface Character {
   species: string;
   path: Path;
   keyStat: KeyStat;
+  initiativeSource: InitiativeSource;
   level: number;
   experience: number;
   statPointsBudget: number;

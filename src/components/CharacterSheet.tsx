@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppData } from '../state/AppDataContext';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
 import { SkillsEditor } from './SkillsEditor';
 import { ItemsBlock } from './ItemsBlock';
+import { NumberField } from './NumberField';
 import { SpeciesBonusesCard, DnaListsCard, NotesCard } from './TraitBlocks';
-import { PATH_LABELS } from '../data/statsConfig';
+import { PATH_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
+import { MAX_LEVEL } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
-import type { Character, EquipItem, PoolKey, SkillLevel, StatKey, TraitList } from '../types';
+import type { Character, EquipItem, InitiativeSource, PoolKey, SkillLevel, StatKey, TraitList } from '../types';
 
 interface Props {
   characterId: string;
@@ -15,9 +17,14 @@ interface Props {
 }
 
 export function CharacterSheet({ characterId, onBack }: Props) {
-  const { characters, updateCharacter, removeCharacter } = useAppData();
+  const { characters, updateCharacter, removeCharacter, progressionConfig } = useAppData();
   const character = characters.find((c) => c.id === characterId);
   const [xpToAdd, setXpToAdd] = useState('');
+  const [levelDraft, setLevelDraft] = useState(character?.level ?? 1);
+
+  useEffect(() => {
+    if (character) setLevelDraft(character.level);
+  }, [character?.level]);
 
   if (!character) {
     return (
@@ -44,6 +51,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     patch((c) => ({ ...c, pools: { ...c.pools, [key]: value } }));
   }
 
+  function changeInitiativeSource(source: InitiativeSource) {
+    patch((c) => ({ ...c, initiativeSource: source }));
+  }
+
   function changeSkill(skill: string, level: SkillLevel) {
     patch((c) => ({ ...c, skills: { ...c.skills, [skill]: level } }));
   }
@@ -53,6 +64,24 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     if (!amount) return;
     patch((c) => ({ ...c, experience: c.experience + amount }));
     setXpToAdd('');
+  }
+
+  function commitLevelDraft() {
+    const clamped = Math.min(MAX_LEVEL, Math.max(1, Math.round(levelDraft) || 1));
+    if (clamped === character!.level) {
+      setLevelDraft(character!.level);
+      return;
+    }
+    const newBudget = STARTING_STAT_POINTS + progressionConfig.pointsPerLevel * (clamped - 1);
+    const confirmed = confirm(
+      `Установить уровень ${clamped} вручную?\n\nОпыт будет сброшен в 0, а бюджет очков характеристик пересчитан: ` +
+        `${STARTING_STAT_POINTS} + ${progressionConfig.pointsPerLevel} × ${clamped - 1} = ${newBudget}.`,
+    );
+    if (!confirmed) {
+      setLevelDraft(character!.level);
+      return;
+    }
+    patch((c) => ({ ...c, level: clamped, experience: 0, statPointsBudget: newBudget }));
   }
 
   function handleDelete() {
@@ -98,22 +127,27 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <input value={character.species} onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))} />
           </div>
         </div>
-        <div className="row">
-          <div className="field" style={{ maxWidth: 120 }}>
+
+        <div className="header-fields-grid">
+          <div className="field">
             <label>Уровень</label>
-            <input type="number" value={character.level} readOnly />
-          </div>
-          <div className="field" style={{ maxWidth: 160 }}>
-            <label>Опыт (кошелёк)</label>
-            <input
-              type="number"
-              value={character.experience}
-              onChange={(e) => patch((c) => ({ ...c, experience: Number(e.target.value) }))}
+            <NumberField
+              min={1}
+              max={MAX_LEVEL}
+              value={levelDraft}
+              onChange={setLevelDraft}
+              onBlur={commitLevelDraft}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+              title="Изменить вручную: опыт обнулится, бюджет очков пересчитается"
             />
           </div>
-          <div className="field" style={{ maxWidth: 200 }}>
+          <div className="field">
+            <label>Опыт (кошелёк)</label>
+            <NumberField value={character.experience} onChange={(v) => patch((c) => ({ ...c, experience: v }))} />
+          </div>
+          <div className="field">
             <label>Добавить опыт</label>
-            <div className="row" style={{ flexWrap: 'nowrap' }}>
+            <div className="xp-add-row">
               <input
                 type="number"
                 value={xpToAdd}
@@ -126,13 +160,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               </button>
             </div>
           </div>
-          <div className="field" style={{ maxWidth: 200 }}>
+          <div className="field">
             <label>Бюджет очков характеристик</label>
-            <input
-              type="number"
-              value={character.statPointsBudget}
-              onChange={(e) => patch((c) => ({ ...c, statPointsBudget: Number(e.target.value) }))}
-            />
+            <NumberField value={character.statPointsBudget} onChange={(v) => patch((c) => ({ ...c, statPointsBudget: v }))} />
           </div>
         </div>
       </div>
@@ -152,7 +182,12 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       <div className="card">
         <h3 className="card-title">Характеристики и показатели</h3>
         <StatBudgetBar character={character} />
-        <CharacteristicsPanel character={character} onChangeStat={changeStat} onChangePool={changePool} />
+        <CharacteristicsPanel
+          character={character}
+          onChangeStat={changeStat}
+          onChangePool={changePool}
+          onChangeInitiativeSource={changeInitiativeSource}
+        />
       </div>
 
       <div className="card">

@@ -8,14 +8,23 @@ import {
   STAT_TO_DERIVED,
   poolKeyFor,
 } from '../data/statsConfig';
-import { bonusSum, computeDerivedStats, modifier, totalStat } from '../data/formulas';
-import type { Character, DerivedKey, StatKey } from '../types';
+import { bonusSum, computeDerivedStats, currentInitiativeStat, modifier, totalStat } from '../data/formulas';
+import { NumberField } from './NumberField';
+import type { Character, DerivedKey, InitiativeSource, StatKey } from '../types';
 
 interface Props {
   character: Character;
   onChangeStat: (key: StatKey, value: number) => void;
   onChangePool: (key: 'hp' | 'staminaPoints' | 'resourcePoints', value: number) => void;
+  onChangeInitiativeSource: (source: InitiativeSource) => void;
 }
+
+const INITIATIVE_OPTIONS: { value: InitiativeSource; label: string }[] = [
+  { value: 'auto', label: 'Авто (больший модификатор)' },
+  { value: 'agility', label: 'Ловкость' },
+  { value: 'intellect', label: 'Интеллект' },
+  { value: 'perception', label: 'Восприятие' },
+];
 
 function derivedLabel(key: DerivedKey, character: Character): string {
   if (key === 'resourcePoints') return PATH_RESOURCE_POINTS_LABEL[character.path];
@@ -25,7 +34,7 @@ function derivedLabel(key: DerivedKey, character: Character): string {
 const PAIRED_STATS = STAT_ORDER.filter((key) => STAT_TO_DERIVED[key]);
 const STANDALONE_STATS = STAT_ORDER.filter((key) => !STAT_TO_DERIVED[key]);
 
-export function CharacteristicsPanel({ character, onChangeStat, onChangePool }: Props) {
+export function CharacteristicsPanel({ character, onChangeStat, onChangePool, onChangeInitiativeSource }: Props) {
   const derived = computeDerivedStats(character);
 
   function statLabelFor(statKey: StatKey) {
@@ -44,7 +53,7 @@ export function CharacteristicsPanel({ character, onChangeStat, onChangePool }: 
           {label}
           {bonus !== 0 && <span className="muted"> ({total})</span>}
         </span>
-        <input type="number" min={STAT_MIN} value={base} onChange={(e) => onChangeStat(statKey, Number(e.target.value))} />
+        <NumberField min={STAT_MIN} value={base} onChange={(v) => onChangeStat(statKey, v)} />
         <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
       </div>
     );
@@ -60,15 +69,10 @@ export function CharacteristicsPanel({ character, onChangeStat, onChangePool }: 
           return (
             <div className="char-row" key={statKey}>
               {statPill(statKey)}
-              <span className="char-row-arrow">→</span>
               {poolKey ? (
                 <div className="pool-tile">
                   <div className="pool-tile-values">
-                    <input
-                      type="number"
-                      value={character.pools[poolKey]}
-                      onChange={(e) => onChangePool(poolKey, Number(e.target.value))}
-                    />
+                    <NumberField value={character.pools[poolKey]} onChange={(v) => onChangePool(poolKey, v)} />
                     <span className="pool-tile-max">/ {derived[poolKey]}</span>
                     <button
                       type="button"
@@ -85,6 +89,22 @@ export function CharacteristicsPanel({ character, onChangeStat, onChangePool }: 
                 <div className="derived-tile">
                   <div className="value">{derived[derivedKey]}</div>
                   <div className="label">{derivedLabel(derivedKey, character)}</div>
+                  {derivedKey === 'initiative' && (
+                    <select
+                      className="initiative-source-select"
+                      value={character.initiativeSource}
+                      onChange={(e) => onChangeInitiativeSource(e.target.value as InitiativeSource)}
+                      title="По какой характеристике считать инициативу"
+                    >
+                      {INITIATIVE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.value === 'auto'
+                            ? `Авто (сейчас: ${STAT_LABELS[currentInitiativeStat(character)]})`
+                            : opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
             </div>

@@ -35,6 +35,7 @@ export function createBlankCharacter(
     species: '',
     path,
     keyStat,
+    initiativeSource: 'auto',
     level: 1,
     experience: 0,
     statPointsBudget: STARTING_STAT_POINTS,
@@ -61,6 +62,7 @@ export function createBlankCharacter(
 export function normalizeCharacter(raw: Character): Character {
   return {
     ...raw,
+    initiativeSource: raw.initiativeSource ?? 'auto',
     pools: raw.pools ?? {
       hp: raw.baseStats.vitality + raw.level,
       staminaPoints: raw.baseStats.endurance,

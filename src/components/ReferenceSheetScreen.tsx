@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppData } from '../state/AppDataContext';
 import { fileToDataUrl } from '../utils/file';
 import { MAX_LEVEL } from '../data/progression';
+import { NumberField } from './NumberField';
 import { v4 as uuid } from 'uuid';
 import type { ReferenceSection } from '../types';
 
@@ -174,15 +175,14 @@ export function ReferenceSheetScreen() {
           <div className="row">
             <div className="field" style={{ maxWidth: 200 }}>
               <label>Очков характеристик за уровень</label>
-              <input
-                type="number"
+              <NumberField
                 value={progressionConfig.pointsPerLevel}
-                onChange={(e) => updateProgressionConfig({ ...progressionConfig, pointsPerLevel: Number(e.target.value) })}
+                onChange={(v) => updateProgressionConfig({ ...progressionConfig, pointsPerLevel: v })}
               />
             </div>
             <div className="field" style={{ maxWidth: 200 }}>
               <label>Быстро заполнить все уровни</label>
-              <input type="number" value={bulkValue} onChange={(e) => setBulkValue(Number(e.target.value))} />
+              <NumberField value={bulkValue} onChange={setBulkValue} />
             </div>
             <div className="field" style={{ justifyContent: 'flex-end' }}>
               <button className="btn btn-sm" onClick={() => fillRemainingWith(bulkValue)}>
@@ -206,11 +206,7 @@ export function ReferenceSheetScreen() {
                       {i + 1} → {i + 2}
                     </td>
                     <td>
-                      <input
-                        type="number"
-                        value={progressionConfig.xpToNextLevel[i] ?? 0}
-                        onChange={(e) => setXp(i, Number(e.target.value))}
-                      />
+                      <NumberField value={progressionConfig.xpToNextLevel[i] ?? 0} onChange={(v) => setXp(i, v)} />
                     </td>
                   </tr>
                 ))}

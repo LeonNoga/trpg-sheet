@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ALL_BONUS_KEYS, bonusLabel } from '../data/statsConfig';
 import { fileToDataUrl } from '../utils/file';
+import { NumberField } from './NumberField';
 import type { BonusKey, EquipItem, Path } from '../types';
 
 interface Props {
@@ -120,12 +121,7 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
                 </option>
               ))}
             </select>
-            <input
-              type="number"
-              style={{ maxWidth: 90 }}
-              value={value}
-              onChange={(e) => changeBonusValue(key, Number(e.target.value))}
-            />
+            <NumberField style={{ maxWidth: 90 }} value={value} onChange={(v) => changeBonusValue(key, v)} />
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeBonusRow(key)}>
               Убрать
             </button>
