@@ -1,3 +1,4 @@
+import { normalizeCharacter } from '../data/defaults';
 import type { Character, CharacterExportFile } from '../types';
 
 export function exportCharacter(character: Character): void {
@@ -34,5 +35,5 @@ export async function importCharacterFromFile(file: File): Promise<Character> {
     throw new Error('Это не похоже на файл карточки персонажа.');
   }
 
-  return character;
+  return normalizeCharacter(character);
 }

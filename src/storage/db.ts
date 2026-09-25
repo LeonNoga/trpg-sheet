@@ -1,6 +1,6 @@
 import { createStore, get, set, del, keys } from 'idb-keyval';
 import { defaultProgressionConfig } from '../data/progression';
-import { defaultReferenceSheet } from '../data/defaults';
+import { defaultReferenceSheet, normalizeCharacter } from '../data/defaults';
 import type { Character, EquipItem, ProgressionConfig, ReferenceSheetData } from '../types';
 
 const charactersStore = createStore('trpg-sheet-characters', 'characters');
@@ -15,7 +15,10 @@ export async function loadAllCharacters(): Promise<Character[]> {
   const characters = await Promise.all(
     allKeys.map((k) => get<Character>(k, charactersStore)),
   );
-  return characters.filter((c): c is Character => !!c).sort((a, b) => b.updatedAt - a.updatedAt);
+  return characters
+    .filter((c): c is Character => !!c)
+    .map(normalizeCharacter)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function saveCharacter(character: Character): Promise<void> {

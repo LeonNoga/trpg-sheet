@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useAppData } from '../state/AppDataContext';
-import { StatsEditor, StatBudgetBar } from './StatsEditor';
-import { DerivedStatsPanel } from './DerivedStatsPanel';
+import { StatBudgetBar } from './StatsEditor';
+import { CharacteristicsPanel } from './CharacteristicsPanel';
 import { SkillsEditor } from './SkillsEditor';
 import { ItemsBlock } from './ItemsBlock';
+import { SpeciesBonusesCard, DnaListsCard, NotesCard } from './TraitBlocks';
 import { PATH_LABELS } from '../data/statsConfig';
 import { exportCharacter } from '../storage/exportImport';
-import type { Character, EquipItem, SkillLevel, StatKey } from '../types';
+import type { Character, EquipItem, PoolKey, SkillLevel, StatKey, TraitList } from '../types';
 
 interface Props {
   characterId: string;
@@ -15,6 +17,7 @@ interface Props {
 export function CharacterSheet({ characterId, onBack }: Props) {
   const { characters, updateCharacter, removeCharacter } = useAppData();
   const character = characters.find((c) => c.id === characterId);
+  const [xpToAdd, setXpToAdd] = useState('');
 
   if (!character) {
     return (
@@ -37,8 +40,19 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     patch((c) => ({ ...c, baseStats: { ...c.baseStats, [key]: value } }));
   }
 
+  function changePool(key: PoolKey, value: number) {
+    patch((c) => ({ ...c, pools: { ...c.pools, [key]: value } }));
+  }
+
   function changeSkill(skill: string, level: SkillLevel) {
     patch((c) => ({ ...c, skills: { ...c.skills, [skill]: level } }));
+  }
+
+  function addExperience() {
+    const amount = Number(xpToAdd);
+    if (!amount) return;
+    patch((c) => ({ ...c, experience: c.experience + amount }));
+    setXpToAdd('');
   }
 
   function handleDelete() {
@@ -98,6 +112,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             />
           </div>
           <div className="field" style={{ maxWidth: 200 }}>
+            <label>Добавить опыт</label>
+            <div className="row" style={{ flexWrap: 'nowrap' }}>
+              <input
+                type="number"
+                value={xpToAdd}
+                placeholder="+ сколько"
+                onChange={(e) => setXpToAdd(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addExperience()}
+              />
+              <button type="button" className="btn btn-sm" onClick={addExperience}>
+                +
+              </button>
+            </div>
+          </div>
+          <div className="field" style={{ maxWidth: 200 }}>
             <label>Бюджет очков характеристик</label>
             <input
               type="number"
@@ -108,15 +137,22 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </div>
 
-      <div className="card">
-        <h3 className="card-title">Характеристики</h3>
-        <StatBudgetBar character={character} />
-        <StatsEditor character={character} onChangeStat={changeStat} />
+      <div className="row">
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <SpeciesBonusesCard
+            list={character.speciesBonuses}
+            onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
+          />
+        </div>
+        <div style={{ flex: 2, minWidth: 320 }}>
+          <DnaListsCard lists={character.dnaLists} onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))} />
+        </div>
       </div>
 
       <div className="card">
-        <h3 className="card-title">Показатели</h3>
-        <DerivedStatsPanel character={character} />
+        <h3 className="card-title">Характеристики и показатели</h3>
+        <StatBudgetBar character={character} />
+        <CharacteristicsPanel character={character} onChangeStat={changeStat} onChangePool={changePool} />
       </div>
 
       <div className="card">
@@ -139,6 +175,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         path={character.path}
         onChange={(abilities: EquipItem[]) => patch((c) => ({ ...c, abilities }))}
       />
+
+      <NotesCard notes={character.notes} onChange={(notes) => patch((c) => ({ ...c, notes }))} />
     </div>
   );
 }

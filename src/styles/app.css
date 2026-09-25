@@ -240,6 +240,90 @@ input, select, textarea {
   color: var(--warn);
 }
 
+.char-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 8px 20px;
+}
+
+.char-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.char-row .stat-pill {
+  flex: 1;
+  min-width: 0;
+}
+
+.char-row-arrow {
+  color: var(--text-muted);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.char-row-spacer {
+  flex: 1;
+}
+
+.pool-tile {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  background: var(--surface-2);
+  text-align: center;
+  flex: 1;
+  min-width: 130px;
+}
+
+.pool-tile-values {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pool-tile-values input {
+  width: 54px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+  padding: 4px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.pool-tile-max {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.pool-tile .label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.card-title-input {
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 0 0 10px;
+  width: 100%;
+}
+
+.notes-textarea {
+  width: 100%;
+  min-height: 140px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  resize: vertical;
+}
+
 .derived-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));

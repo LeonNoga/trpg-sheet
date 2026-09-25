@@ -1,4 +1,4 @@
-import type { BonusKey, DerivedKey, KeyStat, Path, StatKey } from '../types';
+import type { BonusKey, DerivedKey, KeyStat, Path, PoolKey, StatKey } from '../types';
 
 export const STAT_ORDER: StatKey[] = [
   'vitality',
@@ -12,6 +12,27 @@ export const STAT_ORDER: StatKey[] = [
   'charisma',
   'resource',
 ];
+
+// Пара "характеристика -> показатель" для наглядного построчного отображения
+// на карточке (как в бумажном образце: строка со статом и стрелкой к производному).
+export const STAT_TO_DERIVED: Partial<Record<StatKey, DerivedKey>> = {
+  vitality: 'hp',
+  fortitude: 'defense',
+  agility: 'speed',
+  perception: 'passivePerception',
+  intellect: 'initiative',
+  strength: 'resistance',
+  endurance: 'staminaPoints',
+  resource: 'resourcePoints',
+};
+
+// Показатели-"пулы": у них помимо расчётного максимума есть текущее
+// значение, которое меняется по ходу игры (хиты падают и т.п.).
+export const POOL_DERIVED_KEYS: DerivedKey[] = ['hp', 'staminaPoints', 'resourcePoints'];
+
+export function poolKeyFor(key: DerivedKey): PoolKey | null {
+  return (POOL_DERIVED_KEYS as string[]).includes(key) ? (key as PoolKey) : null;
+}
 
 export const STAT_LABELS: Record<StatKey, string> = {
   vitality: 'Живучесть',

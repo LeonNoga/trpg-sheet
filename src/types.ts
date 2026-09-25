@@ -48,6 +48,14 @@ export interface EquipItem {
 
 export type Roster = 'personal' | 'gm-player' | 'gm-master';
 
+export type PoolKey = 'hp' | 'staminaPoints' | 'resourcePoints';
+
+export interface TraitList {
+  id: string;
+  title: string;
+  slots: string[];
+}
+
 export interface Character {
   id: string;
   roster: Roster;
@@ -60,9 +68,14 @@ export interface Character {
   experience: number;
   statPointsBudget: number;
   baseStats: Record<StatKey, number>;
+  /** Текущие (изменяемые в игре) значения пулов — отдельно от расчётного максимума. */
+  pools: Record<PoolKey, number>;
   skills: Record<string, SkillLevel>;
   items: EquipItem[];
   abilities: EquipItem[];
+  speciesBonuses: TraitList; // свободный список строк, для генетического — "Видовые бонусы"
+  dnaLists: TraitList[]; // фиксированные списки по 5 слотов, для генетического — "Видовые ДНК" и "ДНК"
+  notes: string;
   createdAt: number;
   updatedAt: number;
 }
