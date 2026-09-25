@@ -241,9 +241,9 @@ input, select, textarea {
 }
 
 .char-rows {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 8px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .char-row {
@@ -263,8 +263,24 @@ input, select, textarea {
   flex-shrink: 0;
 }
 
-.char-row-spacer {
+.char-row > .derived-tile,
+.char-row > .pool-tile {
   flex: 1;
+  min-width: 0;
+}
+
+.char-rows-standalone {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+
+.char-rows-standalone > div {
+  flex: 1;
+  min-width: 220px;
 }
 
 .pool-tile {
