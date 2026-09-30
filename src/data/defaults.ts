@@ -86,6 +86,7 @@ export function createBlankEquipItem(kind: 'item' | 'ability'): EquipItem {
     id: uuid(),
     kind,
     name: '',
+    path: 'none',
     statBonuses: {},
     equipped: true,
   };

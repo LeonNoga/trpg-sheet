@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# tesseract.js downloads these to cwd when run under Node (e.g. local OCR testing scripts)
+*.traineddata
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

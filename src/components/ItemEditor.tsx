@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { ALL_BONUS_KEYS, bonusLabel, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
+import { ALL_BONUS_KEYS, bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
 import { fileToDataUrl } from '../utils/file';
+import { parseCardText } from '../utils/ocrParse';
 import { NumberField } from './NumberField';
-import type { BonusKey, EquipItem, Path } from '../types';
+import type { BonusKey, EquipItem, ItemPath, Path } from '../types';
+
+const ITEM_PATH_ORDER: ItemPath[] = ['none', 'genetic', 'magic', 'tech'];
 
 interface Props {
   item: EquipItem;
@@ -61,7 +64,18 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
       const result = await recognize(draft.image, 'rus+eng');
       const text = result.data.text.trim();
       if (text) {
-        setDraft((d) => ({ ...d, effect: d.effect ? `${d.effect}\n${text}` : text }));
+        const parsed = parseCardText(text);
+        setDraft((d) => ({
+          ...d,
+          effect: d.effect ? `${d.effect}\n${text}` : text,
+          name: d.name || parsed.name || d.name,
+          rarity: d.rarity ?? parsed.rarity,
+          category: d.category || parsed.category,
+          level: d.level ?? parsed.level,
+          path: d.path && d.path !== 'none' ? d.path : (parsed.path ?? d.path),
+          flavorText: d.flavorText || parsed.flavorText,
+          statBonuses: { ...parsed.statBonuses, ...d.statBonuses },
+        }));
       }
     } catch (err) {
       setOcrError('Не удалось распознать текст. Попробуйте фото почётче.');
@@ -95,6 +109,16 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
         <div className="field">
           <label>Категория</label>
           <input value={draft.category ?? ''} onChange={(e) => updateField('category', e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Путь</label>
+          <select value={draft.path ?? 'none'} onChange={(e) => updateField('path', e.target.value as ItemPath)}>
+            {ITEM_PATH_ORDER.map((p) => (
+              <option key={p} value={p}>
+                {ITEM_PATH_LABELS[p]}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="field" style={{ maxWidth: 100 }}>
           <label>Уровень</label>

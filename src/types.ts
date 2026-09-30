@@ -31,10 +31,14 @@ export type SkillLevel = 0 | 5 | 10 | 15;
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
+/** Путь, к которому привязан предмет/умение — 'none' = общий, без привязки. */
+export type ItemPath = Path | 'none';
+
 export interface EquipItem {
   id: string;
   kind: 'item' | 'ability';
   name: string;
+  path?: ItemPath;
   rarity?: Rarity;
   category?: string;
   level?: number;

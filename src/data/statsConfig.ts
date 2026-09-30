@@ -1,4 +1,4 @@
-import type { BonusKey, DerivedKey, Path, PoolKey, Rarity, ResistanceSource, StatKey } from '../types';
+import type { BonusKey, DerivedKey, ItemPath, Path, PoolKey, Rarity, ResistanceSource, StatKey } from '../types';
 
 export const STAT_ORDER: StatKey[] = [
   'vitality',
@@ -62,6 +62,11 @@ export const PATH_LABELS: Record<Path, string> = {
   genetic: 'Генетический',
   magic: 'Магический',
   tech: 'Технический',
+};
+
+export const ITEM_PATH_LABELS: Record<ItemPath, string> = {
+  ...PATH_LABELS,
+  none: 'Без пути',
 };
 
 export const PATH_RESOURCE_LABEL: Record<Path, string> = {

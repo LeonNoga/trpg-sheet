@@ -1,4 +1,4 @@
-import { bonusLabel, RARITY_LABELS } from '../data/statsConfig';
+import { bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS } from '../data/statsConfig';
 import type { BonusKey, EquipItem, Path } from '../types';
 
 interface Props {
@@ -22,7 +22,12 @@ export function ItemCard({ item, path, showEquipToggle, onToggleEquipped, onEdit
         <div>
           <h4>{item.name || 'Без названия'}</h4>
           <div className="item-meta">
-            {[item.rarity ? RARITY_LABELS[item.rarity] : null, item.category, item.level ? `ур. ${item.level}` : null]
+            {[
+              item.rarity ? RARITY_LABELS[item.rarity] : null,
+              item.path && item.path !== 'none' ? ITEM_PATH_LABELS[item.path] : null,
+              item.category,
+              item.level ? `ур. ${item.level}` : null,
+            ]
               .filter(Boolean)
               .join(' · ')}
           </div>
