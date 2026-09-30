@@ -24,17 +24,18 @@ export type DerivedKey =
 
 export type BonusKey = StatKey | DerivedKey;
 
-export type KeyStat = 'agility' | 'strength' | 'intellect';
-
 export type InitiativeSource = 'auto' | 'agility' | 'intellect' | 'perception';
+export type ResistanceSource = 'auto' | 'agility' | 'strength' | 'intellect';
 
 export type SkillLevel = 0 | 5 | 10 | 15;
+
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 export interface EquipItem {
   id: string;
   kind: 'item' | 'ability';
   name: string;
-  rarity?: string;
+  rarity?: Rarity;
   category?: string;
   level?: number;
   flavorText?: string;
@@ -54,8 +55,12 @@ export type PoolKey = 'hp' | 'staminaPoints' | 'resourcePoints';
 
 export interface TraitList {
   id: string;
-  title: string;
   slots: string[];
+}
+
+export interface InfectionStatus {
+  success: [boolean, boolean, boolean];
+  fail: [boolean, boolean, boolean];
 }
 
 export interface Character {
@@ -65,7 +70,7 @@ export interface Character {
   characterName: string;
   species: string;
   path: Path;
-  keyStat: KeyStat;
+  resistanceSource: ResistanceSource;
   initiativeSource: InitiativeSource;
   level: number;
   experience: number;
@@ -74,10 +79,20 @@ export interface Character {
   /** Текущие (изменяемые в игре) значения пулов — отдельно от расчётного максимума. */
   pools: Record<PoolKey, number>;
   skills: Record<string, SkillLevel>;
+  /** Дни тренировки, накопленные к следующей степени владения навыком. */
+  skillTrainingDays: Record<string, number>;
   items: EquipItem[];
   abilities: EquipItem[];
+  equippedSlots: Record<string, string[]>; // slotKey -> equipItem id[], только для силуэта экипировки
   speciesBonuses: TraitList; // свободный список строк, для генетического — "Видовые бонусы"
   dnaLists: TraitList[]; // фиксированные списки по 5 слотов, для генетического — "Видовые ДНК" и "ДНК"
+  group: string;
+  points: number;
+  developmentPoints: number;
+  systemWeapons: TraitList;
+  systemGear: TraitList;
+  inspirationPoints: boolean[];
+  infectionStatus: InfectionStatus;
   notes: string;
   createdAt: number;
   updatedAt: number;
@@ -86,26 +101,6 @@ export interface Character {
 export interface ProgressionConfig {
   xpToNextLevel: number[]; // length 99: index i -> xp needed to go from level i+1 to i+2
   pointsPerLevel: number;
-}
-
-export interface ReferenceRow {
-  id: string;
-  action: string;
-  cost: string;
-  effect: string;
-}
-
-export interface ReferenceSection {
-  id: string;
-  title: string;
-  rows: ReferenceRow[];
-}
-
-export interface ReferenceSheetData {
-  mode: 'structured' | 'image';
-  sections: ReferenceSection[];
-  image?: string; // base64 data URL
-  updatedAt: number;
 }
 
 export interface CharacterExportFile {

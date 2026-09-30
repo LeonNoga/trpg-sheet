@@ -5,35 +5,23 @@ import {
   loadAllCharacters,
   loadLootTray,
   loadProgressionConfig,
-  loadReferenceSheet,
   saveCharacter,
   saveLootTray,
   saveProgressionConfig,
-  saveReferenceSheet,
 } from '../storage/db';
 import { applyExperience } from '../data/progression';
 import { createBlankCharacter } from '../data/defaults';
-import type {
-  Character,
-  EquipItem,
-  KeyStat,
-  Path,
-  ProgressionConfig,
-  ReferenceSheetData,
-  Roster,
-} from '../types';
+import type { Character, EquipItem, Path, ProgressionConfig, Roster } from '../types';
 
 interface AppDataContextValue {
   loading: boolean;
   characters: Character[];
-  referenceSheet: ReferenceSheetData;
   progressionConfig: ProgressionConfig;
   lootTray: EquipItem[];
-  createCharacter: (path: Path, keyStat: KeyStat, roster?: Roster) => Character;
+  createCharacter: (path: Path, roster?: Roster) => Character;
   updateCharacter: (character: Character) => void;
   removeCharacter: (id: string) => void;
   importCharacter: (character: Character, roster?: Roster) => void;
-  updateReferenceSheet: (data: ReferenceSheetData) => void;
   updateProgressionConfig: (data: ProgressionConfig) => void;
   updateLootTray: (items: EquipItem[]) => void;
 }
@@ -43,28 +31,25 @@ const AppDataContext = createContext<AppDataContextValue | null>(null);
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [referenceSheet, setReferenceSheet] = useState<ReferenceSheetData | null>(null);
   const [progressionConfig, setProgressionConfig] = useState<ProgressionConfig | null>(null);
   const [lootTray, setLootTray] = useState<EquipItem[]>([]);
 
   useEffect(() => {
     (async () => {
-      const [chars, ref, prog, loot] = await Promise.all([
+      const [chars, prog, loot] = await Promise.all([
         loadAllCharacters(),
-        loadReferenceSheet(),
         loadProgressionConfig(),
         loadLootTray(),
       ]);
       setCharacters(chars);
-      setReferenceSheet(ref);
       setProgressionConfig(prog);
       setLootTray(loot);
       setLoading(false);
     })();
   }, []);
 
-  const createCharacter = useCallback((path: Path, keyStat: KeyStat, roster: Roster = 'personal') => {
-    const character = createBlankCharacter(path, keyStat, roster);
+  const createCharacter = useCallback((path: Path, roster: Roster = 'personal') => {
+    const character = createBlankCharacter(path, roster);
     setCharacters((prev) => [character, ...prev]);
     void saveCharacter(character);
     return character;
@@ -95,12 +80,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     void saveCharacter(next);
   }, []);
 
-  const updateReferenceSheet = useCallback((data: ReferenceSheetData) => {
-    const next = { ...data, updatedAt: Date.now() };
-    setReferenceSheet(next);
-    void saveReferenceSheet(next);
-  }, []);
-
   const updateProgressionConfig = useCallback((data: ProgressionConfig) => {
     setProgressionConfig(data);
     void saveProgressionConfig(data);
@@ -112,32 +91,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AppDataContextValue | null>(() => {
-    if (!referenceSheet || !progressionConfig) return null;
+    if (!progressionConfig) return null;
     return {
       loading,
       characters,
-      referenceSheet,
       progressionConfig,
       lootTray,
       createCharacter,
       updateCharacter,
       removeCharacter,
       importCharacter,
-      updateReferenceSheet,
       updateProgressionConfig,
       updateLootTray,
     };
   }, [
     loading,
     characters,
-    referenceSheet,
     progressionConfig,
     lootTray,
     createCharacter,
     updateCharacter,
     removeCharacter,
     importCharacter,
-    updateReferenceSheet,
     updateProgressionConfig,
     updateLootTray,
   ]);

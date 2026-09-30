@@ -1,5 +1,5 @@
-import { STAT_ORDER } from './statsConfig';
-import type { BonusKey, Character, DerivedKey, EquipItem, InitiativeSource, StatKey } from '../types';
+import { RESISTANCE_ALLOWED_STATS, STAT_ORDER } from './statsConfig';
+import type { BonusKey, Character, DerivedKey, EquipItem, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
 export function modifier(total: number): number {
   return Math.floor((total - 10) / 5);
@@ -46,12 +46,22 @@ export function currentInitiativeStat(character: Character): Exclude<InitiativeS
   return mods.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
 }
 
+/** Какая характеристика сейчас фактически определяет Сложность Сопротивления — для отображения в UI. */
+export function currentResistanceStat(character: Character): Exclude<ResistanceSource, 'auto'> {
+  const allowed = RESISTANCE_ALLOWED_STATS[character.path];
+  if (character.resistanceSource && character.resistanceSource !== 'auto' && (allowed as string[]).includes(character.resistanceSource)) {
+    return character.resistanceSource;
+  }
+  const mods = allowed.map((stat): [Exclude<ResistanceSource, 'auto'>, number] => [stat, modifier(totalStat(character, stat))]);
+  return mods.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
+}
+
 export function computeDerivedStats(character: Character): DerivedStats {
   const modAgility = modifier(totalStat(character, 'agility'));
   const modIntellect = modifier(totalStat(character, 'intellect'));
   const modPerception = modifier(totalStat(character, 'perception'));
   const modFortitude = modifier(totalStat(character, 'fortitude'));
-  const modKeyStat = modifier(totalStat(character, character.keyStat));
+  const modResistanceStat = modifier(totalStat(character, currentResistanceStat(character)));
 
   const initiativeMods = { agility: modAgility, intellect: modIntellect, perception: modPerception };
   const initiativeBase =
@@ -67,7 +77,7 @@ export function computeDerivedStats(character: Character): DerivedStats {
     speed: 5 + modAgility + bonus('speed'),
     passivePerception: 18 + modPerception + bonus('passivePerception'),
     initiative: initiativeBase + bonus('initiative'),
-    resistance: 18 + modKeyStat + bonus('resistance'),
+    resistance: 18 + modResistanceStat + bonus('resistance'),
     staminaPoints: totalStat(character, 'endurance') + bonus('staminaPoints'),
     resourcePoints: totalStat(character, 'resource') + bonus('resourcePoints'),
   };

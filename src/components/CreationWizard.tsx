@@ -3,8 +3,8 @@ import { useAppData } from '../state/AppDataContext';
 import { StatsEditor, StatBudgetBar } from './StatsEditor';
 import { DerivedStatsPanel } from './DerivedStatsPanel';
 import { SkillsEditor } from './SkillsEditor';
-import { PATH_ALLOWED_KEY_STATS, PATH_LABELS, STAT_LABELS } from '../data/statsConfig';
-import type { Character, KeyStat, Path, Roster, SkillLevel, StatKey } from '../types';
+import { PATH_LABELS, PATH_SPECIES_FIELD_LABEL } from '../data/statsConfig';
+import type { Character, Path, Roster, SkillLevel, StatKey } from '../types';
 
 interface Props {
   roster: Roster;
@@ -18,11 +18,10 @@ export function CreationWizard({ roster, onFinish, onCancel }: Props) {
   const { createCharacter, updateCharacter } = useAppData();
   const [step, setStep] = useState(0);
   const [path, setPath] = useState<Path>('genetic');
-  const [keyStat, setKeyStat] = useState<KeyStat>('agility');
   const [character, setCharacter] = useState<Character | null>(null);
 
   function startBuild() {
-    const created = createCharacter(path, keyStat, roster);
+    const created = createCharacter(path, roster);
     setCharacter(created);
     setStep(1);
   }
@@ -61,28 +60,12 @@ export function CreationWizard({ roster, onFinish, onCancel }: Props) {
                 key={p}
                 type="button"
                 className={`path-option ${path === p ? 'selected' : ''}`}
-                onClick={() => {
-                  setPath(p);
-                  setKeyStat(PATH_ALLOWED_KEY_STATS[p][0]);
-                }}
+                onClick={() => setPath(p)}
               >
                 <h4>{PATH_LABELS[p]}</h4>
               </button>
             ))}
           </div>
-
-          {PATH_ALLOWED_KEY_STATS[path].length > 1 && (
-            <div className="field">
-              <label>Ключевая характеристика</label>
-              <select value={keyStat} onChange={(e) => setKeyStat(e.target.value as KeyStat)}>
-                {PATH_ALLOWED_KEY_STATS[path].map((k) => (
-                  <option key={k} value={k}>
-                    {STAT_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <div className="wizard-actions">
             <button className="btn btn-ghost" onClick={onCancel}>
@@ -116,7 +99,7 @@ export function CreationWizard({ roster, onFinish, onCancel }: Props) {
                   />
                 </div>
                 <div className="field">
-                  <label>Вид</label>
+                  <label>{PATH_SPECIES_FIELD_LABEL[character.path]}</label>
                   <input
                     value={character.species}
                     onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))}

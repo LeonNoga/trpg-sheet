@@ -1,15 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { STAT_MIN, STAT_ORDER, STARTING_STAT_POINTS } from './statsConfig';
-import type {
-  Character,
-  EquipItem,
-  KeyStat,
-  Path,
-  ReferenceSheetData,
-  Roster,
-  StatKey,
-  TraitList,
-} from '../types';
+import type { Character, EquipItem, Path, Roster, StatKey, TraitList } from '../types';
 
 export function blankBaseStats(): Record<StatKey, number> {
   const stats = {} as Record<StatKey, number>;
@@ -17,15 +8,11 @@ export function blankBaseStats(): Record<StatKey, number> {
   return stats;
 }
 
-function blankTraitList(title: string, slotCount: number): TraitList {
-  return { id: uuid(), title, slots: Array.from({ length: slotCount }, () => '') };
+function blankTraitList(slotCount: number): TraitList {
+  return { id: uuid(), slots: Array.from({ length: slotCount }, () => '') };
 }
 
-export function createBlankCharacter(
-  path: Path,
-  keyStat: KeyStat,
-  roster: Roster = 'personal',
-): Character {
+export function createBlankCharacter(path: Path, roster: Roster = 'personal'): Character {
   const now = Date.now();
   return {
     id: uuid(),
@@ -34,7 +21,7 @@ export function createBlankCharacter(
     characterName: '',
     species: '',
     path,
-    keyStat,
+    resistanceSource: 'auto',
     initiativeSource: 'auto',
     level: 1,
     experience: 0,
@@ -46,30 +33,50 @@ export function createBlankCharacter(
       resourcePoints: STAT_MIN,
     },
     skills: {},
+    skillTrainingDays: {},
     items: [],
     abilities: [],
-    speciesBonuses: blankTraitList('Видовые бонусы', 3),
-    dnaLists: [blankTraitList('Видовые ДНК', 5), blankTraitList('ДНК', 5)],
+    equippedSlots: {},
+    speciesBonuses: blankTraitList(3),
+    dnaLists: [blankTraitList(5), blankTraitList(5)],
+    group: '',
+    points: 0,
+    developmentPoints: 0,
+    systemWeapons: blankTraitList(0),
+    systemGear: blankTraitList(0),
+    inspirationPoints: [false, false, false],
+    infectionStatus: { success: [false, false, false], fail: [false, false, false] },
     notes: '',
     createdAt: now,
     updatedAt: now,
   };
 }
 
-/** Заполняет отсутствующие поля у персонажа, сохранённого/импортированного
- * до появления пулов, видовых блоков и заметок — чтобы старые файлы и записи
- * в IndexedDB не ломали карточку после обновления схемы. */
+/** Заполняет отсутствующие поля у персонажа, сохранённого/импортированного до
+ * появления новых блоков — чтобы старые файлы и записи в IndexedDB не ломали
+ * карточку после обновления схемы. */
 export function normalizeCharacter(raw: Character): Character {
+  const withoutKeyStat = raw as Character & { keyStat?: string };
   return {
     ...raw,
+    resistanceSource: raw.resistanceSource ?? (withoutKeyStat.keyStat as Character['resistanceSource']) ?? 'auto',
     initiativeSource: raw.initiativeSource ?? 'auto',
     pools: raw.pools ?? {
       hp: raw.baseStats.vitality + raw.level,
       staminaPoints: raw.baseStats.endurance,
       resourcePoints: raw.baseStats.resource,
     },
-    speciesBonuses: raw.speciesBonuses ?? blankTraitList('Видовые бонусы', 3),
-    dnaLists: raw.dnaLists ?? [blankTraitList('Видовые ДНК', 5), blankTraitList('ДНК', 5)],
+    skillTrainingDays: raw.skillTrainingDays ?? {},
+    equippedSlots: raw.equippedSlots ?? {},
+    speciesBonuses: raw.speciesBonuses ?? blankTraitList(3),
+    dnaLists: raw.dnaLists ?? [blankTraitList(5), blankTraitList(5)],
+    group: raw.group ?? '',
+    points: raw.points ?? 0,
+    developmentPoints: raw.developmentPoints ?? 0,
+    systemWeapons: raw.systemWeapons ?? blankTraitList(0),
+    systemGear: raw.systemGear ?? blankTraitList(0),
+    inspirationPoints: raw.inspirationPoints ?? [false, false, false],
+    infectionStatus: raw.infectionStatus ?? { success: [false, false, false], fail: [false, false, false] },
     notes: raw.notes ?? '',
   };
 }
@@ -81,50 +88,5 @@ export function createBlankEquipItem(kind: 'item' | 'ability'): EquipItem {
     name: '',
     statBonuses: {},
     equipped: true,
-  };
-}
-
-export function defaultReferenceSheet(): ReferenceSheetData {
-  return {
-    mode: 'structured',
-    updatedAt: Date.now(),
-    sections: [
-      {
-        id: uuid(),
-        title: '0 действий (бесплатно)',
-        rows: [
-          { id: uuid(), action: 'Пассивная защита', cost: '0д', effect: 'Работает автоматически, 18 + Стойкость + Броня' },
-          { id: uuid(), action: 'Что-то сказать', cost: '0д', effect: 'Короткая реплика' },
-        ],
-      },
-      {
-        id: uuid(),
-        title: '1 действие',
-        rows: [
-          { id: uuid(), action: 'Атака', cost: '1д', effect: '3д10 (взрывные) + Модификатор характеристики + Навык' },
-          { id: uuid(), action: 'Перемещение', cost: '1д', effect: 'До 5м + Мод. Ловкости' },
-          { id: uuid(), action: 'Встать', cost: '1д', effect: 'Снять статус «лёжа/сбит с ног»' },
-          { id: uuid(), action: 'Сбить с ног', cost: '1д', effect: 'Противостояние Силы против Стойкости/Силы' },
-          { id: uuid(), action: 'Защитная стойка', cost: '1д', effect: '+3 к Показателю защиты до следующего хода' },
-        ],
-      },
-      {
-        id: uuid(),
-        title: '2 действия',
-        rows: [
-          { id: uuid(), action: 'Мощный удар', cost: '2д', effect: 'Холодное оружие: урон x2' },
-          { id: uuid(), action: 'Отступление', cost: '2д', effect: 'Отойти без провокации атаки' },
-        ],
-      },
-      {
-        id: uuid(),
-        title: 'Боевые расчёты',
-        rows: [
-          { id: uuid(), action: 'Атака', cost: '', effect: '3д10 + Мод + Навык' },
-          { id: uuid(), action: 'Пассивная защита', cost: '', effect: '18 + Стойкость + Бонус брони' },
-          { id: uuid(), action: 'Крит', cost: '', effect: 'Итог >= TN + 10 (удвоение количества кубов)' },
-        ],
-      },
-    ],
   };
 }

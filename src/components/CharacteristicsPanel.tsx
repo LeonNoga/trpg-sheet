@@ -2,22 +2,38 @@ import {
   DERIVED_LABELS,
   PATH_RESOURCE_LABEL,
   PATH_RESOURCE_POINTS_LABEL,
+  RESISTANCE_ALLOWED_STATS,
   STAT_LABELS,
   STAT_MIN,
   STAT_ORDER,
   STAT_TO_DERIVED,
   poolKeyFor,
 } from '../data/statsConfig';
-import { bonusSum, computeDerivedStats, currentInitiativeStat, modifier, totalStat } from '../data/formulas';
+import {
+  bonusSum,
+  computeDerivedStats,
+  currentInitiativeStat,
+  currentResistanceStat,
+  modifier,
+  totalStat,
+} from '../data/formulas';
 import { NumberField } from './NumberField';
-import type { Character, DerivedKey, InitiativeSource, StatKey } from '../types';
+import type { Character, DerivedKey, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
 interface Props {
   character: Character;
   onChangeStat: (key: StatKey, value: number) => void;
   onChangePool: (key: 'hp' | 'staminaPoints' | 'resourcePoints', value: number) => void;
   onChangeInitiativeSource: (source: InitiativeSource) => void;
+  onChangeResistanceSource: (source: ResistanceSource) => void;
 }
+
+// Дательный падеж для подписи "по ..." у статов, которые могут определять Сложность Сопротивления.
+const STAT_DATIVE: Record<'agility' | 'strength' | 'intellect', string> = {
+  agility: 'Ловкости',
+  strength: 'Силе',
+  intellect: 'Интеллекту',
+};
 
 const INITIATIVE_OPTIONS: { value: InitiativeSource; label: string }[] = [
   { value: 'auto', label: 'Авто (больший модификатор)' },
@@ -34,8 +50,15 @@ function derivedLabel(key: DerivedKey, character: Character): string {
 const PAIRED_STATS = STAT_ORDER.filter((key) => STAT_TO_DERIVED[key]);
 const STANDALONE_STATS = STAT_ORDER.filter((key) => !STAT_TO_DERIVED[key]);
 
-export function CharacteristicsPanel({ character, onChangeStat, onChangePool, onChangeInitiativeSource }: Props) {
+export function CharacteristicsPanel({
+  character,
+  onChangeStat,
+  onChangePool,
+  onChangeInitiativeSource,
+  onChangeResistanceSource,
+}: Props) {
   const derived = computeDerivedStats(character);
+  const resistanceAllowed = RESISTANCE_ALLOWED_STATS[character.path];
 
   function statLabelFor(statKey: StatKey) {
     return statKey === 'resource' ? PATH_RESOURCE_LABEL[character.path] : STAT_LABELS[statKey];
@@ -105,6 +128,26 @@ export function CharacteristicsPanel({ character, onChangeStat, onChangePool, on
                       ))}
                     </select>
                   )}
+                  {derivedKey === 'resistance' &&
+                    (resistanceAllowed.length > 1 ? (
+                      <select
+                        className="initiative-source-select"
+                        value={character.resistanceSource}
+                        onChange={(e) => onChangeResistanceSource(e.target.value as ResistanceSource)}
+                        title="По какой характеристике считать сложность сопротивления"
+                      >
+                        <option value="auto">Авто (сейчас: {STAT_LABELS[currentResistanceStat(character)]})</option>
+                        {resistanceAllowed.map((stat) => (
+                          <option key={stat} value={stat}>
+                            {STAT_LABELS[stat]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="muted" style={{ marginTop: 6 }}>
+                        по {STAT_DATIVE[currentResistanceStat(character)]}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
