@@ -106,10 +106,12 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
             ))}
           </select>
         </div>
-        <div className="field">
-          <label>Категория</label>
-          <input value={draft.category ?? ''} onChange={(e) => updateField('category', e.target.value)} />
-        </div>
+        {draft.kind === 'ability' && (
+          <div className="field">
+            <label>Категория</label>
+            <input value={draft.category ?? ''} onChange={(e) => updateField('category', e.target.value)} />
+          </div>
+        )}
         <div className="field">
           <label>Путь</label>
           <select value={draft.path ?? 'none'} onChange={(e) => updateField('path', e.target.value as ItemPath)}>
@@ -140,24 +142,26 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
         <textarea value={draft.effect ?? ''} onChange={(e) => updateField('effect', e.target.value)} />
       </div>
 
-      <div className="row">
-        <div className="field">
-          <label>Активация</label>
-          <input value={draft.activation ?? ''} onChange={(e) => updateField('activation', e.target.value)} />
+      {draft.kind === 'ability' && (
+        <div className="row">
+          <div className="field">
+            <label>Активация</label>
+            <input value={draft.activation ?? ''} onChange={(e) => updateField('activation', e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Откат</label>
+            <input value={draft.cooldown ?? ''} onChange={(e) => updateField('cooldown', e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Каст</label>
+            <input value={draft.cast ?? ''} onChange={(e) => updateField('cast', e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Длительность</label>
+            <input value={draft.duration ?? ''} onChange={(e) => updateField('duration', e.target.value)} />
+          </div>
         </div>
-        <div className="field">
-          <label>Откат</label>
-          <input value={draft.cooldown ?? ''} onChange={(e) => updateField('cooldown', e.target.value)} />
-        </div>
-        <div className="field">
-          <label>Каст</label>
-          <input value={draft.cast ?? ''} onChange={(e) => updateField('cast', e.target.value)} />
-        </div>
-        <div className="field">
-          <label>Длительность</label>
-          <input value={draft.duration ?? ''} onChange={(e) => updateField('duration', e.target.value)} />
-        </div>
-      </div>
+      )}
 
       <div className="field">
         <label>Фото (необязательно)</label>

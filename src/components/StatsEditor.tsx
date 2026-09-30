@@ -1,4 +1,4 @@
-import { STAT_LABELS, STAT_MIN, STAT_ORDER, PATH_RESOURCE_LABEL } from '../data/statsConfig';
+import { STAT_LABELS, STAT_MIN, STAT_ORDER, PATH_RESOURCE_LABEL, statMilestone } from '../data/statsConfig';
 import { bonusSum, modifier, sumBaseStats, totalStat } from '../data/formulas';
 import { NumberField } from './NumberField';
 import type { Character, StatKey } from '../types';
@@ -32,11 +32,24 @@ export function StatsEditor({ character, onChangeStat }: Props) {
         const bonus = bonusSum(character, key);
         const total = totalStat(character, key);
         const mod = modifier(total);
+        const milestone = statMilestone(total);
         return (
-          <div key={key} className="stat-pill" title={bonus ? `База ${base} + предметы ${bonus > 0 ? '+' : ''}${bonus} = ${total}` : undefined}>
+          <div
+            key={key}
+            className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}
+            title={
+              milestone
+                ? `Порог ${milestone} достигнут — по системе здесь появляются доп. эффекты`
+                : bonus
+                  ? `База ${base} + предметы ${bonus > 0 ? '+' : ''}${bonus} = ${total}`
+                  : undefined
+            }
+          >
             <span className="stat-pill-name">
               {label}
-              {bonus !== 0 && <span className="muted"> ({total})</span>}
+              {(bonus !== 0 || milestone) && (
+                <span className={milestone ? 'stat-value-milestone' : 'muted'}> ({total})</span>
+              )}
             </span>
             <NumberField min={STAT_MIN} value={base} onChange={(v) => onChangeStat(key, v)} />
             <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>

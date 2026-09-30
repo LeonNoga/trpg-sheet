@@ -12,7 +12,7 @@ interface Props {
 
 export function ItemCard({ item, path, showEquipToggle, onToggleEquipped, onEdit, onDelete }: Props) {
   const bonusEntries = Object.entries(item.statBonuses) as [BonusKey, number][];
-  const props = [item.activation, item.cooldown, item.cast, item.duration].some(Boolean);
+  const props = item.kind === 'ability' && [item.activation, item.cooldown, item.cast, item.duration].some(Boolean);
 
   const rarityClass = item.rarity ? `rarity-${item.rarity}` : '';
 
@@ -25,7 +25,7 @@ export function ItemCard({ item, path, showEquipToggle, onToggleEquipped, onEdit
             {[
               item.rarity ? RARITY_LABELS[item.rarity] : null,
               item.path && item.path !== 'none' ? ITEM_PATH_LABELS[item.path] : null,
-              item.category,
+              item.kind === 'ability' ? item.category : null,
               item.level ? `ур. ${item.level}` : null,
             ]
               .filter(Boolean)

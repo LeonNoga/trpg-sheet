@@ -263,6 +263,22 @@ input, select, textarea {
   color: var(--accent);
 }
 
+/* Порог 50/100 суммарного значения (база + снаряжение) — фиксированный цвет, не
+   зависит от темы пути, чтобы всегда бросаться в глаза как предупреждение. */
+.stat-pill.milestone-50,
+.stat-pill.milestone-100 {
+  border: 2px solid #c0392b;
+}
+
+.stat-pill.milestone-100 {
+  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.25);
+}
+
+.stat-value-milestone {
+  font-weight: 800;
+  color: #c0392b;
+}
+
 .budget-bar {
   display: flex;
   align-items: center;

@@ -110,6 +110,16 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   legendary: 'Легендарная',
 };
 
+// Пороги суммарного значения характеристики (база + снаряжение), на которых по системе
+// открываются дополнительные эффекты — пока сами эффекты не прописаны, просто подсвечиваем.
+export const STAT_MILESTONES = [50, 100] as const;
+
+export function statMilestone(total: number): 50 | 100 | null {
+  if (total >= 100) return 100;
+  if (total >= 50) return 50;
+  return null;
+}
+
 // Пороги дней успешной тренировки и справочные TN для перехода между степенями владения навыком.
 export const SKILL_TRAINING_TIERS: { from: 0 | 5 | 10; to: 5 | 10 | 15; tn: number; days: number }[] = [
   { from: 0, to: 5, tn: 18, days: 10 },
