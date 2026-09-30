@@ -1,4 +1,4 @@
-import { bonusLabel } from '../data/statsConfig';
+import { bonusLabel, RARITY_LABELS } from '../data/statsConfig';
 import type { BonusKey, EquipItem, Path } from '../types';
 
 interface Props {
@@ -14,13 +14,17 @@ export function ItemCard({ item, path, showEquipToggle, onToggleEquipped, onEdit
   const bonusEntries = Object.entries(item.statBonuses) as [BonusKey, number][];
   const props = [item.activation, item.cooldown, item.cast, item.duration].some(Boolean);
 
+  const rarityClass = item.rarity ? `rarity-${item.rarity}` : '';
+
   return (
-    <div className={`item-card ${item.equipped ? 'equipped' : ''}`}>
+    <div className={`item-card ${item.equipped ? 'equipped' : ''} ${rarityClass}`}>
       <div className="item-card-head">
         <div>
           <h4>{item.name || 'Без названия'}</h4>
           <div className="item-meta">
-            {[item.rarity, item.category, item.level ? `ур. ${item.level}` : null].filter(Boolean).join(' · ')}
+            {[item.rarity ? RARITY_LABELS[item.rarity] : null, item.category, item.level ? `ур. ${item.level}` : null]
+              .filter(Boolean)
+              .join(' · ')}
           </div>
         </div>
         {showEquipToggle && (

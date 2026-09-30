@@ -15,6 +15,22 @@
   color-scheme: light;
 }
 
+/* Тема по пути развития персонажа — переопределяет акцентные цвета внутри карточки. */
+.theme-genetic {
+  --accent: #2f8a4e;
+  --accent-soft: #d9f0e0;
+}
+
+.theme-magic {
+  --accent: #9b3fb5;
+  --accent-soft: #f1ddf7;
+}
+
+.theme-tech {
+  --accent: #5b6470;
+  --accent-soft: #e2e4e8;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -458,6 +474,30 @@ input, select, textarea {
   border-color: var(--ok);
 }
 
+.item-card.rarity-common {
+  border-color: #8a8a8a;
+}
+
+.item-card.rarity-uncommon {
+  border-color: #2f8a4e;
+  box-shadow: 0 0 0 1px rgba(47, 138, 78, 0.25);
+}
+
+.item-card.rarity-rare {
+  border-color: #2f6fb5;
+  box-shadow: 0 0 0 1px rgba(47, 111, 181, 0.25);
+}
+
+.item-card.rarity-epic {
+  border-color: #9b3fb5;
+  box-shadow: 0 0 0 1px rgba(155, 63, 181, 0.3);
+}
+
+.item-card.rarity-legendary {
+  border-color: #c9932f;
+  box-shadow: 0 0 0 2px rgba(201, 147, 47, 0.35), 0 0 0 3px rgba(181, 47, 47, 0.2);
+}
+
 .item-card-head {
   display: flex;
   align-items: flex-start;
@@ -553,6 +593,7 @@ input, select, textarea {
 
 .char-list-card {
   border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
   border-radius: var(--radius);
   padding: 14px;
   background: var(--surface);
@@ -714,4 +755,129 @@ table.ref-table input {
     width: 100%;
     margin-bottom: 4px;
   }
+}
+
+.sheet-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.memo-line {
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.training-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(26px, 1fr));
+  gap: 4px;
+  max-width: 480px;
+}
+
+.training-box {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 0;
+}
+
+.training-box.filled {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.pip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pip {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: transparent;
+  padding: 0;
+}
+
+.pip.filled {
+  background: var(--accent);
+}
+
+.infection-grid {
+  display: grid;
+  grid-template-columns: auto repeat(3, 40px);
+  gap: 6px;
+  align-items: center;
+}
+
+.infection-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 16px;
+}
+
+.infection-mark.success.on {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: white;
+}
+
+.infection-mark.fail.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.equipment-wrap {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.equipment-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.equipment-slot-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  padding: 6px 12px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.equipment-slot-btn.has-items {
+  border-color: var(--accent);
+}
+
+.equipment-slot-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.equipment-silhouette {
+  max-width: 220px;
+  flex-shrink: 0;
 }

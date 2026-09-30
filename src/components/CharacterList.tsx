@@ -55,7 +55,7 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
       ) : (
         <div className="char-list-grid">
           {list.map((c) => (
-            <button className="char-list-card" key={c.id} onClick={() => onOpen(c.id)}>
+            <button className={`char-list-card theme-${c.path}`} key={c.id} onClick={() => onOpen(c.id)}>
               <span className="pill-badge">{PATH_LABELS[c.path]}</span>
               <h3>{c.characterName || 'Без имени'}</h3>
               <span className="meta">
