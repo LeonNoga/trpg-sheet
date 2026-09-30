@@ -5,20 +5,43 @@ import { CharacteristicsPanel } from './CharacteristicsPanel';
 import { SkillsEditor } from './SkillsEditor';
 import { ItemsBlock } from './ItemsBlock';
 import { NumberField } from './NumberField';
-import { SpeciesBonusesCard, DnaListsCard, NotesCard } from './TraitBlocks';
-import { PATH_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
+import { SpeciesBonusesCard, DnaListsCard } from './TraitBlocks';
+import { EquipmentSilhouette } from './EquipmentSilhouette';
+import { SkillTrainingScreen } from './SkillTrainingScreen';
+import { AdditionalInfoTab } from './AdditionalInfoTab';
+import { PATH_LABELS, PATH_SPECIES_FIELD_LABEL, PATH_TRAIT_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
 import { MAX_LEVEL } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
-import type { Character, EquipItem, InitiativeSource, PoolKey, SkillLevel, StatKey, TraitList } from '../types';
+import type {
+  Character,
+  EquipItem,
+  InitiativeSource,
+  PoolKey,
+  ResistanceSource,
+  SkillLevel,
+  StatKey,
+  TraitList,
+} from '../types';
 
 interface Props {
   characterId: string;
   onBack: () => void;
 }
 
+type Tab = 'character' | 'equipment' | 'abilities' | 'training' | 'info';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'character', label: 'Персонаж' },
+  { key: 'equipment', label: 'Снаряжение' },
+  { key: 'abilities', label: 'Умения' },
+  { key: 'training', label: 'Прокачка навыков' },
+  { key: 'info', label: 'Доп. информация' },
+];
+
 export function CharacterSheet({ characterId, onBack }: Props) {
   const { characters, updateCharacter, removeCharacter, progressionConfig } = useAppData();
   const character = characters.find((c) => c.id === characterId);
+  const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
   const [levelDraft, setLevelDraft] = useState(character?.level ?? 1);
 
@@ -55,8 +78,24 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     patch((c) => ({ ...c, initiativeSource: source }));
   }
 
+  function changeResistanceSource(source: ResistanceSource) {
+    patch((c) => ({ ...c, resistanceSource: source }));
+  }
+
   function changeSkill(skill: string, level: SkillLevel) {
     patch((c) => ({ ...c, skills: { ...c.skills, [skill]: level } }));
+  }
+
+  function changeTrainingDays(skill: string, days: number) {
+    patch((c) => ({ ...c, skillTrainingDays: { ...c.skillTrainingDays, [skill]: Math.max(0, days) } }));
+  }
+
+  function levelUpSkill(skill: string, newLevel: SkillLevel) {
+    patch((c) => ({
+      ...c,
+      skills: { ...c.skills, [skill]: newLevel },
+      skillTrainingDays: { ...c.skillTrainingDays, [skill]: 0 },
+    }));
   }
 
   function addExperience() {
@@ -91,8 +130,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     }
   }
 
+  const traitLabels = PATH_TRAIT_LABELS[character.path];
+
   return (
-    <div>
+    <div className={`theme-${character.path}`}>
       <div className="top-actions">
         <button className="btn" onClick={onBack}>
           ← К списку
@@ -123,7 +164,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             />
           </div>
           <div className="field">
-            <label>Вид</label>
+            <label>{PATH_SPECIES_FIELD_LABEL[character.path]}</label>
             <input value={character.species} onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))} />
           </div>
         </div>
@@ -167,51 +208,80 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </div>
 
-      <div className="row">
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <SpeciesBonusesCard
-            list={character.speciesBonuses}
-            onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
+      <div className="sheet-tabs">
+        {TABS.map((t) => (
+          <button key={t.key} className={`nav-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'character' && (
+        <>
+          <div className="row">
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <SpeciesBonusesCard
+                title={traitLabels.bonuses}
+                list={character.speciesBonuses}
+                onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
+              />
+            </div>
+            <div style={{ flex: 2, minWidth: 320 }}>
+              <DnaListsCard
+                titles={[traitLabels.dnaA, traitLabels.dnaB]}
+                lists={character.dnaLists}
+                onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
+              />
+            </div>
+          </div>
+
+          <div className="card">
+            <h3 className="card-title">Характеристики и показатели</h3>
+            <StatBudgetBar character={character} />
+            <CharacteristicsPanel
+              character={character}
+              onChangeStat={changeStat}
+              onChangePool={changePool}
+              onChangeInitiativeSource={changeInitiativeSource}
+              onChangeResistanceSource={changeResistanceSource}
+            />
+          </div>
+
+          <div className="card">
+            <h3 className="card-title">Навыки</h3>
+            <SkillsEditor character={character} onChangeSkill={changeSkill} />
+          </div>
+        </>
+      )}
+
+      {tab === 'equipment' && (
+        <>
+          <EquipmentSilhouette character={character} onChange={(equippedSlots) => patch((c) => ({ ...c, equippedSlots }))} />
+          <ItemsBlock
+            title="Предметы"
+            kind="item"
+            items={character.items}
+            path={character.path}
+            onChange={(items: EquipItem[]) => patch((c) => ({ ...c, items }))}
           />
-        </div>
-        <div style={{ flex: 2, minWidth: 320 }}>
-          <DnaListsCard lists={character.dnaLists} onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))} />
-        </div>
-      </div>
+        </>
+      )}
 
-      <div className="card">
-        <h3 className="card-title">Характеристики и показатели</h3>
-        <StatBudgetBar character={character} />
-        <CharacteristicsPanel
-          character={character}
-          onChangeStat={changeStat}
-          onChangePool={changePool}
-          onChangeInitiativeSource={changeInitiativeSource}
+      {tab === 'abilities' && (
+        <ItemsBlock
+          title="Умения"
+          kind="ability"
+          items={character.abilities}
+          path={character.path}
+          onChange={(abilities: EquipItem[]) => patch((c) => ({ ...c, abilities }))}
         />
-      </div>
+      )}
 
-      <div className="card">
-        <h3 className="card-title">Навыки</h3>
-        <SkillsEditor character={character} onChangeSkill={changeSkill} />
-      </div>
+      {tab === 'training' && (
+        <SkillTrainingScreen character={character} onChangeDays={changeTrainingDays} onLevelUp={levelUpSkill} />
+      )}
 
-      <ItemsBlock
-        title="Предметы"
-        kind="item"
-        items={character.items}
-        path={character.path}
-        onChange={(items: EquipItem[]) => patch((c) => ({ ...c, items }))}
-      />
-
-      <ItemsBlock
-        title="Умения"
-        kind="ability"
-        items={character.abilities}
-        path={character.path}
-        onChange={(abilities: EquipItem[]) => patch((c) => ({ ...c, abilities }))}
-      />
-
-      <NotesCard notes={character.notes} onChange={(notes) => patch((c) => ({ ...c, notes }))} />
+      {tab === 'info' && <AdditionalInfoTab character={character} onPatch={patch} />}
     </div>
   );
 }

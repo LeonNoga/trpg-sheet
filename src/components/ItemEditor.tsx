@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ALL_BONUS_KEYS, bonusLabel } from '../data/statsConfig';
+import { ALL_BONUS_KEYS, bonusLabel, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
 import { fileToDataUrl } from '../utils/file';
 import { NumberField } from './NumberField';
 import type { BonusKey, EquipItem, Path } from '../types';
@@ -13,6 +13,8 @@ interface Props {
 
 export function ItemEditor({ item, path, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<EquipItem>(item);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   const bonusEntries = Object.entries(draft.statBonuses) as [BonusKey, number][];
 
@@ -50,6 +52,25 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
     updateField('image', dataUrl);
   }
 
+  async function handleRecognizeText() {
+    if (!draft.image) return;
+    setOcrBusy(true);
+    setOcrError(null);
+    try {
+      const { recognize } = await import('tesseract.js');
+      const result = await recognize(draft.image, 'rus+eng');
+      const text = result.data.text.trim();
+      if (text) {
+        setDraft((d) => ({ ...d, effect: d.effect ? `${d.effect}\n${text}` : text }));
+      }
+    } catch (err) {
+      setOcrError('Не удалось распознать текст. Попробуйте фото почётче.');
+      console.error(err);
+    } finally {
+      setOcrBusy(false);
+    }
+  }
+
   return (
     <div className="card">
       <div className="row">
@@ -59,7 +80,17 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
         </div>
         <div className="field">
           <label>Редкость</label>
-          <input value={draft.rarity ?? ''} onChange={(e) => updateField('rarity', e.target.value)} />
+          <select
+            value={draft.rarity ?? ''}
+            onChange={(e) => updateField('rarity', (e.target.value || undefined) as EquipItem['rarity'])}
+          >
+            <option value="">—</option>
+            {RARITY_ORDER.map((r) => (
+              <option key={r} value={r}>
+                {RARITY_LABELS[r]}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label>Категория</label>
@@ -107,7 +138,15 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
       <div className="field">
         <label>Фото (необязательно)</label>
         <input type="file" accept="image/*" onChange={(e) => handleImage(e.target.files?.[0])} />
-        {draft.image && <img src={draft.image} alt="" className="item-image" style={{ maxHeight: 160 }} />}
+        {draft.image && (
+          <>
+            <img src={draft.image} alt="" className="item-image" style={{ maxHeight: 160 }} />
+            <button type="button" className="btn btn-sm" disabled={ocrBusy} onClick={handleRecognizeText} style={{ marginTop: 6 }}>
+              {ocrBusy ? 'Распознаём (офлайн)...' : 'Распознать текст с фото'}
+            </button>
+            {ocrError && <p className="error-text">{ocrError}</p>}
+          </>
+        )}
       </div>
 
       <div className="field">
