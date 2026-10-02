@@ -10,7 +10,7 @@ import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
 import { PATH_LABELS, PATH_SPECIES_FIELD_LABEL, PATH_TRAIT_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
-import { MAX_LEVEL, POINTS_PER_LEVEL } from '../data/progression';
+import { MAX_LEVEL, POINTS_PER_LEVEL, levelStatPoints } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import type {
   Character,
@@ -111,16 +111,16 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       setLevelDraft(character!.level);
       return;
     }
-    const newBudget = STARTING_STAT_POINTS + POINTS_PER_LEVEL * (clamped - 1);
     const confirmed = confirm(
-      `Установить уровень ${clamped} вручную?\n\nОпыт будет сброшен в 0, а бюджет очков характеристик пересчитан: ` +
-        `${STARTING_STAT_POINTS} + ${POINTS_PER_LEVEL} × ${clamped - 1} = ${newBudget}.`,
+      `Установить уровень ${clamped} вручную?\n\nОпыт будет сброшен в 0, очки характеристик по уровню пересчитаются: ` +
+        `${STARTING_STAT_POINTS} + ${POINTS_PER_LEVEL} × ${clamped - 1} = ${levelStatPoints(clamped)}. ` +
+        `Доп. очки от мастера сохранятся.`,
     );
     if (!confirmed) {
       setLevelDraft(character!.level);
       return;
     }
-    patch((c) => ({ ...c, level: clamped, experience: 0, statPointsBudget: newBudget }));
+    patch((c) => ({ ...c, level: clamped, experience: 0 }));
   }
 
   function handleDelete() {
@@ -202,8 +202,12 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             </div>
           </div>
           <div className="field">
-            <label>Бюджет очков характеристик</label>
-            <NumberField value={character.statPointsBudget} onChange={(v) => patch((c) => ({ ...c, statPointsBudget: v }))} />
+            <label>Доп. очки характеристик</label>
+            <NumberField
+              value={character.bonusStatPoints}
+              onChange={(v) => patch((c) => ({ ...c, bonusStatPoints: v }))}
+              title="Очки сверх положенных по уровню (поощрение от мастера)"
+            />
           </div>
         </div>
       </div>

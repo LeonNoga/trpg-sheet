@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
-import { STAT_MIN, STAT_ORDER, STARTING_STAT_POINTS } from './statsConfig';
+import { STAT_MIN, STAT_ORDER } from './statsConfig';
+import { levelStatPoints } from './progression';
 import type { Character, EquipItem, Path, Roster, StatKey, TraitList } from '../types';
 
 export function blankBaseStats(): Record<StatKey, number> {
@@ -25,7 +26,7 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
     initiativeSource: 'auto',
     level: 1,
     experience: 0,
-    statPointsBudget: STARTING_STAT_POINTS,
+    bonusStatPoints: 0,
     baseStats: blankBaseStats(),
     pools: {
       hp: STAT_MIN + 1, // Живучесть(база) + уровень(1) на старте
@@ -56,10 +57,15 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
  * появления новых блоков — чтобы старые файлы и записи в IndexedDB не ломали
  * карточку после обновления схемы. */
 export function normalizeCharacter(raw: Character): Character {
-  const withoutKeyStat = raw as Character & { keyStat?: string };
+  const legacy = raw as Character & { keyStat?: string; statPointsBudget?: number };
+  // Раньше бюджет хранился числом (и пересчитывался при смене уровня). Всё, что сверх
+  // положенного по уровню, переезжает в "доп. очки", чтобы существующие карточки не изменились.
+  const { statPointsBudget: legacyBudget, ...rest } = legacy;
   return {
-    ...raw,
-    resistanceSource: raw.resistanceSource ?? (withoutKeyStat.keyStat as Character['resistanceSource']) ?? 'auto',
+    ...rest,
+    bonusStatPoints:
+      raw.bonusStatPoints ?? (legacyBudget !== undefined ? legacyBudget - levelStatPoints(raw.level) : 0),
+    resistanceSource: raw.resistanceSource ?? (legacy.keyStat as Character['resistanceSource']) ?? 'auto',
     initiativeSource: raw.initiativeSource ?? 'auto',
     pools: raw.pools ?? {
       hp: raw.baseStats.vitality + raw.level,

@@ -78,7 +78,8 @@ export interface Character {
   initiativeSource: InitiativeSource;
   level: number;
   experience: number;
-  statPointsBudget: number;
+  /** Дополнительные очки характеристик сверх 100 + 2 за уровень (поощрение от мастера); может быть отрицательным. */
+  bonusStatPoints: number;
   baseStats: Record<StatKey, number>;
   /** Текущие (изменяемые в игре) значения пулов — отдельно от расчётного максимума. */
   pools: Record<PoolKey, number>;

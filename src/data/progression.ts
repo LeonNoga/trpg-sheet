@@ -1,3 +1,4 @@
+import { STARTING_STAT_POINTS } from './statsConfig';
 import type { Character } from '../types';
 
 export const MAX_LEVEL = 100;
@@ -32,22 +33,31 @@ export function xpRequiredFor(level: number): number | null {
   return XP_TO_NEXT_LEVEL[level - 1] ?? null;
 }
 
+/** Очки характеристик, положенные по уровню: 100 на старте + 2 за каждый следующий уровень. */
+export function levelStatPoints(level: number): number {
+  return STARTING_STAT_POINTS + POINTS_PER_LEVEL * (level - 1);
+}
+
+/** Весь доступный бюджет: по уровню плюс дополнительные очки от мастера. */
+export function statPointsBudget(character: Pick<Character, 'level' | 'bonusStatPoints'>): number {
+  return levelStatPoints(character.level) + character.bonusStatPoints;
+}
+
 /** Applies the current experience wallet against the progression table,
  * levelling up as many times as the banked XP allows. */
 export function applyExperience(character: Character): Character {
-  let { level, experience, statPointsBudget } = character;
+  let { level, experience } = character;
 
   while (level < MAX_LEVEL) {
     const required = xpRequiredFor(level);
     if (required == null || experience < required) break;
     experience -= required;
     level += 1;
-    statPointsBudget += POINTS_PER_LEVEL;
   }
 
   if (level === character.level && experience === character.experience) {
     return character;
   }
 
-  return { ...character, level, experience, statPointsBudget };
+  return { ...character, level, experience };
 }
