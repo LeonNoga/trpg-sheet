@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
-import { MAX_LEVEL } from '../data/progression';
 import { SKILL_TRAINING_TIERS } from '../data/statsConfig';
-import { NumberField } from './NumberField';
 import { CombatMemoScreen } from './CombatMemoScreen';
 
 function SkillTrainingRulesScreen() {
@@ -45,76 +42,8 @@ function SkillTrainingRulesScreen() {
   );
 }
 
-function LevelProgressionScreen() {
-  const { progressionConfig, updateProgressionConfig } = useAppData();
-  const [bulkValue, setBulkValue] = useState(100);
-
-  function setXp(levelIndex: number, value: number) {
-    const next = [...progressionConfig.xpToNextLevel];
-    next[levelIndex] = value;
-    updateProgressionConfig({ ...progressionConfig, xpToNextLevel: next });
-  }
-
-  function fillRemainingWith(value: number) {
-    updateProgressionConfig({
-      ...progressionConfig,
-      xpToNextLevel: progressionConfig.xpToNextLevel.map(() => value),
-    });
-  }
-
-  return (
-    <div className="card">
-      <p className="muted">
-        Точная формула прогрессии ещё не готова — заполните таблицу своими значениями, её можно менять в
-        любой момент для баланса.
-      </p>
-      <div className="row">
-        <div className="field" style={{ maxWidth: 200 }}>
-          <label>Очков характеристик за уровень</label>
-          <NumberField
-            value={progressionConfig.pointsPerLevel}
-            onChange={(v) => updateProgressionConfig({ ...progressionConfig, pointsPerLevel: v })}
-          />
-        </div>
-        <div className="field" style={{ maxWidth: 200 }}>
-          <label>Быстро заполнить все уровни</label>
-          <NumberField value={bulkValue} onChange={setBulkValue} />
-        </div>
-        <div className="field" style={{ justifyContent: 'flex-end' }}>
-          <button className="btn btn-sm" onClick={() => fillRemainingWith(bulkValue)}>
-            Применить ко всем
-          </button>
-        </div>
-      </div>
-
-      <div className="progression-table">
-        <table className="ref-table">
-          <thead>
-            <tr>
-              <th>Уровень</th>
-              <th>Опыта до следующего</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: MAX_LEVEL - 1 }, (_, i) => i).map((i) => (
-              <tr key={i}>
-                <td>
-                  {i + 1} → {i + 2}
-                </td>
-                <td>
-                  <NumberField value={progressionConfig.xpToNextLevel[i] ?? 0} onChange={(v) => setXp(i, v)} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export function ReferenceSheetScreen() {
-  const [tab, setTab] = useState<'combat' | 'skillProgression' | 'levelProgression'>('combat');
+  const [tab, setTab] = useState<'combat' | 'skillProgression'>('combat');
 
   return (
     <div>
@@ -128,17 +57,10 @@ export function ReferenceSheetScreen() {
         >
           Прогрессия навыков
         </button>
-        <button
-          className={`nav-tab ${tab === 'levelProgression' ? 'active' : ''}`}
-          onClick={() => setTab('levelProgression')}
-        >
-          Прогрессия уровней
-        </button>
       </div>
 
       {tab === 'combat' && <CombatMemoScreen />}
       {tab === 'skillProgression' && <SkillTrainingRulesScreen />}
-      {tab === 'levelProgression' && <LevelProgressionScreen />}
     </div>
   );
 }

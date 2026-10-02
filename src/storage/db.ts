@@ -1,12 +1,10 @@
 import { createStore, get, set, del, keys } from 'idb-keyval';
-import { defaultProgressionConfig } from '../data/progression';
 import { normalizeCharacter } from '../data/defaults';
-import type { Character, EquipItem, ProgressionConfig } from '../types';
+import type { Character, EquipItem } from '../types';
 
 const charactersStore = createStore('trpg-sheet-characters', 'characters');
 const settingsStore = createStore('trpg-sheet-settings', 'settings');
 
-const PROGRESSION_KEY = 'progressionConfig';
 const LOOT_TRAY_KEY = 'lootTray';
 
 export async function loadAllCharacters(): Promise<Character[]> {
@@ -26,15 +24,6 @@ export async function saveCharacter(character: Character): Promise<void> {
 
 export async function deleteCharacter(id: string): Promise<void> {
   await del(id, charactersStore);
-}
-
-export async function loadProgressionConfig(): Promise<ProgressionConfig> {
-  const data = await get<ProgressionConfig>(PROGRESSION_KEY, settingsStore);
-  return data ?? defaultProgressionConfig();
-}
-
-export async function saveProgressionConfig(data: ProgressionConfig): Promise<void> {
-  await set(PROGRESSION_KEY, data, settingsStore);
 }
 
 export async function loadLootTray(): Promise<EquipItem[]> {

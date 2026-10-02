@@ -10,7 +10,7 @@ import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
 import { PATH_LABELS, PATH_SPECIES_FIELD_LABEL, PATH_TRAIT_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
-import { MAX_LEVEL } from '../data/progression';
+import { MAX_LEVEL, POINTS_PER_LEVEL } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import type {
   Character,
@@ -39,7 +39,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 export function CharacterSheet({ characterId, onBack }: Props) {
-  const { characters, updateCharacter, removeCharacter, progressionConfig } = useAppData();
+  const { characters, updateCharacter, removeCharacter } = useAppData();
   const character = characters.find((c) => c.id === characterId);
   const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
@@ -111,10 +111,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       setLevelDraft(character!.level);
       return;
     }
-    const newBudget = STARTING_STAT_POINTS + progressionConfig.pointsPerLevel * (clamped - 1);
+    const newBudget = STARTING_STAT_POINTS + POINTS_PER_LEVEL * (clamped - 1);
     const confirmed = confirm(
       `Установить уровень ${clamped} вручную?\n\nОпыт будет сброшен в 0, а бюджет очков характеристик пересчитан: ` +
-        `${STARTING_STAT_POINTS} + ${progressionConfig.pointsPerLevel} × ${clamped - 1} = ${newBudget}.`,
+        `${STARTING_STAT_POINTS} + ${POINTS_PER_LEVEL} × ${clamped - 1} = ${newBudget}.`,
     );
     if (!confirmed) {
       setLevelDraft(character!.level);

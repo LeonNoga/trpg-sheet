@@ -102,11 +102,6 @@ export interface Character {
   updatedAt: number;
 }
 
-export interface ProgressionConfig {
-  xpToNextLevel: number[]; // length 99: index i -> xp needed to go from level i+1 to i+2
-  pointsPerLevel: number;
-}
-
 export interface CharacterExportFile {
   fileType: 'trpg-sheet-character';
   version: 1;
