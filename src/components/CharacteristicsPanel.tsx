@@ -4,21 +4,13 @@ import {
   PATH_RESOURCE_POINTS_LABEL,
   RESISTANCE_ALLOWED_STATS,
   STAT_LABELS,
-  STAT_MIN,
   STAT_ORDER,
   STAT_TO_DERIVED,
   poolKeyFor,
-  statMilestone,
 } from '../data/statsConfig';
-import {
-  bonusSum,
-  computeDerivedStats,
-  currentInitiativeStat,
-  currentResistanceStat,
-  modifier,
-  totalStat,
-} from '../data/formulas';
+import { bonusSum, computeDerivedStats, currentInitiativeStat, currentResistanceStat } from '../data/formulas';
 import { NumberField } from './NumberField';
+import { StatPill } from './StatPill';
 import type { Character, DerivedKey, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
 interface Props {
@@ -66,32 +58,14 @@ export function CharacteristicsPanel({
   }
 
   function statPill(statKey: StatKey) {
-    const label = statLabelFor(statKey);
-    const base = character.baseStats[statKey];
-    const bonus = bonusSum(character, statKey);
-    const total = totalStat(character, statKey);
-    const mod = modifier(total);
-    const milestone = statMilestone(total);
     return (
-      <div
-        className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}
-        title={
-          milestone
-            ? `Порог ${milestone} достигнут — по системе здесь появляются доп. эффекты`
-            : bonus
-              ? `База ${base} + предметы ${bonus > 0 ? '+' : ''}${bonus} = ${total}`
-              : undefined
-        }
-      >
-        <span className="stat-pill-name">
-          {label}
-          {(bonus !== 0 || milestone) && (
-            <span className={milestone ? 'stat-value-milestone' : 'muted'}> ({total})</span>
-          )}
-        </span>
-        <NumberField min={STAT_MIN} value={base} onChange={(v) => onChangeStat(statKey, v)} />
-        <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
-      </div>
+      <StatPill
+        statKey={statKey}
+        label={statLabelFor(statKey)}
+        base={character.baseStats[statKey]}
+        bonus={bonusSum(character, statKey)}
+        onChange={(v) => onChangeStat(statKey, v)}
+      />
     );
   }
 

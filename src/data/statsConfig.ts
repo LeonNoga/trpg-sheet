@@ -120,6 +120,20 @@ export function statMilestone(total: number): 50 | 100 | null {
   return null;
 }
 
+// Известные эффекты порогов. Остальные добавляются сюда же, когда автор их определит.
+const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<(typeof STAT_MILESTONES)[number], string>>>> = {
+  fortitude: { 50: 'Весь урон режется пополам' },
+  agility: { 50: 'Две атаки за одно действие' },
+  strength: { 50: 'Количество кубов урона удваивается' },
+};
+
+/** Эффекты всех достигнутых порогов для характеристики (50 действует и на 100+). */
+export function milestoneEffects(stat: StatKey, total: number): string[] {
+  return STAT_MILESTONES.filter((m) => total >= m)
+    .map((m) => MILESTONE_EFFECTS[stat]?.[m])
+    .filter((e): e is string => !!e);
+}
+
 // Пороги дней успешной тренировки и справочные TN для перехода между степенями владения навыком.
 export const SKILL_TRAINING_TIERS: { from: 0 | 5 | 10; to: 5 | 10 | 15; tn: number; days: number }[] = [
   { from: 0, to: 5, tn: 18, days: 10 },

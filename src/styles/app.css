@@ -279,6 +279,21 @@ input, select, textarea {
   color: #c0392b;
 }
 
+.stat-pill-wrap {
+  min-width: 0;
+}
+
+.char-row > .stat-pill-wrap {
+  flex: 1;
+}
+
+.milestone-note {
+  margin: 4px 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c0392b;
+}
+
 .budget-bar {
   display: flex;
   align-items: center;

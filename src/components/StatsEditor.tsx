@@ -1,7 +1,7 @@
-import { STAT_LABELS, STAT_MIN, STAT_ORDER, PATH_RESOURCE_LABEL, statMilestone } from '../data/statsConfig';
-import { bonusSum, modifier, sumBaseStats, totalStat } from '../data/formulas';
+import { STAT_LABELS, STAT_ORDER, PATH_RESOURCE_LABEL } from '../data/statsConfig';
+import { bonusSum, sumBaseStats } from '../data/formulas';
 import { levelStatPoints, statPointsBudget } from '../data/progression';
-import { NumberField } from './NumberField';
+import { StatPill } from './StatPill';
 import type { Character, StatKey } from '../types';
 
 interface Props {
@@ -33,36 +33,16 @@ export function StatBudgetBar({ character }: { character: Character }) {
 export function StatsEditor({ character, onChangeStat }: Props) {
   return (
     <div className="stat-grid">
-      {STAT_ORDER.map((key) => {
-        const label = key === 'resource' ? PATH_RESOURCE_LABEL[character.path] : STAT_LABELS[key];
-        const base = character.baseStats[key];
-        const bonus = bonusSum(character, key);
-        const total = totalStat(character, key);
-        const mod = modifier(total);
-        const milestone = statMilestone(total);
-        return (
-          <div
-            key={key}
-            className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}
-            title={
-              milestone
-                ? `Порог ${milestone} достигнут — по системе здесь появляются доп. эффекты`
-                : bonus
-                  ? `База ${base} + предметы ${bonus > 0 ? '+' : ''}${bonus} = ${total}`
-                  : undefined
-            }
-          >
-            <span className="stat-pill-name">
-              {label}
-              {(bonus !== 0 || milestone) && (
-                <span className={milestone ? 'stat-value-milestone' : 'muted'}> ({total})</span>
-              )}
-            </span>
-            <NumberField min={STAT_MIN} value={base} onChange={(v) => onChangeStat(key, v)} />
-            <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
-          </div>
-        );
-      })}
+      {STAT_ORDER.map((key) => (
+        <StatPill
+          key={key}
+          statKey={key}
+          label={key === 'resource' ? PATH_RESOURCE_LABEL[character.path] : STAT_LABELS[key]}
+          base={character.baseStats[key]}
+          bonus={bonusSum(character, key)}
+          onChange={(v) => onChangeStat(key, v)}
+        />
+      ))}
     </div>
   );
 }
