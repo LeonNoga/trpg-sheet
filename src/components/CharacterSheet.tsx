@@ -9,6 +9,7 @@ import { SpeciesBonusesCard, DnaListsCard } from './TraitBlocks';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
+import { PrintableSheet, printCharacterSheet } from './PrintableSheet';
 import { PATH_LABELS, PATH_SPECIES_FIELD_LABEL, PATH_TRAIT_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
 import { MAX_LEVEL, POINTS_PER_LEVEL, levelStatPoints } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
@@ -134,12 +135,16 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
   return (
     <div className={`theme-${character.path}`}>
+      <PrintableSheet character={character} />
       <div className="top-actions">
         <button className="btn" onClick={onBack}>
           ← К списку
         </button>
         <button className="btn" onClick={() => exportCharacter(character)}>
           Экспорт в JSON
+        </button>
+        <button className="btn" onClick={() => printCharacterSheet(character)}>
+          Сохранить в PDF
         </button>
         <button className="btn btn-danger" onClick={handleDelete}>
           Удалить персонажа
