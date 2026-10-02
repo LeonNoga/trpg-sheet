@@ -19,6 +19,7 @@ interface AppDataContextValue {
   updateCharacter: (character: Character) => void;
   removeCharacter: (id: string) => void;
   importCharacter: (character: Character, roster?: Roster) => void;
+  restoreBackup: (characters: Character[], lootTray: EquipItem[]) => void;
   updateLootTray: (items: EquipItem[]) => void;
 }
 
@@ -71,6 +72,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     void saveLootTray(items);
   }, []);
 
+  // Слияние по id: совпавшие записи перезаписываются данными из копии, остальные остаются/добавляются.
+  const restoreBackup = useCallback(
+    (backupCharacters: Character[], backupLoot: EquipItem[]) => {
+      const mergeById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
+        const incomingIds = new Set(incoming.map((i) => i.id));
+        return [...incoming, ...current.filter((c) => !incomingIds.has(c.id))];
+      };
+      setCharacters((prev) => mergeById(prev, backupCharacters));
+      backupCharacters.forEach((c) => void saveCharacter(c));
+      const mergedLoot = mergeById(lootTray, backupLoot);
+      setLootTray(mergedLoot);
+      void saveLootTray(mergedLoot);
+    },
+    [lootTray],
+  );
+
   const value = useMemo<AppDataContextValue>(
     () => ({
       loading,
@@ -80,9 +97,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateCharacter,
       removeCharacter,
       importCharacter,
+      restoreBackup,
       updateLootTray,
     }),
-    [loading, characters, lootTray, createCharacter, updateCharacter, removeCharacter, importCharacter, updateLootTray],
+    [
+      loading,
+      characters,
+      lootTray,
+      createCharacter,
+      updateCharacter,
+      removeCharacter,
+      importCharacter,
+      restoreBackup,
+      updateLootTray,
+    ],
   );
 
   if (loading) return null;

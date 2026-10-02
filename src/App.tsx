@@ -5,6 +5,7 @@ import { CreationWizard } from './components/CreationWizard';
 import { CharacterSheet } from './components/CharacterSheet';
 import { ReferenceSheetScreen } from './components/ReferenceSheetScreen';
 import { GMView } from './components/GMView';
+import { BackupPanel } from './components/BackupPanel';
 import type { Roster } from './types';
 
 type View =
@@ -42,11 +43,14 @@ function Shell() {
 
       <main className="app-main">
         {view.screen === 'list' && (
-          <CharacterList
-            roster="personal"
-            onOpen={(id) => setView({ screen: 'sheet', id, returnTo: 'list' })}
-            onCreate={() => setView({ screen: 'create', roster: 'personal' })}
-          />
+          <>
+            <CharacterList
+              roster="personal"
+              onOpen={(id) => setView({ screen: 'sheet', id, returnTo: 'list' })}
+              onCreate={() => setView({ screen: 'create', roster: 'personal' })}
+            />
+            <BackupPanel />
+          </>
         )}
 
         {view.screen === 'create' && (

@@ -103,6 +103,14 @@ export interface Character {
   updatedAt: number;
 }
 
+export interface BackupFile {
+  fileType: 'trpg-sheet-backup';
+  version: 1;
+  exportedAt: string;
+  characters: Character[];
+  lootTray: EquipItem[];
+}
+
 export interface CharacterExportFile {
   fileType: 'trpg-sheet-character';
   version: 1;
