@@ -111,6 +111,13 @@ export interface BackupFile {
   lootTray: EquipItem[];
 }
 
+export interface TrayFile {
+  fileType: 'trpg-sheet-tray';
+  version: 1;
+  exportedAt: string;
+  items: EquipItem[];
+}
+
 export interface CharacterExportFile {
   fileType: 'trpg-sheet-character';
   version: 1;

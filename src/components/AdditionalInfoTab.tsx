@@ -83,10 +83,10 @@ export function AdditionalInfoTab({ character, onPatch }: Props) {
             <button key={i} type="button" className={`pip ${filled ? 'filled' : ''}`} onClick={() => toggleInspiration(i)} />
           ))}
           <button type="button" className="btn btn-ghost btn-sm" onClick={removePip} disabled={character.inspirationPoints.length === 0}>
-            − пипс
+            − кружок
           </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={addPip}>
-            + пипс
+            + кружок
           </button>
         </div>
       </div>

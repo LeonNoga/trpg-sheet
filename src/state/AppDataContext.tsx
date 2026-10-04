@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   deleteCharacter,
@@ -21,6 +21,8 @@ interface AppDataContextValue {
   importCharacter: (character: Character, roster?: Roster) => void;
   restoreBackup: (characters: Character[], lootTray: EquipItem[]) => void;
   updateLootTray: (items: EquipItem[]) => void;
+  /** Добавляет в начало трея (безопасно вызывать подряд из асинхронного цикла). */
+  addToLootTray: (items: EquipItem[]) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -29,11 +31,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [lootTray, setLootTray] = useState<EquipItem[]>([]);
+  // Актуальное содержимое трея вне рендера — чтобы последовательные async-добавления не затирали друг друга.
+  const lootRef = useRef<EquipItem[]>([]);
 
   useEffect(() => {
     (async () => {
       const [chars, loot] = await Promise.all([loadAllCharacters(), loadLootTray()]);
       setCharacters(chars);
+      lootRef.current = loot;
       setLootTray(loot);
       setLoading(false);
     })();
@@ -68,9 +73,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateLootTray = useCallback((items: EquipItem[]) => {
+    lootRef.current = items;
     setLootTray(items);
     void saveLootTray(items);
   }, []);
+
+  const addToLootTray = useCallback(
+    (items: EquipItem[]) => updateLootTray([...items, ...lootRef.current]),
+    [updateLootTray],
+  );
 
   // Слияние по id: совпавшие записи перезаписываются данными из копии, остальные остаются/добавляются.
   const restoreBackup = useCallback(
@@ -81,11 +92,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       };
       setCharacters((prev) => mergeById(prev, backupCharacters));
       backupCharacters.forEach((c) => void saveCharacter(c));
-      const mergedLoot = mergeById(lootTray, backupLoot);
-      setLootTray(mergedLoot);
-      void saveLootTray(mergedLoot);
+      updateLootTray(mergeById(lootRef.current, backupLoot));
     },
-    [lootTray],
+    [updateLootTray],
   );
 
   const value = useMemo<AppDataContextValue>(
@@ -99,6 +108,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       importCharacter,
       restoreBackup,
       updateLootTray,
+      addToLootTray,
     }),
     [
       loading,
@@ -110,6 +120,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       importCharacter,
       restoreBackup,
       updateLootTray,
+      addToLootTray,
     ],
   );
 

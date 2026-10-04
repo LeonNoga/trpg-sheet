@@ -1,5 +1,6 @@
 import { normalizeCharacter } from '../data/defaults';
-import type { BackupFile, Character, CharacterExportFile, EquipItem } from '../types';
+import { v4 as uuid } from 'uuid';
+import type { BackupFile, Character, CharacterExportFile, EquipItem, TrayFile } from '../types';
 
 function downloadJson(fileName: string, payload: unknown): void {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -74,4 +75,38 @@ export async function importBackupFromFile(file: File): Promise<{ characters: Ch
     .map(normalizeCharacter);
 
   return { characters, lootTray: Array.isArray(data.lootTray) ? data.lootTray : [] };
+}
+
+export function exportTray(items: EquipItem[]): void {
+  const payload: TrayFile = {
+    fileType: 'trpg-sheet-tray',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    items,
+  };
+  const date = new Date().toISOString().slice(0, 10);
+  downloadJson(`trpg-tray-${date}.json`, payload);
+}
+
+/** Читает файл трея; записи с битой структурой подтягиваются к валидному виду или отбрасываются. */
+export async function importTrayFromFile(file: File): Promise<EquipItem[]> {
+  const parsed = await readJson(file);
+  const data = parsed as Partial<TrayFile>;
+
+  if (data?.fileType !== 'trpg-sheet-tray' || !Array.isArray(data.items)) {
+    throw new Error('Это не файл трея. Выберите файл, сохранённый кнопкой «Экспорт трея».');
+  }
+
+  return data.items
+    .filter((i): i is EquipItem => !!i && typeof i === 'object' && typeof i.name === 'string')
+    .map((i) => {
+      const kind = i.kind === 'ability' ? 'ability' : 'item';
+      return {
+        ...i,
+        id: i.id || uuid(),
+        kind,
+        statBonuses: i.statBonuses && typeof i.statBonuses === 'object' ? i.statBonuses : {},
+        equipped: typeof i.equipped === 'boolean' ? i.equipped : kind === 'ability',
+      };
+    });
 }

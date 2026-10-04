@@ -20,7 +20,7 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
           Персонажи мастера
         </button>
         <button className={`nav-tab ${tab === 'loot' ? 'active' : ''}`} onClick={() => setTab('loot')}>
-          Трей лута
+          Трей предметов и умений
         </button>
       </div>
 

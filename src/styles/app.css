@@ -1213,3 +1213,24 @@ table.ref-table input {
     print-color-adjust: exact;
   }
 }
+
+.tray-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 12px 0 4px;
+}
+
+.tray-filters select,
+.tray-search {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+
+.tray-search {
+  flex: 1 1 200px;
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ALL_BONUS_KEYS, bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
-import { fileToDataUrl } from '../utils/file';
+import { fileToImageDataUrl } from '../utils/file';
 import { parseCardText } from '../utils/ocrParse';
 import { NumberField } from './NumberField';
 import type { BonusKey, EquipItem, ItemPath, Path } from '../types';
@@ -51,7 +51,7 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
 
   async function handleImage(file: File | undefined) {
     if (!file) return;
-    const dataUrl = await fileToDataUrl(file);
+    const dataUrl = await fileToImageDataUrl(file);
     updateField('image', dataUrl);
   }
 
