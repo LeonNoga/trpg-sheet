@@ -1,6 +1,6 @@
 import { STAT_LABELS, STAT_ORDER, PATH_RESOURCE_LABEL } from '../data/statsConfig';
 import { bonusSum, sumBaseStats } from '../data/formulas';
-import { levelStatPoints, statPointsBudget } from '../data/progression';
+import { statPointsBudget } from '../data/progression';
 import { StatPill } from './StatPill';
 import type { Character, StatKey } from '../types';
 
@@ -17,10 +17,12 @@ export function StatBudgetBar({ character }: { character: Character }) {
   return (
     <div className={`budget-bar ${cls}`}>
       <strong>Потрачено очков характеристик: {spent} / {budget}</strong>
-      {character.bonusStatPoints !== 0 && (
+      {(character.levelPoints !== 0 || character.bonusStatPoints !== 0) && (
         <span className="muted">
-          (по уровню {levelStatPoints(character.level)}, доп. от мастера {character.bonusStatPoints > 0 ? '+' : ''}
-          {character.bonusStatPoints})
+          (100 + за уровни {character.levelPoints}
+          {character.bonusStatPoints !== 0 &&
+            `, награда мастера ${character.bonusStatPoints > 0 ? '+' : ''}${character.bonusStatPoints}`}
+          )
         </span>
       )}
       {diff !== 0 && (

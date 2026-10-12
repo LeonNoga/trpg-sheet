@@ -1,4 +1,4 @@
-import { SKILLS, SKILL_LEVELS, SKILL_TRAINING_TIERS } from '../data/statsConfig';
+import { SKILL_CATEGORIES, SKILL_LEVELS, SKILL_TRAINING_TIERS } from '../data/statsConfig';
 import type { Character, SkillLevel } from '../types';
 
 interface Props {
@@ -19,7 +19,10 @@ export function SkillTrainingScreen({ character, onChangeDays, onLevelUp }: Prop
         владения можно повысить. Пороги дней и TN — на вкладке «Памятки» → «Прогрессия навыков».
       </p>
 
-      {SKILLS.map((skill) => {
+      {SKILL_CATEGORIES.map((category) => (
+        <div key={category.title}>
+          <h3 className="skill-category-title" style={{ marginTop: 16 }}>{category.title}</h3>
+      {category.skills.map((skill) => {
         const level = (character.skills[skill] ?? 0) as SkillLevel;
         const tier = SKILL_TRAINING_TIERS.find((t) => t.from === level);
         const days = character.skillTrainingDays[skill] ?? 0;
@@ -63,6 +66,8 @@ export function SkillTrainingScreen({ character, onChangeDays, onLevelUp }: Prop
           </div>
         );
       })}
+        </div>
+      ))}
     </div>
   );
 }

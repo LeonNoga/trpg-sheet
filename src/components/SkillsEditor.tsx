@@ -1,4 +1,4 @@
-import { SKILLS, SKILL_LEVELS, SKILL_POINTS_BUDGET } from '../data/statsConfig';
+import { SKILL_CATEGORIES, SKILL_LEVELS, SKILL_POINTS_BUDGET, SKILLS } from '../data/statsConfig';
 import type { Character, SkillLevel } from '../types';
 
 interface Props {
@@ -20,29 +20,36 @@ export function SkillsEditor({ character, onChangeSkill }: Props) {
         <strong>Очки навыков: {spent} / {SKILL_POINTS_BUDGET}</strong>
         {diff !== 0 && <span>{diff > 0 ? `осталось ${diff}` : `перебор на ${Math.abs(diff)}`}</span>}
       </div>
-      <div className="skills-grid">
-        {SKILLS.map((skill) => {
-          const current = character.skills[skill] ?? 0;
-          return (
-            <div className="skill-row" key={skill}>
-              <span className="skill-name">{skill}</span>
-              <div className="skill-levels">
-                {SKILL_LEVELS.filter((l) => l.level !== 0).map((l) => (
-                  <button
-                    key={l.level}
-                    type="button"
-                    className={`skill-dot ${current === l.level ? 'active' : ''}`}
-                    title={`${l.label} (+${l.level}), стоимость ${l.cost}`}
-                    onClick={() => onChangeSkill(skill, current === l.level ? 0 : (l.level as SkillLevel))}
-                  >
-                    {l.level}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+
+      {SKILL_CATEGORIES.map((category) => (
+        <div key={category.title} className="skill-category">
+          <h4 className="skill-category-title">{category.title}</h4>
+          <div className="skills-grid">
+            {category.skills.map((skill) => {
+              const current = character.skills[skill] ?? 0;
+              return (
+                <div className="skill-row" key={skill}>
+                  <span className="skill-name">{skill}</span>
+                  <div className="skill-levels">
+                    {SKILL_LEVELS.filter((l) => l.level !== 0).map((l) => (
+                      <button
+                        key={l.level}
+                        type="button"
+                        // Закрашены все степени до текущей включительно: на +10 горят +5 и +10.
+                        className={`skill-dot ${current >= l.level ? 'active' : ''}`}
+                        title={`${l.label} (+${l.level}), стоимость ${l.cost}`}
+                        onClick={() => onChangeSkill(skill, current === l.level ? 0 : (l.level as SkillLevel))}
+                      >
+                        {l.level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import {
+  CLASS_RARITY_LABELS,
   DERIVED_LABELS,
   PATH_LABELS,
   PATH_RESOURCE_LABEL,
@@ -105,6 +106,7 @@ export function PrintableSheet({ character }: { character: Character }) {
           <div className="p-header-line p-header-split">
             <span>
               <b>{PATH_SPECIES_FIELD_LABEL[character.path]}:</b> {character.species}
+              {character.classRarity ? ` (${CLASS_RARITY_LABELS[character.classRarity]})` : ''}
             </span>
             <span>
               <b>Уровень:</b> {character.level}

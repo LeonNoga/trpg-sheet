@@ -1,6 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { STAT_MIN, STAT_ORDER } from './statsConfig';
-import { levelStatPoints } from './progression';
+import { STAT_MIN, STAT_ORDER, STARTING_STAT_POINTS } from './statsConfig';
 import type { Character, EquipItem, Path, Roster, StatKey, TraitList } from '../types';
 
 export function blankBaseStats(): Record<StatKey, number> {
@@ -26,6 +25,7 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
     initiativeSource: 'auto',
     level: 1,
     experience: 0,
+    levelPoints: 0,
     bonusStatPoints: 0,
     baseStats: blankBaseStats(),
     pools: {
@@ -63,8 +63,11 @@ export function normalizeCharacter(raw: Character): Character {
   const { statPointsBudget: legacyBudget, ...rest } = legacy;
   return {
     ...rest,
+    // Старая модель: бюджет = 100 + 2 за каждый уровень + ручные очки.
+    levelPoints: raw.levelPoints ?? 2 * (raw.level - 1),
     bonusStatPoints:
-      raw.bonusStatPoints ?? (legacyBudget !== undefined ? legacyBudget - levelStatPoints(raw.level) : 0),
+      raw.bonusStatPoints ??
+      (legacyBudget !== undefined ? legacyBudget - (STARTING_STAT_POINTS + 2 * (raw.level - 1)) : 0),
     resistanceSource: raw.resistanceSource ?? (legacy.keyStat as Character['resistanceSource']) ?? 'auto',
     initiativeSource: raw.initiativeSource ?? 'auto',
     pools: raw.pools ?? {

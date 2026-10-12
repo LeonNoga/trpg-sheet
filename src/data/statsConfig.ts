@@ -1,4 +1,4 @@
-import type { BonusKey, DerivedKey, ItemPath, Path, PoolKey, Rarity, ResistanceSource, StatKey } from '../types';
+import type { BonusKey, DerivedKey, ItemPath, Path, PoolKey, Rarity, ResistanceSource, SlotType, StatKey } from '../types';
 
 export const STAT_ORDER: StatKey[] = [
   'vitality',
@@ -100,7 +100,7 @@ export const PATH_TRAIT_LABELS: Record<Path, { bonuses: string; dnaA: string; dn
   tech: { bonuses: 'Бонусы Модели', dnaA: 'Технологии Модели', dnaB: 'Технологии' },
 };
 
-export const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+export const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'unique'];
 
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: 'Обычная',
@@ -108,7 +108,33 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   rare: 'Редкая',
   epic: 'Эпическая',
   legendary: 'Легендарная',
+  unique: 'Уникальная',
 };
+
+// Редкость класса (в мужском роде, как на карточке: «Обычный класс»).
+export const CLASS_RARITY_LABELS: Record<Rarity, string> = {
+  common: 'Обычный',
+  uncommon: 'Необычный',
+  rare: 'Редкий',
+  epic: 'Эпический',
+  legendary: 'Легендарный',
+  unique: 'Уникальный',
+};
+
+// Сколько очков характеристик даёт каждый НОВЫЙ уровень в зависимости от редкости класса.
+export const CLASS_RARITY_LEVEL_POINTS: Record<Rarity, number> = {
+  common: 2,
+  uncommon: 3,
+  rare: 5,
+  epic: 10,
+  legendary: 15,
+  unique: 15,
+};
+
+/** До выбора класса (редкость не задана) уровень даёт +2, как у обычного класса. */
+export function levelPointsRate(classRarity?: Rarity): number {
+  return CLASS_RARITY_LEVEL_POINTS[classRarity ?? 'common'];
+}
 
 // Пороги суммарного значения характеристики (база + снаряжение), на которых по системе
 // открываются дополнительные эффекты — пока сами эффекты не прописаны, просто подсвечиваем.
@@ -200,3 +226,71 @@ export const SKILL_LEVELS: { level: 0 | 5 | 10 | 15; label: string; cost: number
 ];
 
 export const SKILL_POINTS_BUDGET = 15;
+
+export const SLOT_TYPES: { key: SlotType; label: string }[] = [
+  { key: 'headwear', label: 'Головной убор' },
+  { key: 'glasses', label: 'Очки/линзы' },
+  { key: 'earrings', label: 'Серьги' },
+  { key: 'amulets', label: 'Амулеты' },
+  { key: 'cloak', label: 'Плащ' },
+  { key: 'shoulders', label: 'Наплечники' },
+  { key: 'armor', label: 'Броня' },
+  { key: 'elbows', label: 'Налокотники' },
+  { key: 'bracers', label: 'Наручи' },
+  { key: 'bracelets', label: 'Браслеты' },
+  { key: 'gloves', label: 'Перчатки' },
+  { key: 'rings', label: 'Кольца' },
+  { key: 'belt', label: 'Пояс' },
+  { key: 'thigh', label: 'Набедренник' },
+  { key: 'knees', label: 'Наколенники' },
+  { key: 'shins', label: 'Поножи' },
+  { key: 'boots', label: 'Обувь' },
+];
+
+export const SLOT_TYPE_LABELS = Object.fromEntries(SLOT_TYPES.map((t) => [t.key, t.label])) as Record<SlotType, string>;
+
+const byRussianName = (a: string, b: string) => a.localeCompare(b, 'ru');
+
+// Категории навыков; внутри категории — по алфавиту. Вместе дают тот же список из 25 навыков, что и SKILLS.
+export const SKILL_CATEGORIES: { title: string; skills: string[] }[] = [
+  {
+    title: 'Боевые',
+    skills: [
+      'Акробатика',
+      'Атлетика',
+      'Борьба',
+      'Дальнобойное оружие',
+      'Драка',
+      'Огнестрельное оружие',
+      'Холодное оружие',
+    ].sort(byRussianName),
+  },
+  {
+    title: 'Социальные',
+    skills: ['Выступление', 'Запугивание', 'История', 'Обман', 'Проницательность', 'Убеждение'].sort(byRussianName),
+  },
+  {
+    title: 'Общие',
+    skills: [
+      'Анализ',
+      'Выживание',
+      'Ловкость рук',
+      'Медицина',
+      'Механизмы',
+      'Наука',
+      'Природа',
+      'Ремесло',
+      'Скрытность',
+      'Транспорт',
+      'Уход за животными',
+      'Электроника',
+    ].sort(byRussianName),
+  },
+];
+
+// Как называется «умения» у каждого пути: Умения (магия), ДНК (генетика), Технологии (техника).
+export const PATH_ABILITY_LABELS: Record<Path, { tab: string; add: string; empty: string }> = {
+  magic: { tab: 'Умения', add: '+ Добавить умение', empty: 'Умений пока нет.' },
+  genetic: { tab: 'ДНК', add: '+ Добавить ДНК', empty: 'ДНК пока нет.' },
+  tech: { tab: 'Технологии', add: '+ Добавить технологию', empty: 'Технологий пока нет.' },
+};

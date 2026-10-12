@@ -1,23 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppData } from '../state/AppDataContext';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
 import { SkillsEditor } from './SkillsEditor';
 import { ItemsBlock } from './ItemsBlock';
+import { BulkCardUpload } from './BulkCardUpload';
 import { NumberField } from './NumberField';
 import { SpeciesBonusesCard, DnaListsCard } from './TraitBlocks';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
 import { PrintableSheet, printCharacterSheet } from './PrintableSheet';
-import { PATH_LABELS, PATH_SPECIES_FIELD_LABEL, PATH_TRAIT_LABELS, STARTING_STAT_POINTS } from '../data/statsConfig';
-import { MAX_LEVEL, POINTS_PER_LEVEL, levelStatPoints } from '../data/progression';
+import {
+  CLASS_RARITY_LABELS,
+  PATH_ABILITY_LABELS,
+  PATH_LABELS,
+  PATH_SPECIES_FIELD_LABEL,
+  PATH_TRAIT_LABELS,
+  RARITY_ORDER,
+  levelPointsRate,
+} from '../data/statsConfig';
+import { MAX_LEVEL, levelPointsAfterManualLevel } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import type {
   Character,
   EquipItem,
   InitiativeSource,
+  Path,
   PoolKey,
+  Rarity,
   ResistanceSource,
   SkillLevel,
   StatKey,
@@ -31,13 +42,15 @@ interface Props {
 
 type Tab = 'character' | 'equipment' | 'abilities' | 'training' | 'info';
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'character', label: 'Персонаж' },
-  { key: 'equipment', label: 'Снаряжение' },
-  { key: 'abilities', label: 'Умения' },
-  { key: 'training', label: 'Прокачка навыков' },
-  { key: 'info', label: 'Доп. информация' },
-];
+function tabsFor(path: Path): { key: Tab; label: string }[] {
+  return [
+    { key: 'character', label: 'Персонаж' },
+    { key: 'equipment', label: 'Снаряжение' },
+    { key: 'abilities', label: PATH_ABILITY_LABELS[path].tab },
+    { key: 'training', label: 'Прокачка навыков' },
+    { key: 'info', label: 'Доп. информация' },
+  ];
+}
 
 export function CharacterSheet({ characterId, onBack }: Props) {
   const { characters, updateCharacter, removeCharacter } = useAppData();
@@ -45,6 +58,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
   const [levelDraft, setLevelDraft] = useState(character?.level ?? 1);
+  // Актуальная карточка вне рендера: пакетная загрузка добавляет карточки по одной из async-цикла.
+  const characterRef = useRef(character);
 
   useEffect(() => {
     if (character) setLevelDraft(character.level);
@@ -61,6 +76,18 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </div>
     );
+  }
+
+  characterRef.current = character;
+
+  function addCardToCharacter(item: EquipItem) {
+    const current = characterRef.current!;
+    const next: Character =
+      item.kind === 'ability'
+        ? { ...current, abilities: [...current.abilities, item] }
+        : { ...current, items: [...current.items, item] };
+    characterRef.current = next;
+    updateCharacter(next);
   }
 
   function patch(updater: (c: Character) => Character) {
@@ -112,16 +139,20 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       setLevelDraft(character!.level);
       return;
     }
+    const newLevelPoints = levelPointsAfterManualLevel(character!, clamped);
+    const diff = newLevelPoints - character!.levelPoints;
     const confirmed = confirm(
-      `Установить уровень ${clamped} вручную?\n\nОпыт будет сброшен в 0, очки характеристик по уровню пересчитаются: ` +
-        `${STARTING_STAT_POINTS} + ${POINTS_PER_LEVEL} × ${clamped - 1} = ${levelStatPoints(clamped)}. ` +
-        `Доп. очки от мастера сохранятся.`,
+      `Установить уровень ${clamped} вручную?
+
+Опыт будет сброшен в 0. Очки характеристик за уровни ` +
+        `изменятся на ${diff >= 0 ? '+' : ''}${diff} (по +${levelPointsRate(character!.classRarity)} за уровень для текущей ` +
+        `редкости класса). Награда мастера сохранится.`,
     );
     if (!confirmed) {
       setLevelDraft(character!.level);
       return;
     }
-    patch((c) => ({ ...c, level: clamped, experience: 0 }));
+    patch((c) => ({ ...c, level: clamped, experience: 0, levelPoints: newLevelPoints }));
   }
 
   function handleDelete() {
@@ -172,6 +203,23 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <label>{PATH_SPECIES_FIELD_LABEL[character.path]}</label>
             <input value={character.species} onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))} />
           </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label>Редкость класса</label>
+            <select
+              value={character.classRarity ?? ''}
+              onChange={(e) =>
+                patch((c) => ({ ...c, classRarity: (e.target.value || undefined) as Rarity | undefined }))
+              }
+              title="Определяет, сколько очков характеристик даёт каждый новый уровень"
+            >
+              <option value="">Класс не выбран</option>
+              {RARITY_ORDER.map((r) => (
+                <option key={r} value={r}>
+                  {CLASS_RARITY_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="header-fields-grid">
@@ -184,7 +232,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               onChange={setLevelDraft}
               onBlur={commitLevelDraft}
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-              title="Изменить вручную: опыт обнулится, бюджет очков пересчитается"
+              title="Изменить вручную: опыт обнулится, очки за уровни пересчитаются"
             />
           </div>
           <div className="field">
@@ -207,18 +255,18 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             </div>
           </div>
           <div className="field">
-            <label>Доп. очки характеристик</label>
-            <NumberField
-              value={character.bonusStatPoints}
-              onChange={(v) => patch((c) => ({ ...c, bonusStatPoints: v }))}
-              title="Очки сверх положенных по уровню (поощрение от мастера)"
+            <label>Бонус очков характеристик</label>
+            <input
+              readOnly
+              value={`+${levelPointsRate(character.classRarity)} за уровень`}
+              title="Зависит от редкости класса и применяется только к новым уровням"
             />
           </div>
         </div>
       </div>
 
       <div className="sheet-tabs">
-        {TABS.map((t) => (
+        {tabsFor(character.path).map((t) => (
           <button key={t.key} className={`nav-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
@@ -247,6 +295,14 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           <div className="card">
             <h3 className="card-title">Характеристики и показатели</h3>
             <StatBudgetBar character={character} />
+            <div className="field" style={{ maxWidth: 260 }}>
+              <label>Награда мастера (доп. очки)</label>
+              <NumberField
+                value={character.bonusStatPoints}
+                onChange={(v) => patch((c) => ({ ...c, bonusStatPoints: v }))}
+                title="Очки сверх положенных за уровни; может быть отрицательным"
+              />
+            </div>
             <CharacteristicsPanel
               character={character}
               onChangeStat={changeStat}
@@ -272,17 +328,23 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             items={character.items}
             path={character.path}
             onChange={(items: EquipItem[]) => patch((c) => ({ ...c, items }))}
+            addLabel="+ Добавить предмет"
+            emptyText="Предметов пока нет."
+            toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
           />
         </>
       )}
 
       {tab === 'abilities' && (
         <ItemsBlock
-          title="Умения"
+          title={PATH_ABILITY_LABELS[character.path].tab}
           kind="ability"
           items={character.abilities}
           path={character.path}
           onChange={(abilities: EquipItem[]) => patch((c) => ({ ...c, abilities }))}
+          addLabel={PATH_ABILITY_LABELS[character.path].add}
+          emptyText={PATH_ABILITY_LABELS[character.path].empty}
+          toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
         />
       )}
 

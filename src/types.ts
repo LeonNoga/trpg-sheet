@@ -29,7 +29,27 @@ export type ResistanceSource = 'auto' | 'agility' | 'strength' | 'intellect';
 
 export type SkillLevel = 0 | 5 | 10 | 15;
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'unique';
+
+/** Тип снаряжения по слоту, в который оно надевается (не размещает предмет, а лишь описывает его). */
+export type SlotType =
+  | 'glasses'
+  | 'headwear'
+  | 'earrings'
+  | 'cloak'
+  | 'amulets'
+  | 'shoulders'
+  | 'armor'
+  | 'elbows'
+  | 'belt'
+  | 'bracers'
+  | 'gloves'
+  | 'bracelets'
+  | 'rings'
+  | 'thigh'
+  | 'knees'
+  | 'shins'
+  | 'boots';
 
 /** Путь, к которому привязан предмет/умение — 'none' = общий, без привязки. */
 export type ItemPath = Path | 'none';
@@ -39,6 +59,8 @@ export interface EquipItem {
   kind: 'item' | 'ability';
   name: string;
   path?: ItemPath;
+  /** Для снаряжения: к какому слоту относится (головной убор, серьги…). */
+  slot?: SlotType;
   rarity?: Rarity;
   category?: string;
   level?: number;
@@ -72,13 +94,18 @@ export interface Character {
   roster: Roster;
   playerName: string;
   characterName: string;
+  /** Вид / Класс / Модель (зависит от пути); по игровой механике — класс персонажа. */
   species: string;
+  /** Редкость класса; пока класс не выбран — undefined. Определяет очки характеристик за новые уровни. */
+  classRarity?: Rarity;
   path: Path;
   resistanceSource: ResistanceSource;
   initiativeSource: InitiativeSource;
   level: number;
   experience: number;
-  /** Дополнительные очки характеристик сверх 100 + 2 за уровень (поощрение от мастера); может быть отрицательным. */
+  /** Очки характеристик, накопленные за уровни (начисляются по редкости класса на момент получения уровня). */
+  levelPoints: number;
+  /** Дополнительные очки сверх уровневых (награда мастера); может быть отрицательным. */
   bonusStatPoints: number;
   baseStats: Record<StatKey, number>;
   /** Текущие (изменяемые в игре) значения пулов — отдельно от расчётного максимума. */
