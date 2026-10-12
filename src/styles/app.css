@@ -524,6 +524,11 @@ input, select, textarea {
   box-shadow: 0 0 0 1px rgba(155, 63, 181, 0.3);
 }
 
+.item-card.rarity-unique {
+  border-color: #ff1a3c;
+  box-shadow: 0 0 0 2px rgba(255, 26, 60, 0.4), 0 0 14px rgba(255, 26, 60, 0.35);
+}
+
 .item-card.rarity-legendary {
   border-color: #c9932f;
   box-shadow: 0 0 0 2px rgba(201, 147, 47, 0.35), 0 0 0 3px rgba(181, 47, 47, 0.2);
@@ -1233,4 +1238,42 @@ table.ref-table input {
 
 .tray-search {
   flex: 1 1 200px;
+}
+
+.skill-category {
+  margin-top: 14px;
+}
+
+.skill-category-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.equipment-diagram {
+  display: block;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.equipment-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.equipment-slot-btn.over {
+  border-color: #c0392b;
+  color: #c0392b;
+}
+
+.equipment-slot-btn.over .equipment-slot-count {
+  color: #c0392b;
+  font-weight: 700;
 }

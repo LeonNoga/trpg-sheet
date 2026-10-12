@@ -1,4 +1,4 @@
-import { bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS } from '../data/statsConfig';
+import { bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import type { BonusKey, EquipItem, Path } from '../types';
 
 interface Props {
@@ -25,7 +25,7 @@ export function ItemCard({ item, path, showEquipToggle, onToggleEquipped, onEdit
             {[
               item.rarity ? RARITY_LABELS[item.rarity] : null,
               item.path && item.path !== 'none' ? ITEM_PATH_LABELS[item.path] : null,
-              item.kind === 'ability' ? item.category : null,
+              item.kind === 'ability' ? item.category : item.slot ? SLOT_TYPE_LABELS[item.slot] : null,
               item.level ? `ур. ${item.level}` : null,
             ]
               .filter(Boolean)

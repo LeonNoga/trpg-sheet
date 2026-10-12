@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { ALL_BONUS_KEYS, bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
+import {
+  ALL_BONUS_KEYS,
+  bonusLabel,
+  ITEM_PATH_LABELS,
+  RARITY_LABELS,
+  RARITY_ORDER,
+  SLOT_TYPES,
+} from '../data/statsConfig';
 import { fileToImageDataUrl } from '../utils/file';
-import { parseCardText } from '../utils/ocrParse';
+import { parseCardFields, recognizeOnce } from '../utils/ocrCards';
 import { NumberField } from './NumberField';
-import type { BonusKey, EquipItem, ItemPath, Path } from '../types';
+import type { BonusKey, EquipItem, ItemPath, Path, SlotType } from '../types';
 
 const ITEM_PATH_ORDER: ItemPath[] = ['none', 'genetic', 'magic', 'tech'];
 
@@ -60,20 +67,25 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
     setOcrBusy(true);
     setOcrError(null);
     try {
-      const { recognize } = await import('tesseract.js');
-      const result = await recognize(draft.image, 'rus+eng');
-      const text = result.data.text.trim();
+      const result = await recognizeOnce(draft.image);
+      const text = result.text;
       if (text) {
-        const parsed = parseCardText(text);
+        const parsed = parseCardFields(result);
         setDraft((d) => ({
           ...d,
-          effect: d.effect ? `${d.effect}\n${text}` : text,
+          effect: d.effect ? `${d.effect}
+${text}` : text,
           name: d.name || parsed.name || d.name,
           rarity: d.rarity ?? parsed.rarity,
           category: d.category || parsed.category,
           level: d.level ?? parsed.level,
           path: d.path && d.path !== 'none' ? d.path : (parsed.path ?? d.path),
+          slot: d.slot ?? parsed.slot,
           flavorText: d.flavorText || parsed.flavorText,
+          activation: d.activation || parsed.activation,
+          cooldown: d.cooldown || parsed.cooldown,
+          cast: d.cast || parsed.cast,
+          duration: d.duration || parsed.duration,
           statBonuses: { ...parsed.statBonuses, ...d.statBonuses },
         }));
       }
@@ -122,6 +134,23 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
             ))}
           </select>
         </div>
+        {draft.kind === 'item' && (
+          <div className="field">
+            <label>Тип снаряжения (слот)</label>
+            <select
+              value={draft.slot ?? ''}
+              onChange={(e) => updateField('slot', (e.target.value || undefined) as SlotType | undefined)}
+              title="Только описывает предмет — в слот он не надевается, пока вы не выберете его на схеме"
+            >
+              <option value="">Без слота</option>
+              {SLOT_TYPES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="field" style={{ maxWidth: 100 }}>
           <label>Уровень</label>
           <input

@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ItemCard } from './ItemCard';
 import { ItemEditor } from './ItemEditor';
+import { EMPTY_ITEM_FILTERS, ItemFilterBar, applyItemFilters } from './ItemFilterBar';
+import type { ItemFilterState } from './ItemFilterBar';
 import { createBlankEquipItem } from '../data/defaults';
 import type { EquipItem, Path } from '../types';
 
@@ -10,12 +13,18 @@ interface Props {
   items: EquipItem[];
   path?: Path;
   onChange: (items: EquipItem[]) => void;
+  addLabel: string;
+  emptyText: string;
+  /** Дополнительные элементы над списком (например, массовая загрузка карточек). */
+  toolbar?: ReactNode;
 }
 
-export function ItemsBlock({ title, kind, items, path, onChange }: Props) {
+export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
 
+  const visible = useMemo(() => applyItemFilters(items, filters), [items, filters]);
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
 
   function saveEdited(item: EquipItem) {
@@ -39,9 +48,20 @@ export function ItemsBlock({ title, kind, items, path, onChange }: Props) {
   return (
     <div className="card">
       <h3 className="card-title">{title}</h3>
-      {items.length === 0 && !creating && <p className="muted">Пока пусто.</p>}
+      {toolbar}
 
-      {items.map((item) =>
+      <ItemFilterBar
+        items={items}
+        state={filters}
+        onChange={setFilters}
+        shownCount={visible.length}
+        path={path}
+        gear={kind === 'item'}
+      />
+
+      {items.length === 0 && !creating && <p className="muted">{emptyText}</p>}
+
+      {visible.map((item) =>
         editingItem?.id === item.id ? (
           <ItemEditor key={item.id} item={editingItem} path={path} onSave={saveEdited} onCancel={() => setEditingId(null)} />
         ) : (
@@ -63,7 +83,7 @@ export function ItemsBlock({ title, kind, items, path, onChange }: Props) {
 
       {!creating && (
         <button className="btn" onClick={() => setCreating(true)}>
-          + {kind === 'item' ? 'Добавить предмет' : 'Добавить умение'}
+          {addLabel}
         </button>
       )}
     </div>
