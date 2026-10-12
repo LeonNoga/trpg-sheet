@@ -5,24 +5,12 @@ import { ItemEditor } from './ItemEditor';
 import { createBlankEquipItem } from '../data/defaults';
 import { ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
 import { exportTray, importTrayFromFile } from '../storage/exportImport';
-import { fileToImageDataUrl } from '../utils/file';
-import { createOcrSession, itemFromCardText } from '../utils/ocrCards';
-import type { OcrSession } from '../utils/ocrCards';
+import { BulkCardUpload } from './BulkCardUpload';
 import type { EquipItem, ItemPath, Rarity } from '../types';
 
 type KindFilter = 'all' | 'item' | 'ability';
 type RarityFilter = 'all' | 'none' | Rarity;
 type PathFilter = 'all' | ItemPath;
-
-interface BulkState {
-  running: boolean;
-  done: number;
-  total: number;
-  current: string;
-  items: number;
-  abilities: number;
-  problems: string[];
-}
 
 const PATH_FILTER_ORDER: ItemPath[] = ['genetic', 'magic', 'tech', 'none'];
 
@@ -35,9 +23,6 @@ export function LootTray() {
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [pathFilter, setPathFilter] = useState<PathFilter>('all');
   const [query, setQuery] = useState('');
-  const [bulk, setBulk] = useState<BulkState | null>(null);
-  const cancelRef = useRef(false);
-  const cardsInput = useRef<HTMLInputElement>(null);
   const trayInput = useRef<HTMLInputElement>(null);
 
   const filtersActive = kindFilter !== 'all' || rarityFilter !== 'all' || pathFilter !== 'all' || query.trim() !== '';
@@ -88,55 +73,6 @@ export function LootTray() {
     );
   }
 
-  async function handleBulkFiles(fileList: FileList | null) {
-    const files = Array.from(fileList ?? []).filter((f) => f.type.startsWith('image/'));
-    if (cardsInput.current) cardsInput.current.value = '';
-    if (files.length === 0) return;
-
-    cancelRef.current = false;
-    setBulk({ running: true, done: 0, total: files.length, current: '', items: 0, abilities: 0, problems: [] });
-
-    let session: OcrSession | null = null;
-    try {
-      session = await createOcrSession();
-      for (const file of files) {
-        if (cancelRef.current) break;
-        setBulk((b) => b && { ...b, current: file.name });
-        try {
-          const image = await fileToImageDataUrl(file);
-          const text = await session.recognize(image);
-          const item = itemFromCardText(text, image, file.name.replace(/\.[^.]+$/, ''));
-          addToLootTray([item]);
-          setBulk(
-            (b) =>
-              b && {
-                ...b,
-                items: b.items + (item.kind === 'item' ? 1 : 0),
-                abilities: b.abilities + (item.kind === 'ability' ? 1 : 0),
-                problems: text ? b.problems : [...b.problems, `${file.name}: текст не распознан, добавлено без данных`],
-              },
-          );
-        } catch (err) {
-          console.error(err);
-          setBulk((b) => b && { ...b, problems: [...b.problems, `${file.name}: не удалось обработать файл`] });
-        }
-        setBulk((b) => b && { ...b, done: b.done + 1 });
-      }
-    } catch (err) {
-      console.error(err);
-      setBulk(
-        (b) =>
-          b && {
-            ...b,
-            problems: [...b.problems, 'Не удалось запустить распознавание (при первом запуске нужен интернет для загрузки языка).'],
-          },
-      );
-    } finally {
-      await session?.terminate();
-      setBulk((b) => b && { ...b, running: false });
-    }
-  }
-
   async function handleImportTray(file: File | undefined) {
     if (trayInput.current) trayInput.current.value = '';
     if (!file) return;
@@ -171,23 +107,12 @@ export function LootTray() {
         <button className="btn" onClick={() => setCreatingKind('ability')} disabled={!!creatingKind}>
           + Умение
         </button>
-        <button className="btn btn-primary" onClick={() => cardsInput.current?.click()} disabled={bulk?.running}>
-          Загрузить карточки (OCR)
-        </button>
         <button className="btn" onClick={() => exportTray(lootTray)} disabled={lootTray.length === 0}>
           Экспорт трея
         </button>
         <button className="btn" onClick={() => trayInput.current?.click()}>
           Импорт трея
         </button>
-        <input
-          ref={cardsInput}
-          type="file"
-          accept="image/*"
-          multiple
-          style={{ display: 'none' }}
-          onChange={(e) => handleBulkFiles(e.target.files)}
-        />
         <input
           ref={trayInput}
           type="file"
@@ -197,40 +122,7 @@ export function LootTray() {
         />
       </div>
 
-      {bulk && (
-        <div className="budget-bar" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-          {bulk.running ? (
-            <>
-              <strong>
-                Распознаём карточки: {bulk.done} из {bulk.total}
-              </strong>
-              <span className="muted">{bulk.current}</span>
-              <div>
-                <button className="btn btn-sm" onClick={() => (cancelRef.current = true)}>
-                  Остановить
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <strong>
-                Готово: добавлено предметов — {bulk.items}, умений — {bulk.abilities}
-                {bulk.done < bulk.total ? ` (остановлено на ${bulk.done} из ${bulk.total})` : ''}
-              </strong>
-              {bulk.problems.map((p) => (
-                <span className="error-text" key={p}>
-                  {p}
-                </span>
-              ))}
-              <div>
-                <button className="btn btn-sm btn-ghost" onClick={() => setBulk(null)}>
-                  Скрыть
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      <BulkCardUpload onCard={(item) => addToLootTray([item])} />
 
       {editorForNew && (
         <ItemEditor item={editorForNew} onSave={saveNew} onCancel={() => setCreatingKind(null)} />
