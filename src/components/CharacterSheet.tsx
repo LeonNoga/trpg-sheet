@@ -287,6 +287,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               <DnaListsCard
                 titles={[traitLabels.dnaA, traitLabels.dnaB]}
                 lists={character.dnaLists}
+                level={character.level}
                 onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
               />
             </div>

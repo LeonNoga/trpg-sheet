@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   DERIVED_LABELS,
   PATH_RESOURCE_LABEL,
@@ -38,6 +39,39 @@ const INITIATIVE_OPTIONS: { value: InitiativeSource; label: string }[] = [
 function derivedLabel(key: DerivedKey, character: Character): string {
   if (key === 'resourcePoints') return PATH_RESOURCE_POINTS_LABEL[character.path];
   return DERIVED_LABELS[key];
+}
+
+/** Прибавить/вычесть из текущего значения пула: «+» не поднимает выше максимума, «−» может уйти ниже нуля. */
+function PoolAdjust({ current, max, onChange }: { current: number; max: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState('');
+  const amount = Math.abs(Number(text));
+  const valid = text.trim() !== '' && Number.isFinite(amount) && amount > 0;
+
+  function apply(sign: 1 | -1) {
+    if (!valid) return;
+    onChange(sign === 1 ? Math.max(current, Math.min(max, current + amount)) : current - amount);
+    setText('');
+  }
+
+  return (
+    <div className="pool-adjust">
+      <button type="button" className="btn btn-sm" disabled={!valid} onClick={() => apply(-1)} title="Вычесть">
+        −
+      </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        value={text}
+        placeholder="±"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && apply(Number(text) < 0 ? -1 : 1)}
+        aria-label="Сколько прибавить или вычесть"
+      />
+      <button type="button" className="btn btn-sm" disabled={!valid} onClick={() => apply(1)} title="Прибавить (до максимума)">
+        +
+      </button>
+    </div>
+  );
 }
 
 const PAIRED_STATS = STAT_ORDER.filter((key) => STAT_TO_DERIVED[key]);
@@ -84,15 +118,12 @@ export function CharacteristicsPanel({
                   <div className="pool-tile-values">
                     <NumberField value={character.pools[poolKey]} onChange={(v) => onChangePool(poolKey, v)} />
                     <span className="pool-tile-max">/ {derived[poolKey]}</span>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      title="Восстановить до максимума"
-                      onClick={() => onChangePool(poolKey, derived[poolKey])}
-                    >
-                      ⟳
-                    </button>
                   </div>
+                  <PoolAdjust
+                    current={character.pools[poolKey]}
+                    max={derived[poolKey]}
+                    onChange={(v) => onChangePool(poolKey, v)}
+                  />
                   <div className="label">{derivedLabel(derivedKey, character)}</div>
                 </div>
               ) : (

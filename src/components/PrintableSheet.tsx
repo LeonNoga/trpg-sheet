@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import {
   CLASS_RARITY_LABELS,
+  abilitySlotLimit,
   DERIVED_LABELS,
   PATH_LABELS,
   PATH_RESOURCE_LABEL,
@@ -127,7 +128,7 @@ export function PrintableSheet({ character }: { character: Character }) {
             <div className="p-box-title">{traitLabels.dnaA}:</div>
             <Lines count={5} filled={character.dnaLists[0]?.slots ?? []} numbered />
             <div className="p-box-title">{traitLabels.dnaB}:</div>
-            <Lines count={5} filled={character.dnaLists[1]?.slots ?? []} numbered />
+            <Lines count={abilitySlotLimit(character.level)} filled={character.dnaLists[1]?.slots ?? []} numbered />
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import { STAT_MIN, milestoneEffects, statMilestone } from '../data/statsConfig';
+import { STAT_MIN, milestoneEffect, statMilestone } from '../data/statsConfig';
 import { modifier } from '../data/formulas';
 import { NumberField } from './NumberField';
 import type { StatKey } from '../types';
@@ -12,12 +12,12 @@ interface Props {
   onChange: (value: number) => void;
 }
 
-/** Характеристика: название, редактируемая база, модификатор. Подсвечивается на порогах 50/100. */
+/** Характеристика: название, редактируемая база, модификатор. Подсвечивается на порогах 50 и 150. */
 export function StatPill({ statKey, label, base, bonus, onChange }: Props) {
   const total = base + bonus;
   const mod = modifier(total);
   const milestone = statMilestone(total);
-  const effects = milestoneEffects(statKey, total);
+  const effect = milestoneEffect(statKey, total);
 
   return (
     <div className="stat-pill-wrap">
@@ -25,9 +25,11 @@ export function StatPill({ statKey, label, base, bonus, onChange }: Props) {
         className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}
         title={
           milestone
-            ? effects.length
-              ? `Порог ${milestone} достигнут: ${effects.join('; ')}`
-              : `Порог ${milestone} достигнут — по системе здесь появляются доп. эффекты`
+            ? milestone === 150
+              ? `Порог 150 достигнут — бонусы этого порога появятся позже${effect ? `. Порог 50: ${effect.title}` : ''}`
+              : effect
+                ? `Порог 50 достигнут: ${effect.title} — ${effect.text}`
+                : 'Порог 50 достигнут — для этой характеристики бонус не предусмотрен'
             : bonus
               ? `База ${base} + предметы ${bonus > 0 ? '+' : ''}${bonus} = ${total}`
               : undefined
@@ -42,11 +44,11 @@ export function StatPill({ statKey, label, base, bonus, onChange }: Props) {
         <NumberField min={STAT_MIN} value={base} onChange={onChange} />
         <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
       </div>
-      {effects.map((effect) => (
-        <div className="milestone-note" key={effect}>
-          ⚑ {effect}
+      {effect && (
+        <div className="milestone-note">
+          ⚑ <b>{effect.title}</b> — {effect.text}
         </div>
-      ))}
+      )}
     </div>
   );
 }

@@ -263,15 +263,17 @@ input, select, textarea {
   color: var(--accent);
 }
 
-/* Порог 50/100 суммарного значения (база + снаряжение) — фиксированный цвет, не
+/* Пороги 50 и 150 суммарного значения (база + снаряжение) — фиксированный цвет, не
    зависит от темы пути, чтобы всегда бросаться в глаза как предупреждение. */
 .stat-pill.milestone-50,
-.stat-pill.milestone-100 {
+.stat-pill.milestone-150 {
   border: 2px solid #c0392b;
 }
 
-.stat-pill.milestone-100 {
-  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.25);
+.stat-pill.milestone-150 {
+  border-color: #ff1a3c;
+  background: rgba(255, 26, 60, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 26, 60, 0.35), 0 0 12px rgba(255, 26, 60, 0.4);
 }
 
 .stat-value-milestone {
@@ -1276,4 +1278,39 @@ table.ref-table input {
 .equipment-slot-btn.over .equipment-slot-count {
   color: #c0392b;
   font-weight: 700;
+}
+
+.pool-adjust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.pool-adjust input {
+  width: 60px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+  padding: 4px;
+  font-size: 14px;
+}
+
+.pool-adjust .btn {
+  min-width: 34px;
+  font-weight: 700;
+}
+
+.slot-limit-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 6px;
+}
+
+.slot-limit-note.over,
+.slot-over input {
+  color: #c0392b;
+  border-color: #c0392b;
 }
