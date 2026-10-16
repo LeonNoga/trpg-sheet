@@ -5,21 +5,29 @@ interface Props {
   item: EquipItem;
   path?: Path;
   showEquipToggle: boolean;
+  /** Если задан onSelect — слева в шапке появляется чекбокс выбора для массовых действий. */
+  selected?: boolean;
+  onSelect?: (selected: boolean) => void;
   onToggleEquipped: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function ItemCard({ item, path, showEquipToggle, onToggleEquipped, onEdit, onDelete }: Props) {
+export function ItemCard({ item, path, showEquipToggle, selected, onSelect, onToggleEquipped, onEdit, onDelete }: Props) {
   const bonusEntries = Object.entries(item.statBonuses) as [BonusKey, number][];
   const props = item.kind === 'ability' && [item.activation, item.cooldown, item.cast, item.duration].some(Boolean);
 
   const rarityClass = item.rarity ? `rarity-${item.rarity}` : '';
 
   return (
-    <div className={`item-card ${item.equipped ? 'equipped' : ''} ${rarityClass}`}>
+    <div className={`item-card ${item.equipped ? 'equipped' : ''} ${rarityClass} ${selected ? 'selected' : ''}`}>
       <div className="item-card-head">
-        <div>
+        {onSelect && (
+          <label className="item-select" title="Выбрать для массового действия">
+            <input type="checkbox" checked={!!selected} onChange={(e) => onSelect(e.target.checked)} />
+          </label>
+        )}
+        <div style={{ flex: 1 }}>
           <h4>{item.name || 'Без названия'}</h4>
           <div className="item-meta">
             {[

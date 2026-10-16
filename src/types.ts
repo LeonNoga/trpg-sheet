@@ -98,6 +98,8 @@ export interface Character {
   species: string;
   /** Редкость класса; пока класс не выбран — undefined. Определяет очки характеристик за новые уровни. */
   classRarity?: Rarity;
+  /** Очки за новый уровень для «Уникального» класса — у него ставка не стандартная, её сообщает Мастер. */
+  uniqueLevelPoints?: number;
   path: Path;
   resistanceSource: ResistanceSource;
   initiativeSource: InitiativeSource;

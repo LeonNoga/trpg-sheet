@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ItemCard } from './ItemCard';
+import { SelectionToolbar } from './SelectionToolbar';
 import { ItemEditor } from './ItemEditor';
 import { EMPTY_ITEM_FILTERS, ItemFilterBar, applyItemFilters } from './ItemFilterBar';
 import type { ItemFilterState } from './ItemFilterBar';
@@ -23,6 +24,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const visible = useMemo(() => applyItemFilters(items, filters), [items, filters]);
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
@@ -39,6 +41,13 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
 
   function remove(id: string) {
     onChange(items.filter((i) => i.id !== id));
+  }
+
+  function toggleSelected(id: string, on: boolean) {
+    const next = new Set(selected);
+    if (on) next.add(id);
+    else next.delete(id);
+    setSelected(next);
   }
 
   function toggleEquipped(id: string) {
@@ -59,6 +68,14 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
         gear={kind === 'item'}
       />
 
+      <SelectionToolbar
+        allItems={items}
+        visibleItems={visible}
+        selected={selected}
+        onSelectedChange={setSelected}
+        onChangeAll={onChange}
+      />
+
       {items.length === 0 && !creating && <p className="muted">{emptyText}</p>}
 
       {visible.map((item) =>
@@ -70,6 +87,8 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
             item={item}
             path={path}
             showEquipToggle={kind === 'item'}
+            selected={selected.has(item.id)}
+            onSelect={(on) => toggleSelected(item.id, on)}
             onToggleEquipped={() => toggleEquipped(item.id)}
             onEdit={() => setEditingId(item.id)}
             onDelete={() => remove(item.id)}

@@ -263,14 +263,14 @@ input, select, textarea {
   color: var(--accent);
 }
 
-/* Пороги 50 и 150 суммарного значения (база + снаряжение) — фиксированный цвет, не
+/* Пороги 50 и 100 суммарного значения (база + снаряжение) — фиксированный цвет, не
    зависит от темы пути, чтобы всегда бросаться в глаза как предупреждение. */
 .stat-pill.milestone-50,
-.stat-pill.milestone-150 {
+.stat-pill.milestone-100 {
   border: 2px solid #c0392b;
 }
 
-.stat-pill.milestone-150 {
+.stat-pill.milestone-100 {
   border-color: #ff1a3c;
   background: rgba(255, 26, 60, 0.1);
   box-shadow: 0 0 0 3px rgba(255, 26, 60, 0.35), 0 0 12px rgba(255, 26, 60, 0.4);
@@ -1313,4 +1313,28 @@ table.ref-table input {
 .slot-over input {
   color: #c0392b;
   border-color: #c0392b;
+}
+
+.selection-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0 12px;
+}
+
+.item-select {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
+
+.item-select input {
+  width: 20px;
+  height: 20px;
+}
+
+.item-card.selected {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }

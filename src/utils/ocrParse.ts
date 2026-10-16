@@ -157,6 +157,11 @@ export function parseCardText(raw: string): ParsedCard {
   // Бонусы берём только из фразы "Даёт +N к X, +M к Y": в прозе эффекта умений тоже бывают
   // "+N к ...", но они условные (в определённом состоянии) и не должны становиться постоянными.
   const bonuses: Partial<Record<BonusKey, number>> = {};
+  // «Защита: 12 ПЗ» — пункты защиты самого предмета; «ПЗ» OCR нередко читает как «П3»/«ПЗ.».
+  // Если «ПЗ» распознано криво, достаточно «Защита: N» с двоеточием (в прозе умений двоеточия там нет).
+  const defenseMatch =
+    text.match(/Защит[аы]\s*[:：]?\s*([+-]?\d+)\s*(?:П\s?[З3Ззз3]|пз)/i) ?? text.match(/Защит[аы]\s*[:：]\s*([+-]?\d+)/i);
+  if (defenseMatch) bonuses.defense = Number(defenseMatch[1]);
   const giveIndex = text.search(/Д[аa][её]т/i);
   if (giveIndex >= 0) {
     const bonusText = text.slice(giveIndex);

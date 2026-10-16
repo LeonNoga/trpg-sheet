@@ -1,10 +1,11 @@
 import { STAT_MIN, milestoneEffect, statMilestone } from '../data/statsConfig';
 import { modifier } from '../data/formulas';
 import { NumberField } from './NumberField';
-import type { StatKey } from '../types';
+import type { Path, StatKey } from '../types';
 
 interface Props {
   statKey: StatKey;
+  path: Path;
   label: string;
   base: number;
   /** Бонус от снаряжения/умений. */
@@ -12,12 +13,12 @@ interface Props {
   onChange: (value: number) => void;
 }
 
-/** Характеристика: название, редактируемая база, модификатор. Подсвечивается на порогах 50 и 150. */
-export function StatPill({ statKey, label, base, bonus, onChange }: Props) {
+/** Характеристика: название, редактируемая база, модификатор. Подсвечивается на порогах 50 и 100. */
+export function StatPill({ statKey, path, label, base, bonus, onChange }: Props) {
   const total = base + bonus;
   const mod = modifier(total);
   const milestone = statMilestone(total);
-  const effect = milestoneEffect(statKey, total);
+  const effect = milestoneEffect(statKey, total, path);
 
   return (
     <div className="stat-pill-wrap">
@@ -25,8 +26,8 @@ export function StatPill({ statKey, label, base, bonus, onChange }: Props) {
         className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}
         title={
           milestone
-            ? milestone === 150
-              ? `Порог 150 достигнут — бонусы этого порога появятся позже${effect ? `. Порог 50: ${effect.title}` : ''}`
+            ? milestone === 100
+              ? `Порог 100 достигнут — бонусы этого порога появятся позже${effect ? `. Порог 50: ${effect.title}` : ''}`
               : effect
                 ? `Порог 50 достигнут: ${effect.title} — ${effect.text}`
                 : 'Порог 50 достигнут — для этой характеристики бонус не предусмотрен'

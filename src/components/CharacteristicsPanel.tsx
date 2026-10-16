@@ -95,6 +95,7 @@ export function CharacteristicsPanel({
     return (
       <StatPill
         statKey={statKey}
+        path={character.path}
         label={statLabelFor(statKey)}
         base={character.baseStats[statKey]}
         bonus={bonusSum(character, statKey)}

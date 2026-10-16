@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import bodyUrl from '../assets/body.png';
 import { RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import type { Character, EquipItem, SlotType } from '../types';
 
@@ -25,108 +26,53 @@ interface SlotDef {
 
 const CENTER = 1000; // зеркалирование: x → 1000 - x
 const mx = (x: number) => CENTER - x;
-const mirrorLine = (s: Extract<Shape, { t: 'line' }>): Shape => ({ ...s, x1: mx(s.x1), x2: mx(s.x2) });
-const mirrorEllipse = (s: Extract<Shape, { t: 'ellipse' }>): Shape => ({ ...s, cx: mx(s.cx), rot: -(s.rot ?? 0) });
+
+// Фигура — картинка body.png (контур человека), помещённая в область 278..722 × 10..770 схемы.
+// Зоны ниже заданы в координатах схемы: левая сторона на экране — это x < 500, правая — зеркальная.
+const FIGURE = { x: 278, y: 10, w: 445, h: 760 };
+
+/** Левая зона + её зеркальная копия справа. */
+function pair(shape: Extract<Shape, { t: 'ellipse' | 'line' | 'rect' }>): Shape[] {
+  if (shape.t === 'ellipse') return [shape, { ...shape, cx: mx(shape.cx), rot: -(shape.rot ?? 0) }];
+  if (shape.t === 'line') return [shape, { ...shape, x1: mx(shape.x1), x2: mx(shape.x2) }];
+  return [shape, { ...shape, x: mx(shape.x) - shape.w }];
+}
 
 // Слоты и их положение — по бумажной карточке: слева очки/плащ/…/кольца 1–5, справа головной убор/серьги/…/обувь.
 const SLOTS: SlotDef[] = [
-  { key: 'glasses', type: 'glasses', label: 'Очки/линзы', capacity: 1, side: 'L', row: 0, anchor: [466, 128], zone: [{ t: 'rect', x: 460, y: 120, w: 80, h: 18, r: 8 }] },
-  { key: 'cloak', type: 'cloak', label: 'Плащ', capacity: 1, side: 'L', row: 1, anchor: [410, 216], zone: [{ t: 'rect', x: 402, y: 204, w: 196, h: 28, r: 12 }] },
+  { key: 'glasses', type: 'glasses', label: 'Очки/линзы', capacity: 1, side: 'L', row: 0, anchor: [472, 61], zone: [{ t: 'rect', x: 464, y: 52, w: 72, h: 16, r: 8 }] },
+  { key: 'cloak', type: 'cloak', label: 'Плащ', capacity: 1, side: 'L', row: 1, anchor: [426, 148], zone: [{ t: 'rect', x: 420, y: 138, w: 160, h: 20, r: 10 }] },
+  { key: 'shoulders', type: 'shoulders', label: 'Наплечники', capacity: 1, side: 'L', row: 2, anchor: [388, 176], zone: pair({ t: 'ellipse', cx: 410, cy: 176, rx: 30, ry: 24, rot: -20 }) },
+  { key: 'elbows', type: 'elbows', label: 'Налокотники', capacity: 1, side: 'L', row: 3, anchor: [356, 303], zone: pair({ t: 'ellipse', cx: 374, cy: 303, rx: 20, ry: 22 }) },
+  { key: 'bracers', type: 'bracers', label: 'Наручи', capacity: 1, side: 'L', row: 4, anchor: [350, 346], zone: pair({ t: 'line', x1: 364, y1: 326, x2: 346, y2: 362, w: 26 }) },
+  { key: 'bracelets', type: 'bracelets', label: 'Браслеты', capacity: 4, side: 'L', row: 5, anchor: [322, 380], zone: pair({ t: 'ellipse', cx: 337, cy: 376, rx: 17, ry: 8, rot: 27 }) },
   {
-    key: 'shoulders', type: 'shoulders', label: 'Наплечники', capacity: 1, side: 'L', row: 2, anchor: [420, 232],
-    zone: [{ t: 'ellipse', cx: 424, cy: 230, rx: 34, ry: 24 }, { t: 'ellipse', cx: 576, cy: 230, rx: 34, ry: 24 }],
-  },
-  {
-    key: 'elbows', type: 'elbows', label: 'Налокотники', capacity: 1, side: 'L', row: 3, anchor: [358, 336],
-    zone: [{ t: 'ellipse', cx: 356, cy: 336, rx: 24, ry: 24 }, { t: 'ellipse', cx: 644, cy: 336, rx: 24, ry: 24 }],
-  },
-  {
-    key: 'bracers', type: 'bracers', label: 'Наручи', capacity: 1, side: 'L', row: 4, anchor: [340, 398],
+    key: 'ringsLeft', type: 'rings', label: 'Кольца 1–5', capacity: 5, side: 'L', row: 6, anchor: [300, 424],
     zone: [
-      { t: 'line', x1: 350, y1: 356, x2: 330, y2: 430, w: 36 },
-      { t: 'line', x1: 650, y1: 356, x2: 670, y2: 430, w: 36 },
+      { t: 'ellipse', cx: 299, cy: 424, rx: 6, ry: 6 },
+      { t: 'ellipse', cx: 312, cy: 428, rx: 6, ry: 6 },
+      { t: 'ellipse', cx: 325, cy: 424, rx: 6, ry: 6 },
     ],
   },
-  {
-    key: 'bracelets', type: 'bracelets', label: 'Браслеты', capacity: 4, side: 'L', row: 5, anchor: [326, 448],
-    zone: [{ t: 'ellipse', cx: 326, cy: 448, rx: 20, ry: 9, rot: 16 }, { t: 'ellipse', cx: 674, cy: 448, rx: 20, ry: 9, rot: -16 }],
-  },
-  {
-    key: 'ringsLeft', type: 'rings', label: 'Кольца 1–5', capacity: 5, side: 'L', row: 6, anchor: [308, 506],
-    zone: [
-      { t: 'ellipse', cx: 298, cy: 506, rx: 7, ry: 7 },
-      { t: 'ellipse', cx: 312, cy: 512, rx: 7, ry: 7 },
-      { t: 'ellipse', cx: 326, cy: 506, rx: 7, ry: 7 },
-    ],
-  },
-  {
-    key: 'thigh', type: 'thigh', label: 'Набедренник', capacity: 1, side: 'L', row: 7, anchor: [452, 540],
-    zone: [
-      { t: 'line', x1: 461, y1: 504, x2: 455, y2: 580, w: 72 },
-      { t: 'line', x1: 539, y1: 504, x2: 545, y2: 580, w: 72 },
-    ],
-  },
-  {
-    key: 'shins', type: 'shins', label: 'Поножи', capacity: 1, side: 'L', row: 8, anchor: [446, 672],
-    zone: [
-      { t: 'line', x1: 450, y1: 636, x2: 445, y2: 706, w: 48 },
-      { t: 'line', x1: 550, y1: 636, x2: 555, y2: 706, w: 48 },
-    ],
-  },
+  { key: 'thigh', type: 'thigh', label: 'Набедренник', capacity: 1, side: 'L', row: 7, anchor: [444, 480], zone: pair({ t: 'line', x1: 466, y1: 432, x2: 458, y2: 520, w: 52 }) },
+  { key: 'shins', type: 'shins', label: 'Поножи', capacity: 1, side: 'L', row: 8, anchor: [436, 650], zone: pair({ t: 'line', x1: 446, y1: 596, x2: 440, y2: 696, w: 36 }) },
 
-  { key: 'headwear', type: 'headwear', label: 'Головной убор', capacity: 1, side: 'R', row: 0, anchor: [520, 92], zone: [{ t: 'ellipse', cx: 500, cy: 100, rx: 44, ry: 26 }] },
+  { key: 'headwear', type: 'headwear', label: 'Головной убор', capacity: 1, side: 'R', row: 0, anchor: [540, 36], zone: [{ t: 'ellipse', cx: 500, cy: 36, rx: 42, ry: 24 }] },
+  { key: 'earrings', type: 'earrings', label: 'Серьги', capacity: 4, side: 'R', row: 1, anchor: [548, 86], zone: pair({ t: 'ellipse', cx: 459, cy: 84, rx: 8, ry: 10 }) },
+  { key: 'amulets', type: 'amulets', label: 'Амулеты', capacity: 3, side: 'R', row: 2, anchor: [522, 170], zone: [{ t: 'ellipse', cx: 500, cy: 170, rx: 26, ry: 14 }] },
+  { key: 'armor', type: 'armor', label: 'Броня', capacity: 1, side: 'R', row: 3, anchor: [556, 262], zone: [{ t: 'rect', x: 440, y: 186, w: 120, h: 188, r: 16 }] },
+  { key: 'belt', type: 'belt', label: 'Пояс', capacity: 1, side: 'R', row: 4, anchor: [560, 388], zone: [{ t: 'rect', x: 434, y: 378, w: 132, h: 20, r: 8 }] },
+  { key: 'gloves', type: 'gloves', label: 'Перчатки', capacity: 1, side: 'R', row: 5, anchor: [696, 404], zone: pair({ t: 'ellipse', cx: 314, cy: 408, rx: 26, ry: 34, rot: 22 }) },
   {
-    key: 'earrings', type: 'earrings', label: 'Серьги', capacity: 4, side: 'R', row: 1, anchor: [544, 152],
-    zone: [{ t: 'ellipse', cx: 458, cy: 152, rx: 9, ry: 9 }, { t: 'ellipse', cx: 542, cy: 152, rx: 9, ry: 9 }],
-  },
-  { key: 'amulets', type: 'amulets', label: 'Амулеты', capacity: 3, side: 'R', row: 2, anchor: [514, 240], zone: [{ t: 'ellipse', cx: 500, cy: 242, rx: 26, ry: 18 }] },
-  { key: 'armor', type: 'armor', label: 'Броня', capacity: 1, side: 'R', row: 3, anchor: [572, 300], zone: [{ t: 'rect', x: 424, y: 238, w: 152, h: 160, r: 16 }] },
-  { key: 'belt', type: 'belt', label: 'Пояс', capacity: 1, side: 'R', row: 4, anchor: [570, 422], zone: [{ t: 'rect', x: 424, y: 410, w: 152, h: 24, r: 8 }] },
-  {
-    key: 'gloves', type: 'gloves', label: 'Перчатки', capacity: 1, side: 'R', row: 5, anchor: [684, 478],
-    zone: [{ t: 'ellipse', cx: 314, cy: 480, rx: 22, ry: 32, rot: 8 }, { t: 'ellipse', cx: 686, cy: 480, rx: 22, ry: 32, rot: -8 }],
-  },
-  {
-    key: 'ringsRight', type: 'rings', label: 'Кольца 6–10', capacity: 5, side: 'R', row: 6, anchor: [692, 508],
+    key: 'ringsRight', type: 'rings', label: 'Кольца 6–10', capacity: 5, side: 'R', row: 6, anchor: [700, 424],
     zone: [
-      { t: 'ellipse', cx: 674, cy: 506, rx: 7, ry: 7 },
-      { t: 'ellipse', cx: 688, cy: 512, rx: 7, ry: 7 },
-      { t: 'ellipse', cx: 702, cy: 506, rx: 7, ry: 7 },
+      { t: 'ellipse', cx: 701, cy: 424, rx: 6, ry: 6 },
+      { t: 'ellipse', cx: 688, cy: 428, rx: 6, ry: 6 },
+      { t: 'ellipse', cx: 675, cy: 424, rx: 6, ry: 6 },
     ],
   },
-  {
-    key: 'knees', type: 'knees', label: 'Наколенники', capacity: 1, side: 'R', row: 7, anchor: [552, 612],
-    zone: [{ t: 'ellipse', cx: 452, cy: 612, rx: 28, ry: 26 }, { t: 'ellipse', cx: 548, cy: 612, rx: 28, ry: 26 }],
-  },
-  {
-    key: 'boots', type: 'boots', label: 'Обувь', capacity: 1, side: 'R', row: 8, anchor: [572, 742],
-    zone: [{ t: 'ellipse', cx: 432, cy: 742, rx: 42, ry: 22 }, { t: 'ellipse', cx: 568, cy: 742, rx: 42, ry: 22 }],
-  },
-];
-
-// Силуэт: объединение фигур (голова, торс, конечности). Рисуется дважды — тёмным контуром и белой заливкой,
-// поэтому на стыках нет лишних линий и получается единый контур, как на бумажной карточке.
-const L_ARM: Shape[] = [
-  { t: 'line', x1: 414, y1: 226, x2: 356, y2: 334, w: 42 },
-  { t: 'line', x1: 356, y1: 334, x2: 326, y2: 446, w: 32 },
-  { t: 'ellipse', cx: 314, cy: 480, rx: 17, ry: 30, rot: 8 },
-];
-const L_LEG: Shape[] = [
-  { t: 'line', x1: 461, y1: 490, x2: 452, y2: 610, w: 76 },
-  { t: 'line', x1: 452, y1: 610, x2: 445, y2: 712, w: 54 },
-  { t: 'ellipse', cx: 432, cy: 742, rx: 38, ry: 18 },
-];
-const mirrorShape = (s: Shape): Shape =>
-  s.t === 'line' ? mirrorLine(s) : s.t === 'ellipse' ? mirrorEllipse(s) : s;
-
-const BODY: Shape[] = [
-  { t: 'ellipse', cx: 500, cy: 130, rx: 40, ry: 50 },
-  { t: 'line', x1: 500, y1: 170, x2: 500, y2: 208, w: 34 },
-  { t: 'poly', r: 28, pts: [[418, 222], [582, 222], [574, 330], [556, 420], [566, 468], [434, 468], [444, 420], [426, 330]] },
-  ...L_ARM,
-  ...L_ARM.map(mirrorShape),
-  ...L_LEG,
-  ...L_LEG.map(mirrorShape),
+  { key: 'knees', type: 'knees', label: 'Наколенники', capacity: 1, side: 'R', row: 7, anchor: [572, 561], zone: pair({ t: 'ellipse', cx: 451, cy: 561, rx: 24, ry: 22 }) },
+  { key: 'boots', type: 'boots', label: 'Обувь', capacity: 1, side: 'R', row: 8, anchor: [578, 738], zone: pair({ t: 'ellipse', cx: 438, cy: 738, rx: 30, ry: 28 }) },
 ];
 
 function renderShape(shape: Shape, key: string | number, expand: number, props: Record<string, unknown>) {
@@ -155,20 +101,26 @@ function renderShape(shape: Shape, key: string | number, expand: number, props: 
           {...props}
         />
       );
-    case 'line':
+    case 'line': {
+      // Капсула вместо <line>: так у всех зон одинаково работают заливка и обводка выбранного слота.
+      const len = Math.hypot(shape.x2 - shape.x1, shape.y2 - shape.y1);
+      const cx = (shape.x1 + shape.x2) / 2;
+      const cy = (shape.y1 + shape.y2) / 2;
+      const angle = (Math.atan2(shape.y2 - shape.y1, shape.x2 - shape.x1) * 180) / Math.PI;
+      const w = shape.w + expand;
       return (
-        <line
+        <rect
           key={key}
-          x1={shape.x1}
-          y1={shape.y1}
-          x2={shape.x2}
-          y2={shape.y2}
-          strokeWidth={shape.w + expand}
-          strokeLinecap="round"
-          stroke={String(props.fill)}
+          x={cx - (len + w) / 2}
+          y={cy - w / 2}
+          width={len + w}
+          height={w}
+          rx={w / 2}
+          transform={`rotate(${angle} ${cx} ${cy})`}
           {...props}
         />
       );
+    }
     case 'poly':
       return (
         <polygon
@@ -246,7 +198,7 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
 
       <svg
         className="equipment-diagram"
-        viewBox={narrow ? '270 60 460 720' : '0 0 1000 780'}
+        viewBox={narrow ? '270 4 460 772' : '0 0 1000 780'}
         role="img"
         aria-label="Схема экипировки"
       >
@@ -267,8 +219,7 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
             );
           })}
 
-        {BODY.map((s, i) => renderShape(s, `o${i}`, 12, { fill: '#222' }))}
-        {BODY.map((s, i) => renderShape(s, `f${i}`, 0, { fill: '#fff' }))}
+        <image href={bodyUrl} x={FIGURE.x} y={FIGURE.y} width={FIGURE.w} height={FIGURE.h} />
 
         {SLOTS.map((slot) => {
           const has = idsIn(slot.key).length > 0;
@@ -285,9 +236,10 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
               {slot.zone.map((z, i) =>
                 renderShape(z, i, 0, {
                   fill: over ? '#c0392b' : 'var(--accent)',
-                  fillOpacity: has ? 0.6 : 0.001,
-                  stroke: selected ? 'var(--accent)' : 'none',
-                  strokeDasharray: selected ? '6 4' : undefined,
+                  fillOpacity: has ? 0.55 : 0.001,
+                  stroke: over ? '#c0392b' : selected || has ? 'var(--accent)' : 'none',
+                  strokeWidth: 2,
+                  strokeDasharray: selected && !has ? '6 4' : undefined,
                   pointerEvents: 'all',
                 }),
               )}

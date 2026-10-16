@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { RARITY_LABELS, RARITY_ORDER, SLOT_TYPES, bonusLabel } from '../data/statsConfig';
+import { ALL_BONUS_KEYS, RARITY_LABELS, RARITY_ORDER, SLOT_TYPES, bonusLabel } from '../data/statsConfig';
 import type { BonusKey, EquipItem, Path, Rarity, SlotType } from '../types';
 
 export interface ItemFilterState {
@@ -58,7 +58,7 @@ export function ItemFilterBar({ items, state, onChange, shownCount, path, gear }
   const bonusKeys = useMemo(() => {
     const keys = new Set<BonusKey>();
     items.forEach((i) => (Object.keys(i.statBonuses) as BonusKey[]).forEach((k) => i.statBonuses[k] && keys.add(k)));
-    return [...keys];
+    return ALL_BONUS_KEYS.filter((k) => keys.has(k));
   }, [items]);
 
   const set = <K extends keyof ItemFilterState>(key: K, value: ItemFilterState[K]) => onChange({ ...state, [key]: value });
@@ -98,20 +98,22 @@ export function ItemFilterBar({ items, state, onChange, shownCount, path, gear }
           ))}
           <option value="none">Без уровня</option>
         </select>
+        {bonusKeys.length > 0 && (
+          <select value={String(state.bonus)} onChange={(e) => set('bonus', e.target.value as ItemFilterState['bonus'])}>
+            <option value="all">Любой бонус</option>
+            {bonusKeys.map((k) => (
+              <option key={k} value={k}>
+                Бонус: {bonusLabel(k, path)}
+              </option>
+            ))}
+          </select>
+        )}
         {gear && (
           <>
             <select value={state.equipped} onChange={(e) => set('equipped', e.target.value as ItemFilterState['equipped'])}>
               <option value="all">Надетые и нет</option>
               <option value="on">Только надетые</option>
               <option value="off">Только не надетые</option>
-            </select>
-            <select value={String(state.bonus)} onChange={(e) => set('bonus', e.target.value as ItemFilterState['bonus'])}>
-              <option value="all">Любой бонус</option>
-              {bonusKeys.map((k) => (
-                <option key={k} value={k}>
-                  Бонус: {bonusLabel(k, path)}
-                </option>
-              ))}
             </select>
             <select value={String(state.slot)} onChange={(e) => set('slot', e.target.value as ItemFilterState['slot'])}>
               <option value="all">Любой слот</option>

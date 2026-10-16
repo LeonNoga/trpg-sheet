@@ -39,6 +39,7 @@ export function StatsEditor({ character, onChangeStat }: Props) {
         <StatPill
           key={key}
           statKey={key}
+          path={character.path}
           label={key === 'resource' ? PATH_RESOURCE_LABEL[character.path] : STAT_LABELS[key]}
           base={character.baseStats[key]}
           bonus={bonusSum(character, key)}

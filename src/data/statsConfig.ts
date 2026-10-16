@@ -132,17 +132,18 @@ export const CLASS_RARITY_LEVEL_POINTS: Record<Rarity, number> = {
 };
 
 /** До выбора класса (редкость не задана) уровень даёт +2, как у обычного класса. */
-export function levelPointsRate(classRarity?: Rarity): number {
+export function levelPointsRate(classRarity?: Rarity, uniqueRate?: number): number {
+  if (classRarity === 'unique' && uniqueRate != null) return uniqueRate;
   return CLASS_RARITY_LEVEL_POINTS[classRarity ?? 'common'];
 }
 
 // Пороги суммарного значения характеристики (база + снаряжение). На 50 открывается именной
-// бонус; на 150 — второй уровень подсветки, сами бонусы автор пропишет позже.
+// бонус; на 100 — второй уровень подсветки, сами бонусы автор пропишет позже.
 export const STAT_MILESTONE_BONUS = 50;
-export const STAT_MILESTONE_HIGH = 150;
+export const STAT_MILESTONE_HIGH = 100;
 
-export function statMilestone(total: number): 50 | 150 | null {
-  if (total >= STAT_MILESTONE_HIGH) return 150;
+export function statMilestone(total: number): 50 | 100 | null {
+  if (total >= STAT_MILESTONE_HIGH) return 100;
   if (total >= STAT_MILESTONE_BONUS) return 50;
   return null;
 }
@@ -152,27 +153,33 @@ export interface MilestoneEffect {
   text: string;
 }
 
+// Ресурс пути в родительном падеже — для текстов вида «затраты Духа».
+const RESOURCE_GENITIVE: Record<Path, string> = { magic: 'Духа', genetic: 'Биоэнергии', tech: 'Энергии' };
+
 // Бонусы порога 50. У Мудрости и Харизмы бонуса пока нет — они только подсвечиваются.
-const MILESTONE_EFFECTS: Partial<Record<StatKey, MilestoneEffect>> = {
-  strength: { title: 'Сокрушительная мощь', text: 'удвоение кубов урона и атаки в ближнем бою' },
-  agility: { title: 'Танец клинков', text: 'две атаки за одно действие без штрафа за многократность' },
-  endurance: { title: 'Второе дыхание', text: '1/длительный отдых: полное восстановление Выносливости' },
-  vitality: { title: 'Отказ умирать', text: '1/длительный отдых: при смерти остаётесь с 1 хитом' },
-  fortitude: {
+const MILESTONE_EFFECTS: Partial<Record<StatKey, (path: Path) => MilestoneEffect>> = {
+  strength: () => ({ title: 'Сокрушительная мощь', text: 'удвоение кубов урона и атаки в ближнем бою' }),
+  agility: () => ({ title: 'Танец клинков', text: 'две атаки за одно действие без штрафа за многократность' }),
+  endurance: () => ({ title: 'Второе дыхание', text: '1/длительный отдых: полное восстановление Выносливости' }),
+  vitality: () => ({ title: 'Отказ умирать', text: '1/длительный отдых: при смерти остаётесь с 1 хитом' }),
+  fortitude: () => ({
     title: 'Каменная кожа',
     text: 'постоянно: половина физического урона (колющий, рубящий, режущий, дробящий)',
-  },
-  intellect: { title: 'Когнитивный прорыв', text: '1 раз в час: способность выполняется бесплатно (0 действий)' },
-  perception: { title: 'Абсолютный уклонист', text: 'бесплатная контратака при промахе врага' },
-  resource: {
+  }),
+  intellect: (path) => ({
+    title: 'Когнитивный прорыв',
+    text: `1 раз в день: способность выполняется бесплатно (0 действий); постоянные затраты на способности, требующие ${RESOURCE_GENITIVE[path]}, снижаются на 25%`,
+  }),
+  perception: () => ({ title: 'Абсолютный уклонист', text: 'бесплатная контратака при промахе врага' }),
+  resource: () => ({
     title: 'Энергетический синдикат',
     text: '1/длительный отдых: полное восстановление ресурса и снятие Ментального Истощения',
-  },
+  }),
 };
 
-/** Бонус порога 50 для характеристики, если он достигнут (на 150 и выше он продолжает действовать). */
-export function milestoneEffect(stat: StatKey, total: number): MilestoneEffect | null {
-  return total >= STAT_MILESTONE_BONUS ? (MILESTONE_EFFECTS[stat] ?? null) : null;
+/** Бонус порога 50 для характеристики, если он достигнут (на 100 и выше он продолжает действовать). */
+export function milestoneEffect(stat: StatKey, total: number, path: Path): MilestoneEffect | null {
+  return total >= STAT_MILESTONE_BONUS ? (MILESTONE_EFFECTS[stat]?.(path) ?? null) : null;
 }
 
 // Сколько слотов в списке ДНК / Технологии / Умения открыто на данном уровне.
@@ -185,11 +192,6 @@ export const ABILITY_SLOT_STEPS: { level: number; slots: number }[] = [
 
 export function abilitySlotLimit(level: number): number {
   return ABILITY_SLOT_STEPS.filter((s) => level >= s.level).at(-1)!.slots;
-}
-
-/** Ближайший следующий порог расширения лимита (или null на максимуме). */
-export function nextAbilitySlotStep(level: number): { level: number; slots: number } | null {
-  return ABILITY_SLOT_STEPS.find((s) => s.level > level) ?? null;
 }
 
 // Пороги дней успешной тренировки и справочные TN для перехода между степенями владения навыком.

@@ -145,7 +145,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       `Установить уровень ${clamped} вручную?
 
 Опыт будет сброшен в 0. Очки характеристик за уровни ` +
-        `изменятся на ${diff >= 0 ? '+' : ''}${diff} (по +${levelPointsRate(character!.classRarity)} за уровень для текущей ` +
+        `изменятся на ${diff >= 0 ? '+' : ''}${diff} (по +${levelPointsRate(character!.classRarity, character!.uniqueLevelPoints)} за уровень для текущей ` +
         `редкости класса). Награда мастера сохранится.`,
     );
     if (!confirmed) {
@@ -208,7 +208,11 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <select
               value={character.classRarity ?? ''}
               onChange={(e) =>
-                patch((c) => ({ ...c, classRarity: (e.target.value || undefined) as Rarity | undefined }))
+                patch((c) => {
+                  const classRarity = (e.target.value || undefined) as Rarity | undefined;
+                  // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
+                  return { ...c, classRarity, uniqueLevelPoints: classRarity === 'unique' ? (c.uniqueLevelPoints ?? 15) : c.uniqueLevelPoints };
+                })
               }
               title="Определяет, сколько очков характеристик даёт каждый новый уровень"
             >
@@ -256,11 +260,24 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           </div>
           <div className="field">
             <label>Бонус очков характеристик</label>
-            <input
-              readOnly
-              value={`+${levelPointsRate(character.classRarity)} за уровень`}
-              title="Зависит от редкости класса и применяется только к новым уровням"
-            />
+            {character.classRarity === 'unique' ? (
+              <div className="xp-add-row">
+                <span style={{ alignSelf: 'center' }}>+</span>
+                <NumberField
+                  min={0}
+                  value={character.uniqueLevelPoints ?? 15}
+                  onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
+                  title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
+                />
+                <span style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}>за уровень</span>
+              </div>
+            ) : (
+              <input
+                readOnly
+                value={`+${levelPointsRate(character.classRarity)} за уровень`}
+                title="Зависит от редкости класса и применяется только к новым уровням"
+              />
+            )}
           </div>
         </div>
       </div>

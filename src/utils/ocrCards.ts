@@ -74,3 +74,29 @@ export function itemFromCard(result: OcrResult, image: string, fallbackName: str
     image,
   };
 }
+
+/**
+ * Обновляет уже существующую карточку по результату нового распознавания её фото.
+ * id, тип (предмет/умение), «надето» и картинка сохраняются; распознаваемые поля и бонусы
+ * заменяются свежими, а то, что OCR найти не смог, остаётся как было. Слот, выбранный руками, не трогаем.
+ */
+export function reparsedItem(item: EquipItem, result: OcrResult): EquipItem {
+  const parsed = parseCardFields(result);
+  const isAbility = item.kind === 'ability';
+  return {
+    ...item,
+    name: parsed.name || item.name,
+    path: parsed.path ?? item.path,
+    slot: isAbility ? item.slot : (item.slot ?? parsed.slot),
+    rarity: parsed.rarity ?? item.rarity,
+    category: isAbility ? (parsed.category ?? item.category) : item.category,
+    level: parsed.level ?? item.level,
+    flavorText: parsed.flavorText ?? item.flavorText,
+    effect: result.text || item.effect,
+    activation: isAbility ? (parsed.activation ?? item.activation) : item.activation,
+    cooldown: isAbility ? (parsed.cooldown ?? item.cooldown) : item.cooldown,
+    cast: isAbility ? (parsed.cast ?? item.cast) : item.cast,
+    duration: isAbility ? (parsed.duration ?? item.duration) : item.duration,
+    statBonuses: parsed.statBonuses ?? {},
+  };
+}

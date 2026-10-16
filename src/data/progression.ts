@@ -22,7 +22,7 @@ export function statPointsBudget(character: Pick<Character, 'levelPoints' | 'bon
  * считается по текущей редкости класса (прошлые уровни задним числом не пересчитываются).
  */
 export function levelPointsAfterManualLevel(character: Character, newLevel: number): number {
-  const delta = (newLevel - character.level) * levelPointsRate(character.classRarity);
+  const delta = (newLevel - character.level) * levelPointsRate(character.classRarity, character.uniqueLevelPoints);
   return Math.max(0, character.levelPoints + delta);
 }
 
@@ -30,7 +30,7 @@ export function levelPointsAfterManualLevel(character: Character, newLevel: numb
  * levelling up as many times as the banked XP allows. */
 export function applyExperience(character: Character): Character {
   let { level, experience, levelPoints } = character;
-  const rate = levelPointsRate(character.classRarity);
+  const rate = levelPointsRate(character.classRarity, character.uniqueLevelPoints);
 
   while (level < MAX_LEVEL) {
     const required = xpRequiredFor(level);

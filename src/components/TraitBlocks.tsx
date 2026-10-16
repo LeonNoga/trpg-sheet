@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { abilitySlotLimit, nextAbilitySlotStep } from '../data/statsConfig';
+import { abilitySlotLimit } from '../data/statsConfig';
 import type { TraitList } from '../types';
 
 interface BonusesProps {
@@ -82,7 +82,6 @@ const BASE_FREE_LINES = 5;
 
 export function DnaListsCard({ titles, lists, level, onChange }: DnaListsProps) {
   const limit = abilitySlotLimit(level);
-  const nextStep = nextAbilitySlotStep(level);
 
   function updateList(id: string, updater: (l: TraitList) => TraitList) {
     onChange(lists.map((l) => (l.id === id ? updater(l) : l)));
@@ -111,12 +110,8 @@ export function DnaListsCard({ titles, lists, level, onChange }: DnaListsProps) 
           return (
             <div key={list.id} style={{ flex: 1, minWidth: 200 }}>
               <h4>{titles[idx]}</h4>
-              {limited && (
-                <p className={`slot-limit-note ${used > limit ? 'over' : ''}`}>
-                  Слотов открыто: {limit}
-                  {used > limit ? ` (занято ${used} — больше лимита)` : ''}
-                  {nextStep ? ` · ${nextStep.slots} слотов с ${nextStep.level} уровня` : ' · максимум'}
-                </p>
+              {limited && used > limit && (
+                <p className="slot-limit-note over">Занято слотов: {used} — больше, чем открыто на этом уровне.</p>
               )}
               {Array.from({ length: shown }, (_, i) => (
                 <div

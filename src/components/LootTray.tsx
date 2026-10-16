@@ -3,14 +3,16 @@ import { useAppData } from '../state/AppDataContext';
 import { ItemCard } from './ItemCard';
 import { ItemEditor } from './ItemEditor';
 import { createBlankEquipItem } from '../data/defaults';
-import { ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER } from '../data/statsConfig';
+import { ALL_BONUS_KEYS, ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER, bonusLabel } from '../data/statsConfig';
 import { exportTray, importTrayFromFile } from '../storage/exportImport';
 import { BulkCardUpload } from './BulkCardUpload';
-import type { EquipItem, ItemPath, Rarity } from '../types';
+import { SelectionToolbar } from './SelectionToolbar';
+import type { BonusKey, EquipItem, ItemPath, Rarity } from '../types';
 
 type KindFilter = 'all' | 'item' | 'ability';
 type RarityFilter = 'all' | 'none' | Rarity;
 type PathFilter = 'all' | ItemPath;
+type BonusFilter = 'all' | BonusKey;
 
 const PATH_FILTER_ORDER: ItemPath[] = ['genetic', 'magic', 'tech', 'none'];
 
@@ -22,10 +24,12 @@ export function LootTray() {
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [pathFilter, setPathFilter] = useState<PathFilter>('all');
+  const [bonusFilter, setBonusFilter] = useState<BonusFilter>('all');
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const trayInput = useRef<HTMLInputElement>(null);
 
-  const filtersActive = kindFilter !== 'all' || rarityFilter !== 'all' || pathFilter !== 'all' || query.trim() !== '';
+  const filtersActive = kindFilter !== 'all' || rarityFilter !== 'all' || pathFilter !== 'all' || bonusFilter !== 'all' || query.trim() !== '';
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -33,10 +37,16 @@ export function LootTray() {
       if (kindFilter !== 'all' && item.kind !== kindFilter) return false;
       if (rarityFilter === 'none' ? !!item.rarity : rarityFilter !== 'all' && item.rarity !== rarityFilter) return false;
       if (pathFilter !== 'all' && (item.path ?? 'none') !== pathFilter) return false;
+      if (bonusFilter !== 'all' && !item.statBonuses[bonusFilter]) return false;
       if (q && !`${item.name} ${item.category ?? ''} ${item.effect ?? ''}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [lootTray, kindFilter, rarityFilter, pathFilter, query]);
+  }, [lootTray, kindFilter, rarityFilter, pathFilter, bonusFilter, query]);
+
+  const bonusKeys = useMemo(
+    () => ALL_BONUS_KEYS.filter((k) => lootTray.some((i) => i.statBonuses[k])),
+    [lootTray],
+  );
 
   const editingItem = editingId ? lootTray.find((i) => i.id === editingId) ?? null : null;
 
@@ -44,6 +54,7 @@ export function LootTray() {
     setKindFilter('all');
     setRarityFilter('all');
     setPathFilter('all');
+    setBonusFilter('all');
     setQuery('');
   }
 
@@ -157,6 +168,16 @@ export function LootTray() {
             </option>
           ))}
         </select>
+        {bonusKeys.length > 0 && (
+          <select value={bonusFilter} onChange={(e) => setBonusFilter(e.target.value as BonusFilter)}>
+            <option value="all">Любой бонус</option>
+            {bonusKeys.map((k) => (
+              <option key={k} value={k}>
+                Бонус: {bonusLabel(k)}
+              </option>
+            ))}
+          </select>
+        )}
         {filtersActive && (
           <button className="btn btn-sm btn-ghost" onClick={resetFilters}>
             Сбросить
@@ -166,6 +187,14 @@ export function LootTray() {
       <p className="muted">
         Показано {filtered.length} из {lootTray.length}
       </p>
+
+      <SelectionToolbar
+        allItems={lootTray}
+        visibleItems={filtered}
+        selected={selected}
+        onSelectedChange={setSelected}
+        onChangeAll={updateLootTray}
+      />
 
       {lootTray.length === 0 && <p className="muted">Трей пуст.</p>}
 
@@ -177,6 +206,15 @@ export function LootTray() {
             <ItemCard
               item={item}
               showEquipToggle={false}
+              selected={selected.has(item.id)}
+              onSelect={(on) =>
+                setSelected((prev) => {
+                  const next = new Set(prev);
+                  if (on) next.add(item.id);
+                  else next.delete(item.id);
+                  return next;
+                })
+              }
               onToggleEquipped={() => {}}
               onEdit={() => setEditingId(item.id)}
               onDelete={() => remove(item.id)}
