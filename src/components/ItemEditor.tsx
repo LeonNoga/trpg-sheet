@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ALL_BONUS_KEYS,
   bonusLabel,
@@ -25,6 +25,7 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<EquipItem>(item);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
+  const camera = useRef<HTMLInputElement>(null);
 
   const bonusEntries = Object.entries(draft.statBonuses) as [BonusKey, number][];
 
@@ -194,7 +195,20 @@ ${text}` : text,
 
       <div className="field">
         <label>Фото (необязательно)</label>
-        <input type="file" accept="image/*" onChange={(e) => handleImage(e.target.files?.[0])} />
+        <div className="row">
+          <input type="file" accept="image/*" onChange={(e) => handleImage(e.target.files?.[0])} />
+          <button type="button" className="btn btn-sm" onClick={() => camera.current?.click()}>
+            Сфотографировать
+          </button>
+          <input
+            ref={camera}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={(e) => handleImage(e.target.files?.[0])}
+          />
+        </div>
         {draft.image && (
           <>
             <img src={draft.image} alt="" className="item-image" style={{ maxHeight: 160 }} />

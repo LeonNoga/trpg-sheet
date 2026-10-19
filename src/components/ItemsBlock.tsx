@@ -57,6 +57,16 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   return (
     <div className="card">
       <h3 className="card-title">{title}</h3>
+      {!creating && (
+        <div className="top-actions">
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>
+            {addLabel}
+          </button>
+        </div>
+      )}
+      {creating && (
+        <ItemEditor item={createBlankEquipItem(kind)} path={path} onSave={saveNew} onCancel={() => setCreating(false)} />
+      )}
       {toolbar}
 
       <ItemFilterBar
@@ -94,16 +104,6 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
             onDelete={() => remove(item.id)}
           />
         ),
-      )}
-
-      {creating && (
-        <ItemEditor item={createBlankEquipItem(kind)} path={path} onSave={saveNew} onCancel={() => setCreating(false)} />
-      )}
-
-      {!creating && (
-        <button className="btn" onClick={() => setCreating(true)}>
-          {addLabel}
-        </button>
       )}
     </div>
   );

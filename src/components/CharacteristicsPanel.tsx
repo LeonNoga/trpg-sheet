@@ -9,7 +9,15 @@ import {
   STAT_TO_DERIVED,
   poolKeyFor,
 } from '../data/statsConfig';
-import { bonusSum, computeDerivedStats, currentInitiativeStat, currentResistanceStat } from '../data/formulas';
+import {
+  bonusSources,
+  bonusSum,
+  computeDerivedStats,
+  currentInitiativeStat,
+  currentResistanceStat,
+  derivedBreakdown,
+} from '../data/formulas';
+import { DerivedBreakdownCard, HoverCard } from './HoverCard';
 import { NumberField } from './NumberField';
 import { StatPill } from './StatPill';
 import type { Character, DerivedKey, InitiativeSource, ResistanceSource, StatKey } from '../types';
@@ -99,6 +107,7 @@ export function CharacteristicsPanel({
         label={statLabelFor(statKey)}
         base={character.baseStats[statKey]}
         bonus={bonusSum(character, statKey)}
+        sources={bonusSources(character, statKey)}
         onChange={(v) => onChangeStat(statKey, v)}
       />
     );
@@ -115,7 +124,10 @@ export function CharacteristicsPanel({
             <div className="char-row" key={statKey}>
               {statPill(statKey)}
               {poolKey ? (
-                <div className="pool-tile">
+                <HoverCard
+                  className="pool-tile"
+                  card={<DerivedBreakdownCard label={`${derivedLabel(derivedKey, character)} (максимум)`} breakdown={derivedBreakdown(character, derivedKey)} />}
+                >
                   <div className="pool-tile-values">
                     <NumberField value={character.pools[poolKey]} onChange={(v) => onChangePool(poolKey, v)} />
                     <span className="pool-tile-max">/ {derived[poolKey]}</span>
@@ -126,9 +138,12 @@ export function CharacteristicsPanel({
                     onChange={(v) => onChangePool(poolKey, v)}
                   />
                   <div className="label">{derivedLabel(derivedKey, character)}</div>
-                </div>
+                </HoverCard>
               ) : (
-                <div className="derived-tile">
+                <HoverCard
+                  className="derived-tile"
+                  card={<DerivedBreakdownCard label={derivedLabel(derivedKey, character)} breakdown={derivedBreakdown(character, derivedKey)} />}
+                >
                   <div className="value">{derived[derivedKey]}</div>
                   <div className="label">{derivedLabel(derivedKey, character)}</div>
                   {derivedKey === 'initiative' && (
@@ -167,7 +182,7 @@ export function CharacteristicsPanel({
                         по {STAT_DATIVE[currentResistanceStat(character)]}
                       </div>
                     ))}
-                </div>
+                </HoverCard>
               )}
             </div>
           );

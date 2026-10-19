@@ -1,4 +1,4 @@
-import { RESISTANCE_ALLOWED_STATS, STAT_ORDER } from './statsConfig';
+import { PATH_RESOURCE_LABEL, RESISTANCE_ALLOWED_STATS, STAT_ORDER } from './statsConfig';
 import type { BonusKey, Character, DerivedKey, EquipItem, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
 export function modifier(total: number): number {
@@ -81,4 +81,101 @@ export function computeDerivedStats(character: Character): DerivedStats {
     staminaPoints: totalStat(character, 'endurance') + bonus('staminaPoints'),
     resourcePoints: totalStat(character, 'resource') + bonus('resourcePoints'),
   };
+}
+
+export interface BonusSource {
+  name: string;
+  value: number;
+}
+
+/** Какие надетые предметы/умения и сколько именно дают к характеристике или показателю (в т.ч. штрафы). */
+export function bonusSources(character: Character, key: BonusKey): BonusSource[] {
+  return equippedBonusSources(character)
+    .filter((it) => (it.statBonuses[key] ?? 0) !== 0)
+    .map((it) => ({ name: it.name || 'Без названия', value: it.statBonuses[key] ?? 0 }));
+}
+
+export interface DerivedPart {
+  label: string;
+  value: number;
+}
+
+export interface DerivedBreakdown {
+  /** Слагаемые расчёта без предметов: база формулы, модификаторы, уровень. */
+  parts: DerivedPart[];
+  /** Пояснение к формуле (например, по какой характеристике считается инициатива). */
+  note?: string;
+  items: BonusSource[];
+  total: number;
+}
+
+/** Из чего складывается показатель — то же, что считает computeDerivedStats, но по слагаемым. */
+export function derivedBreakdown(character: Character, key: DerivedKey): DerivedBreakdown {
+  const mod = (stat: StatKey) => modifier(totalStat(character, stat));
+  const items = bonusSources(character, key);
+  let parts: DerivedPart[];
+  let note: string | undefined;
+
+  switch (key) {
+    case 'hp':
+      parts = [
+        { label: 'Живучесть', value: totalStat(character, 'vitality') },
+        { label: 'Уровень', value: character.level },
+      ];
+      break;
+    case 'defense':
+      parts = [
+        { label: 'База', value: 18 },
+        { label: 'Мод. Стойкости', value: mod('fortitude') },
+      ];
+      break;
+    case 'speed':
+      parts = [
+        { label: 'База', value: 5 },
+        { label: 'Мод. Ловкости', value: mod('agility') },
+      ];
+      break;
+    case 'passivePerception':
+      parts = [
+        { label: 'База', value: 18 },
+        { label: 'Мод. Восприятия', value: mod('perception') },
+      ];
+      break;
+    case 'initiative': {
+      const picked = currentInitiativeStat(character);
+      parts = [{ label: `Мод. ${STAT_NAMES[picked]}`, value: mod(picked) }];
+      note =
+        `Ловкость ${signed(mod('agility'))}, Интеллект ${signed(mod('intellect'))}, Восприятие ${signed(mod('perception'))}` +
+        (character.initiativeSource === 'auto' || !character.initiativeSource ? ' — берётся наибольший' : ' — выбрано вручную');
+      break;
+    }
+    case 'resistance': {
+      const picked = currentResistanceStat(character);
+      parts = [
+        { label: 'База', value: 18 },
+        { label: `Мод. ${STAT_NAMES[picked]}`, value: mod(picked) },
+      ];
+      break;
+    }
+    case 'staminaPoints':
+      parts = [{ label: 'Выносливость', value: totalStat(character, 'endurance') }];
+      break;
+    case 'resourcePoints':
+      parts = [{ label: PATH_RESOURCE_LABEL[character.path], value: totalStat(character, 'resource') }];
+      break;
+  }
+
+  const total = parts.reduce((s, p) => s + p.value, 0) + items.reduce((s, i) => s + i.value, 0);
+  return { parts, note, items, total };
+}
+
+const STAT_NAMES: Record<'agility' | 'intellect' | 'perception' | 'strength', string> = {
+  agility: 'Ловкости',
+  intellect: 'Интеллекта',
+  perception: 'Восприятия',
+  strength: 'Силы',
+};
+
+function signed(n: number): string {
+  return n >= 0 ? `+${n}` : String(n);
 }

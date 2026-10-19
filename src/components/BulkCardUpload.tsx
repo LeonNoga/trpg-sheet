@@ -25,10 +25,12 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
   const [bulk, setBulk] = useState<BulkState | null>(null);
   const cancelRef = useRef(false);
   const input = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
 
   async function handleFiles(fileList: FileList | null) {
     const files = Array.from(fileList ?? []).filter((f) => f.type.startsWith('image/'));
     if (input.current) input.current.value = '';
+    if (camera.current) camera.current.value = '';
     if (files.length === 0) return;
 
     cancelRef.current = false;
@@ -77,9 +79,22 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
 
   return (
     <div style={{ marginBottom: 12 }}>
-      <button className="btn btn-primary" onClick={() => input.current?.click()} disabled={bulk?.running}>
-        {label}
-      </button>
+      <div className="top-actions" style={{ marginBottom: 0 }}>
+        <button className="btn btn-primary" onClick={() => input.current?.click()} disabled={bulk?.running}>
+          {label}
+        </button>
+        <button className="btn" onClick={() => camera.current?.click()} disabled={bulk?.running}>
+          Сфотографировать
+        </button>
+      </div>
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={(e) => handleFiles(e.target.files)}
+      />
       <input
         ref={input}
         type="file"
