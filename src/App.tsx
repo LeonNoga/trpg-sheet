@@ -6,6 +6,7 @@ import { CharacterSheet } from './components/CharacterSheet';
 import { ReferenceSheetScreen } from './components/ReferenceSheetScreen';
 import { GMView } from './components/GMView';
 import { BackupPanel } from './components/BackupPanel';
+import { ExportFallbackDialog } from './components/FileDialogs';
 import type { Roster } from './types';
 
 type View =
@@ -40,6 +41,8 @@ function Shell() {
           </button>
         </nav>
       </header>
+
+      <ExportFallbackDialog />
 
       <main className="app-main">
         {view.screen === 'list' && (

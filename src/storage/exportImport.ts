@@ -1,18 +1,7 @@
 import { normalizeCharacter } from '../data/defaults';
 import { v4 as uuid } from 'uuid';
+import { saveJsonFile } from './saveFile';
 import type { BackupFile, Character, CharacterExportFile, EquipItem, TrayFile } from '../types';
-
-function downloadJson(fileName: string, payload: unknown): void {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
 
 async function readJson(file: File): Promise<unknown> {
   const text = await file.text();
@@ -23,14 +12,14 @@ async function readJson(file: File): Promise<unknown> {
   }
 }
 
-export function exportCharacter(character: Character): void {
+export function exportCharacter(character: Character): Promise<void> {
   const payload: CharacterExportFile = {
     fileType: 'trpg-sheet-character',
     version: 1,
     character,
   };
   const safeName = character.characterName.trim().replace(/[\\/:*?"<>|]+/g, '_') || 'character';
-  downloadJson(`${safeName}.json`, payload);
+  return saveJsonFile(`${safeName}.json`, payload);
 }
 
 export async function importCharacterFromFile(file: File): Promise<Character> {
@@ -50,7 +39,7 @@ export async function importCharacterFromFile(file: File): Promise<Character> {
   return normalizeCharacter(character);
 }
 
-export function exportBackup(characters: Character[], lootTray: EquipItem[]): void {
+export function exportBackup(characters: Character[], lootTray: EquipItem[]): Promise<void> {
   const payload: BackupFile = {
     fileType: 'trpg-sheet-backup',
     version: 1,
@@ -59,7 +48,7 @@ export function exportBackup(characters: Character[], lootTray: EquipItem[]): vo
     lootTray,
   };
   const date = new Date().toISOString().slice(0, 10);
-  downloadJson(`trpg-backup-${date}.json`, payload);
+  return saveJsonFile(`trpg-backup-${date}.json`, payload);
 }
 
 export async function importBackupFromFile(file: File): Promise<{ characters: Character[]; lootTray: EquipItem[] }> {
@@ -77,7 +66,7 @@ export async function importBackupFromFile(file: File): Promise<{ characters: Ch
   return { characters, lootTray: Array.isArray(data.lootTray) ? data.lootTray : [] };
 }
 
-export function exportTray(items: EquipItem[]): void {
+export function exportTray(items: EquipItem[]): Promise<void> {
   const payload: TrayFile = {
     fileType: 'trpg-sheet-tray',
     version: 1,
@@ -85,7 +74,7 @@ export function exportTray(items: EquipItem[]): void {
     items,
   };
   const date = new Date().toISOString().slice(0, 10);
-  downloadJson(`trpg-tray-${date}.json`, payload);
+  return saveJsonFile(`trpg-tray-${date}.json`, payload);
 }
 
 /** Читает файл трея; записи с битой структурой подтягиваются к валидному виду или отбрасываются. */

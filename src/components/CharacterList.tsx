@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useAppData } from '../state/AppDataContext';
 import { PATH_LABELS } from '../data/statsConfig';
 import { importCharacterFromFile } from '../storage/exportImport';
+import { PasteImportButton } from './FileDialogs';
 import type { Character, Roster } from '../types';
 
 interface Props {
@@ -41,6 +42,7 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
         <button className="btn" onClick={() => fileInput.current?.click()}>
           {importLabel ?? 'Импортировать JSON'}
         </button>
+        <PasteImportButton onFile={handleImport} />
         <input
           ref={fileInput}
           type="file"

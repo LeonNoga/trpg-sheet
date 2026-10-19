@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useAppData } from '../state/AppDataContext';
+import { PasteImportButton } from './FileDialogs';
 import { exportBackup, importBackupFromFile } from '../storage/exportImport';
 
 export function BackupPanel() {
@@ -38,6 +39,7 @@ export function BackupPanel() {
         <button className="btn" onClick={() => fileInput.current?.click()}>
           Восстановить из копии
         </button>
+        <PasteImportButton onFile={handleRestore} label="Восстановить текстом" />
         <input
           ref={fileInput}
           type="file"

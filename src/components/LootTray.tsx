@@ -6,6 +6,7 @@ import { createBlankEquipItem } from '../data/defaults';
 import { ALL_BONUS_KEYS, ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER, bonusLabel } from '../data/statsConfig';
 import { exportTray, importTrayFromFile } from '../storage/exportImport';
 import { BulkCardUpload } from './BulkCardUpload';
+import { PasteImportButton } from './FileDialogs';
 import { SelectionToolbar } from './SelectionToolbar';
 import type { BonusKey, EquipItem, ItemPath, Rarity } from '../types';
 
@@ -124,6 +125,7 @@ export function LootTray() {
         <button className="btn" onClick={() => trayInput.current?.click()}>
           Импорт трея
         </button>
+        <PasteImportButton onFile={handleImportTray} label="Импорт текстом" />
         <input
           ref={trayInput}
           type="file"
