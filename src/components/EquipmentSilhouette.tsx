@@ -14,6 +14,8 @@ type Shape =
 interface SlotDef {
   key: string;
   type: SlotType;
+  /** Какие типы предметов можно ставить в слот (по умолчанию — только свой). Для рук: оружие и щит. */
+  accepts?: SlotType[];
   label: string;
   capacity: number;
   side: 'L' | 'R';
@@ -39,6 +41,9 @@ function pair(shape: Extract<Shape, { t: 'ellipse' | 'line' | 'rect' }>): Shape[
 }
 
 // Слоты и их положение — по бумажной карточке: слева очки/плащ/…/кольца 1–5, справа головной убор/серьги/…/обувь.
+const HAND_TYPES: SlotType[] = ['weapon', 'twohanded', 'shield'];
+const HAND_KEYS = ['handR', 'handL'];
+
 const SLOTS: SlotDef[] = [
   { key: 'glasses', type: 'glasses', label: 'Очки/линзы', capacity: 1, side: 'L', row: 0, anchor: [472, 61], zone: [{ t: 'rect', x: 464, y: 52, w: 72, h: 16, r: 8 }] },
   { key: 'cloak', type: 'cloak', label: 'Плащ', capacity: 1, side: 'L', row: 1, anchor: [426, 148], zone: [{ t: 'rect', x: 420, y: 138, w: 160, h: 20, r: 10 }] },
@@ -54,8 +59,8 @@ const SLOTS: SlotDef[] = [
       { t: 'ellipse', cx: 325, cy: 424, rx: 6, ry: 6 },
     ],
   },
-  { key: 'thigh', type: 'thigh', label: 'Набедренник', capacity: 1, side: 'L', row: 7, anchor: [444, 480], zone: pair({ t: 'line', x1: 466, y1: 432, x2: 458, y2: 520, w: 52 }) },
-  { key: 'shins', type: 'shins', label: 'Поножи', capacity: 1, side: 'L', row: 8, anchor: [436, 650], zone: pair({ t: 'line', x1: 446, y1: 596, x2: 440, y2: 696, w: 36 }) },
+  { key: 'thigh', type: 'thigh', label: 'Набедренник', capacity: 1, side: 'L', row: 8, anchor: [444, 480], zone: pair({ t: 'line', x1: 466, y1: 432, x2: 458, y2: 520, w: 52 }) },
+  { key: 'shins', type: 'shins', label: 'Поножи', capacity: 1, side: 'L', row: 9, anchor: [436, 650], zone: pair({ t: 'line', x1: 446, y1: 596, x2: 440, y2: 696, w: 36 }) },
 
   { key: 'headwear', type: 'headwear', label: 'Головной убор', capacity: 1, side: 'R', row: 0, anchor: [540, 36], zone: [{ t: 'ellipse', cx: 500, cy: 36, rx: 42, ry: 24 }] },
   { key: 'earrings', type: 'earrings', label: 'Серьги', capacity: 4, side: 'R', row: 1, anchor: [548, 86], zone: pair({ t: 'ellipse', cx: 459, cy: 84, rx: 8, ry: 10 }) },
@@ -71,8 +76,16 @@ const SLOTS: SlotDef[] = [
       { t: 'ellipse', cx: 675, cy: 424, rx: 6, ry: 6 },
     ],
   },
-  { key: 'knees', type: 'knees', label: 'Наколенники', capacity: 1, side: 'R', row: 7, anchor: [572, 561], zone: pair({ t: 'ellipse', cx: 451, cy: 561, rx: 24, ry: 22 }) },
-  { key: 'boots', type: 'boots', label: 'Обувь', capacity: 1, side: 'R', row: 8, anchor: [578, 738], zone: pair({ t: 'ellipse', cx: 438, cy: 738, rx: 30, ry: 28 }) },
+  { key: 'knees', type: 'knees', label: 'Наколенники', capacity: 1, side: 'R', row: 8, anchor: [572, 561], zone: pair({ t: 'ellipse', cx: 451, cy: 561, rx: 24, ry: 22 }) },
+  { key: 'boots', type: 'boots', label: 'Обувь', capacity: 1, side: 'R', row: 9, anchor: [578, 738], zone: pair({ t: 'ellipse', cx: 438, cy: 738, rx: 30, ry: 28 }) },
+  {
+    key: 'handR', type: 'weapon', accepts: HAND_TYPES, label: 'Правая рука', capacity: 1, side: 'L', row: 7, anchor: [300, 447],
+    zone: [{ t: 'ellipse', cx: 299, cy: 448, rx: 13, ry: 19, rot: 20 }],
+  },
+  {
+    key: 'handL', type: 'weapon', accepts: HAND_TYPES, label: 'Левая рука', capacity: 1, side: 'R', row: 7, anchor: [700, 447],
+    zone: [{ t: 'ellipse', cx: 701, cy: 448, rx: 13, ry: 19, rot: -20 }],
+  },
 ];
 
 function renderShape(shape: Shape, key: string | number, expand: number, props: Record<string, unknown>) {
@@ -137,7 +150,7 @@ function renderShape(shape: Shape, key: string | number, expand: number, props: 
 
 const BOX_W = 210;
 const BOX_H = 58;
-const boxPos = (slot: SlotDef) => ({ x: slot.side === 'L' ? 10 : 780, y: 8 + slot.row * 80 });
+const boxPos = (slot: SlotDef) => ({ x: slot.side === 'L' ? 10 : 780, y: 8 + slot.row * 72 });
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
@@ -175,6 +188,18 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
   const isOver = (slot: SlotDef) => idsIn(slot.key).length > slot.capacity;
 
   function toggle(slotKey: string, itemId: string) {
+    // Двуручное оружие занимает обе руки сразу: ставится и снимается в обеих.
+    const picked = character.items.find((i) => i.id === itemId);
+    if (picked?.slot === 'twohanded' && HAND_KEYS.includes(slotKey)) {
+      const has = idsIn(slotKey).includes(itemId);
+      const next = { ...character.equippedSlots };
+      for (const key of HAND_KEYS) {
+        const rest = (next[key] ?? []).filter((id) => id !== itemId);
+        next[key] = has ? rest : [...rest, itemId];
+      }
+      onChange(next);
+      return;
+    }
     const current = idsIn(slotKey);
     const next = current.includes(itemId) ? current.filter((id) => id !== itemId) : [...current, itemId];
     onChange({ ...character.equippedSlots, [slotKey]: next });
@@ -187,7 +212,8 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
     if (showAll) return character.items;
     const placed = new Set(idsIn(slot.key));
     // Подходящие по типу слота + уже стоящие в этом слоте (чтобы их можно было снять).
-    return character.items.filter((i) => i.slot === slot.type || placed.has(i.id));
+    const accepted = slot.accepts ?? [slot.type];
+    return character.items.filter((i) => (i.slot !== undefined && accepted.includes(i.slot)) || placed.has(i.id));
   }
 
   return (
@@ -323,7 +349,7 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
           )}
           {candidatesFor(active).length === 0 && (
             <p className="muted">
-              Нет предметов с типом слота «{SLOT_TYPE_LABELS[active.type]}». Укажите тип слота в карточке предмета или
+              Нет предметов с типом слота «{(active.accepts ?? [active.type]).map((t) => SLOT_TYPE_LABELS[t]).join(' / ')}». Укажите тип слота в карточке предмета или
               включите показ всех предметов.
             </p>
           )}
@@ -334,7 +360,7 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
                 {item.name || 'Без названия'}
                 <span className="muted">
                   {item.rarity ? ` · ${RARITY_LABELS[item.rarity]}` : ''}
-                  {item.slot !== active.type ? ` · слот: ${item.slot ? SLOT_TYPE_LABELS[item.slot] : 'не указан'}` : ''}
+                  {!(active.accepts ?? [active.type]).includes(item.slot as SlotType) ? ` · слот: ${item.slot ? SLOT_TYPE_LABELS[item.slot] : 'не указан'}` : ''}
                 </span>
               </span>
             </label>

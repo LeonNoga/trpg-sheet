@@ -1561,3 +1561,15 @@ table.ref-table input {
 input[list]::-webkit-calendar-picker-indicator {
   opacity: 0.6;
 }
+
+.class-rarity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.class-rarity-row .field {
+  flex: 1;
+  min-width: 140px;
+}

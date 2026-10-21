@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { abilitySlotLimit } from '../data/statsConfig';
 import type { TraitList } from '../types';
 
@@ -10,9 +11,11 @@ interface BonusesProps {
   pickFromNames?: string[];
   /** Неизменяемые строки-бонусы по правилам системы — показываются над свободными строками. */
   fixedLines?: string[];
+  /** Дополнительные элементы управления под заголовком (например, выбор редкости класса). */
+  extra?: ReactNode;
 }
 
-export function SpeciesBonusesCard({ title, list, onChange, pickFromNames, fixedLines = [] }: BonusesProps) {
+export function SpeciesBonusesCard({ title, list, onChange, pickFromNames, fixedLines = [], extra }: BonusesProps) {
   const [pick, setPick] = useState('');
 
   function setLine(index: number, value: string) {
@@ -32,6 +35,7 @@ export function SpeciesBonusesCard({ title, list, onChange, pickFromNames, fixed
   return (
     <div className="card">
       <h3 className="card-title">{title}</h3>
+      {extra}
       {fixedLines.map((line) => (
         <div className="fixed-bonus" key={line}>
           {line}

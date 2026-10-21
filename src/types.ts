@@ -49,7 +49,10 @@ export type SlotType =
   | 'thigh'
   | 'knees'
   | 'shins'
-  | 'boots';
+  | 'boots'
+  | 'weapon'
+  | 'twohanded'
+  | 'shield';
 
 /** Путь, к которому привязан предмет/умение — 'none' = общий, без привязки. */
 export type ItemPath = Path | 'none';

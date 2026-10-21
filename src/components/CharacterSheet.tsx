@@ -206,27 +206,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <label>{PATH_SPECIES_FIELD_LABEL[character.path]}</label>
             <input value={character.species} onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))} />
           </div>
-          <div className="field" style={{ maxWidth: 220 }}>
-            <label>Редкость класса</label>
-            <select
-              value={character.classRarity ?? ''}
-              onChange={(e) =>
-                patch((c) => {
-                  const classRarity = (e.target.value || undefined) as Rarity | undefined;
-                  // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
-                  return { ...c, classRarity, uniqueLevelPoints: classRarity === 'unique' ? (c.uniqueLevelPoints ?? 15) : c.uniqueLevelPoints };
-                })
-              }
-              title="Определяет, сколько очков характеристик даёт каждый новый уровень"
-            >
-              <option value="">Класс не выбран</option>
-              {RARITY_ORDER.map((r) => (
-                <option key={r} value={r}>
-                  {CLASS_RARITY_LABELS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         <div className="header-fields-grid">
@@ -261,27 +240,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               </button>
             </div>
           </div>
-          <div className="field">
-            <label>Бонус очков характеристик</label>
-            {character.classRarity === 'unique' ? (
-              <div className="xp-add-row">
-                <span style={{ alignSelf: 'center' }}>+</span>
-                <NumberField
-                  min={0}
-                  value={character.uniqueLevelPoints ?? 15}
-                  onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
-                  title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
-                />
-                <span style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}>за уровень</span>
-              </div>
-            ) : (
-              <input
-                readOnly
-                value={`+${levelPointsRate(character.classRarity)} за уровень`}
-                title="Зависит от редкости класса и применяется только к новым уровням"
-              />
-            )}
-          </div>
         </div>
       </div>
 
@@ -298,24 +256,65 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           <div className="row">
             <div style={{ flex: 1, minWidth: 260 }}>
               <PortraitCard portrait={character.portrait} onChange={(portrait) => patch((c) => ({ ...c, portrait }))} />
+            </div>
+            <div style={{ flex: 1, minWidth: 260 }}>
               <SpeciesBonusesCard
                 title={traitLabels.bonuses}
+                extra={
+                  <div className="class-rarity-row">
+                    <div className="field">
+                      <label>Редкость класса</label>
+                      <select
+                        value={character.classRarity ?? ''}
+                        onChange={(e) =>
+                          patch((c) => {
+                            const classRarity = (e.target.value || undefined) as Rarity | undefined;
+                            // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
+                            return {
+                              ...c,
+                              classRarity,
+                              uniqueLevelPoints: classRarity === 'unique' ? (c.uniqueLevelPoints ?? 15) : c.uniqueLevelPoints,
+                            };
+                          })
+                        }
+                        title="Определяет, сколько очков характеристик даёт каждый новый уровень"
+                      >
+                        <option value="">Класс не выбран</option>
+                        {RARITY_ORDER.map((r) => (
+                          <option key={r} value={r}>
+                            {CLASS_RARITY_LABELS[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {character.classRarity === 'unique' && (
+                      <div className="field" style={{ maxWidth: 140 }}>
+                        <label>Очков за уровень</label>
+                        <NumberField
+                          min={0}
+                          value={character.uniqueLevelPoints ?? 15}
+                          onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
+                          title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
+                        />
+                      </div>
+                    )}
+                  </div>
+                }
                 fixedLines={classBonusLines}
                 list={character.speciesBonuses}
                 onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
               />
             </div>
-            <div style={{ flex: 2, minWidth: 320 }}>
-              <DnaListsCard
-                titles={[traitLabels.dnaA, traitLabels.dnaB, traitLabels.artifact]}
-                lists={character.dnaLists}
-                level={character.level}
-                abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
-                artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
-                onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
-              />
-            </div>
           </div>
+
+          <DnaListsCard
+            titles={[traitLabels.dnaA, traitLabels.dnaB, traitLabels.artifact]}
+            lists={character.dnaLists}
+            level={character.level}
+            abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
+            artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
+            onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
+          />
 
           <div className="card">
             <h3 className="card-title">Характеристики и показатели</h3>

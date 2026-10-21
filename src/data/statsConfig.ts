@@ -390,6 +390,9 @@ export const SLOT_TYPES: { key: SlotType; label: string }[] = [
   { key: 'knees', label: 'Наколенники' },
   { key: 'shins', label: 'Поножи' },
   { key: 'boots', label: 'Обувь' },
+  { key: 'weapon', label: 'Оружие (одноручное)' },
+  { key: 'twohanded', label: 'Оружие (двуручное)' },
+  { key: 'shield', label: 'Щит' },
 ];
 
 export const SLOT_TYPE_LABELS = Object.fromEntries(SLOT_TYPES.map((t) => [t.key, t.label])) as Record<SlotType, string>;

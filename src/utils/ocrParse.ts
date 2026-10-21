@@ -227,6 +227,9 @@ export function parseCardText(raw: string): ParsedCard {
 
 /** Слот артефакта по подписи «Слот: Руки» → тип слота схемы экипировки (если он там есть). */
 const SLOT_LABEL_WORDS: [RegExp, SlotType][] = [
+  [/^щит/, 'shield'],
+  [/^двуруч/, 'twohanded'],
+  [/^(оруж|меч)/, 'weapon'],
   [/^(рук|кист|ладон)/, 'gloves'],
   [/^(шея|ше[июе]|груд)/, 'amulets'],
   [/^(голов|шлем)/, 'headwear'],
