@@ -18,9 +18,11 @@ interface Props {
   emptyText: string;
   /** Дополнительные элементы над списком (например, массовая загрузка карточек). */
   toolbar?: ReactNode;
+  /** Вторая половина артефакта (умение/предмет) — добавляется в другой список персонажа. */
+  onCompanion?: (item: EquipItem) => void;
 }
 
-export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar }: Props) {
+export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar, onCompanion }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
@@ -65,7 +67,13 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
         </div>
       )}
       {creating && (
-        <ItemEditor item={createBlankEquipItem(kind)} path={path} onSave={saveNew} onCancel={() => setCreating(false)} />
+        <ItemEditor
+          item={createBlankEquipItem(kind)}
+          path={path}
+          onSave={saveNew}
+          onCancel={() => setCreating(false)}
+          onCompanion={onCompanion}
+        />
       )}
       {toolbar}
 
@@ -90,7 +98,14 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
 
       {visible.map((item) =>
         editingItem?.id === item.id ? (
-          <ItemEditor key={item.id} item={editingItem} path={path} onSave={saveEdited} onCancel={() => setEditingId(null)} />
+          <ItemEditor
+            key={item.id}
+            item={editingItem}
+            path={path}
+            onSave={saveEdited}
+            onCancel={() => setEditingId(null)}
+            onCompanion={onCompanion}
+          />
         ) : (
           <ItemCard
             key={item.id}

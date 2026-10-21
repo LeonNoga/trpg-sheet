@@ -93,7 +93,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   }
 
   function patch(updater: (c: Character) => Character) {
-    updateCharacter(updater(character!));
+    // Через ref, чтобы подряд идущие изменения (сохранить предмет и добавить к нему умение артефакта) не затирали друг друга.
+    const next = updater(characterRef.current ?? character!);
+    characterRef.current = next;
+    updateCharacter(next);
   }
 
   function changeStat(key: StatKey, value: number) {
@@ -355,6 +358,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             addLabel="+ Добавить предмет"
             emptyText="Предметов пока нет."
             toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
+            onCompanion={addCardToCharacter}
           />
         </>
       )}
@@ -369,6 +373,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           addLabel={PATH_ABILITY_LABELS[character.path].add}
           emptyText={PATH_ABILITY_LABELS[character.path].empty}
           toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
+          onCompanion={addCardToCharacter}
         />
       )}
 

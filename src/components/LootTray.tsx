@@ -138,7 +138,12 @@ export function LootTray() {
       <BulkCardUpload onCard={(item) => addToLootTray([item])} />
 
       {editorForNew && (
-        <ItemEditor item={editorForNew} onSave={saveNew} onCancel={() => setCreatingKind(null)} />
+        <ItemEditor
+          item={editorForNew}
+          onSave={saveNew}
+          onCancel={() => setCreatingKind(null)}
+          onCompanion={(extra) => addToLootTray([extra])}
+        />
       )}
 
       <div className="tray-filters">
@@ -202,7 +207,13 @@ export function LootTray() {
 
       {filtered.map((item) =>
         editingItem?.id === item.id ? (
-          <ItemEditor key={item.id} item={editingItem} onSave={saveEdited} onCancel={() => setEditingId(null)} />
+          <ItemEditor
+            key={item.id}
+            item={editingItem}
+            onSave={saveEdited}
+            onCancel={() => setEditingId(null)}
+            onCompanion={(extra) => addToLootTray([extra])}
+          />
         ) : (
           <div key={item.id}>
             <ItemCard

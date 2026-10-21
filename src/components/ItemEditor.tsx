@@ -8,7 +8,7 @@ import {
   SLOT_TYPES,
 } from '../data/statsConfig';
 import { fileToImageDataUrl } from '../utils/file';
-import { fieldsForKind, parseCardFields, recognizeOnce } from '../utils/ocrCards';
+import { fieldsForKind, itemsFromCard, parseCardFields, recognizeOnce } from '../utils/ocrCards';
 import { NumberField } from './NumberField';
 import type { BonusKey, EquipItem, ItemPath, Path, SlotType } from '../types';
 
@@ -19,13 +19,18 @@ interface Props {
   path?: Path;
   onSave: (item: EquipItem) => void;
   onCancel: () => void;
+  /** Куда добавить вторую половину артефакта (умение к предмету или наоборот), когда карточка распознана как артефакт. */
+  onCompanion?: (item: EquipItem) => void;
 }
 
-export function ItemEditor({ item, path, onSave, onCancel }: Props) {
+export function ItemEditor({ item, path, onSave, onCancel, onCompanion }: Props) {
   const [draft, setDraft] = useState<EquipItem>(item);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
   const camera = useRef<HTMLInputElement>(null);
+  // Вторая запись артефакта (умение для предмета и наоборот): создаётся вместе с этой при сохранении.
+  const [companion, setCompanion] = useState<EquipItem | null>(null);
+  const [createCompanion, setCreateCompanion] = useState(true);
 
   const bonusEntries = Object.entries(draft.statBonuses) as [BonusKey, number][];
 
@@ -72,7 +77,16 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
       const text = result.text;
       if (text) {
         // Для артефакта берём ту часть карточки, которая соответствует редактируемой записи (предмет или способность).
-        const parsed = fieldsForKind(parseCardFields(result), draft.kind);
+        const cardFields = parseCardFields(result);
+        const parsed = fieldsForKind(cardFields, draft.kind);
+        if (cardFields.kind === 'artifact' && onCompanion) {
+          // itemsFromCard сам решает, что артефакт даёт: умение всегда, предмет — если есть характеристики.
+          const other = itemsFromCard(result, draft.image!, draft.name || 'Артефакт').find((i) => i.kind !== draft.kind);
+          setCompanion(other ?? null);
+          setCreateCompanion(true);
+        } else {
+          setCompanion(null);
+        }
         const addition = parsed.effect ?? text;
         setDraft((d) => ({
           ...d,
@@ -230,6 +244,12 @@ ${addition}` : addition,
               {ocrBusy ? 'Распознаём (офлайн)...' : 'Распознать текст с фото'}
             </button>
             {ocrError && <p className="error-text">{ocrError}</p>}
+            {companion && (
+              <label className="toggle" style={{ marginTop: 6 }}>
+                <input type="checkbox" checked={createCompanion} onChange={(e) => setCreateCompanion(e.target.checked)} />
+                Это артефакт: при сохранении создать ещё и {companion.kind === 'ability' ? 'умение' : 'предмет'} «{companion.name}»
+              </label>
+            )}
           </>
         )}
       </div>
@@ -257,7 +277,14 @@ ${addition}` : addition,
       </div>
 
       <div className="item-actions">
-        <button className="btn btn-primary" onClick={() => onSave(draft)} disabled={!draft.name.trim()}>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            onSave(draft);
+            if (companion && createCompanion) onCompanion?.(companion);
+          }}
+          disabled={!draft.name.trim()}
+        >
           Сохранить
         </button>
         <button className="btn btn-ghost" onClick={onCancel}>
