@@ -72,6 +72,8 @@ export interface EquipItem {
   duration?: string;
   statBonuses: Partial<Record<BonusKey, number>>;
   equipped: boolean;
+  /** Запись создана из карточки артефакта: либо сам предмет, либо вложенная в него способность. */
+  artifact?: boolean;
   image?: string; // base64 data URL
 }
 

@@ -66,7 +66,7 @@ export async function createOcrSession(): Promise<OcrSession> {
       // Бледные серые строки (путь, уровень, описание) после общего контраста бывают потеряны:
       // тогда читаем ещё раз с локальной бинаризацией и берём из неё недостающее.
       let altText: string | undefined;
-      if (!/уровень\s*\d/i.test(text)) {
+      if (!/уровень\s*\d/i.test(text) && !/слот\s*[:：]/i.test(text)) {
         const alt = await worker.recognize(adaptiveBinarize(sized, 1 / 12, 0.92));
         altText = alt.data.text.trim();
       }
@@ -117,59 +117,130 @@ function mergeParsed(main: ParsedCard, alt?: ParsedCard): ParsedCard {
 /** Поля, которые удалось извлечь из карточки (без id и без самого изображения). */
 export function parseCardFields(result: OcrResult) {
   const parsed = mergeParsed(parseCardText(result.text), result.altText ? parseCardText(result.altText) : undefined);
-  const grid = parsed.kind === 'ability' ? extractAbilityGrid(result.words) : {};
-  const slot = parsed.kind === 'ability' ? undefined : detectSlotType(parsed.name ?? '');
+  // У артефакта сетка «Активация/Откат/Каст/Длительность» принадлежит вложенной способности.
+  const hasGrid = parsed.kind === 'ability' || parsed.kind === 'artifact';
+  const grid = hasGrid ? extractAbilityGrid(result.words) : {};
+  const slot = parsed.kind === 'ability' ? undefined : (parsed.slot ?? detectSlotType(parsed.name ?? ''));
   return { ...parsed, ...grid, slot };
 }
 
-/** Собирает предмет или умение из распознанной карточки; полный текст остаётся в «Эффекте». */
-export function itemFromCard(result: OcrResult, image: string, fallbackName: string): EquipItem {
-  const parsed = parseCardFields(result);
-  const kind = parsed.kind ?? 'item';
-  const base = createBlankEquipItem(kind);
+export type CardFields = ReturnType<typeof parseCardFields>;
+
+/** Поля записи конкретного вида; effect задан, только если его надо взять не из сырого текста карточки. */
+export interface KindFields {
+  name?: string;
+  rarity?: CardFields['rarity'];
+  path?: CardFields['path'];
+  category?: string;
+  level?: number;
+  slot?: CardFields['slot'];
+  flavorText?: string;
+  effect?: string;
+  activation?: string;
+  cooldown?: string;
+  cast?: string;
+  duration?: string;
+  statBonuses?: CardFields['statBonuses'];
+  artifact: boolean;
+}
+
+/**
+ * Артефакт на карточке — это две сущности: сам предмет (слот, свойства) и вложенная способность
+ * (название, текст, сетка Активация/Откат). Здесь выбираем поля для нужной из них; обычные карточки отдаются как есть.
+ */
+export function fieldsForKind(f: CardFields, kind: 'item' | 'ability'): KindFields {
+  if (f.kind !== 'artifact') return { ...f, artifact: false };
+  const art = f.artifact ?? {};
+  if (kind === 'ability') {
+    return {
+      name: art.abilityName ?? f.name,
+      rarity: art.abilityRarity ?? f.rarity,
+      path: f.path,
+      category: f.name ? `Артефакт: ${f.name}` : 'Артефакт',
+      effect: art.abilityEffect,
+      activation: f.activation,
+      cooldown: f.cooldown,
+      cast: f.cast,
+      duration: f.duration,
+      artifact: true,
+    };
+  }
   return {
-    ...base,
-    name: parsed.name || fallbackName,
-    path: parsed.path ?? 'none',
-    slot: parsed.slot,
-    rarity: parsed.rarity,
-    category: kind === 'ability' ? parsed.category : undefined,
-    level: parsed.level,
-    flavorText: parsed.flavorText,
-    effect: result.text,
-    activation: parsed.activation,
-    cooldown: parsed.cooldown,
-    cast: parsed.cast,
-    duration: parsed.duration,
-    statBonuses: parsed.statBonuses ?? {},
+    name: f.name,
+    rarity: f.rarity,
+    path: f.path,
+    slot: f.slot,
+    flavorText: f.flavorText,
+    effect: art.abilityName ? `Даёт способность «${art.abilityName}».` : undefined,
+    statBonuses: f.statBonuses,
+    artifact: true,
+  };
+}
+
+function buildItem(kind: 'item' | 'ability', f: KindFields, rawText: string, image: string, fallbackName: string): EquipItem {
+  return {
+    ...createBlankEquipItem(kind),
+    name: f.name || fallbackName,
+    path: f.path ?? 'none',
+    slot: kind === 'item' ? f.slot : undefined,
+    rarity: f.rarity,
+    category: kind === 'ability' ? f.category : undefined,
+    level: f.level,
+    flavorText: f.flavorText,
+    effect: f.effect ?? rawText,
+    activation: f.activation,
+    cooldown: f.cooldown,
+    cast: f.cast,
+    duration: f.duration,
+    statBonuses: f.statBonuses ?? {},
     // Предмет «не надет» по умолчанию; умения всегда активны.
     equipped: kind === 'ability',
+    artifact: f.artifact || undefined,
     image,
   };
 }
 
 /**
+ * Собирает записи из распознанной карточки. Обычная карточка — предмет или умение; артефакт — умение
+ * (вложенная способность) и, если он даёт характеристики, ещё и предмет для снаряжения.
+ */
+export function itemsFromCard(result: OcrResult, image: string, fallbackName: string): EquipItem[] {
+  const parsed = parseCardFields(result);
+  if (parsed.kind === 'artifact') {
+    const ability = buildItem('ability', fieldsForKind(parsed, 'ability'), result.text, image, fallbackName);
+    const hasBonuses = Object.keys(parsed.statBonuses ?? {}).length > 0;
+    return hasBonuses
+      ? [buildItem('item', fieldsForKind(parsed, 'item'), result.text, image, fallbackName), ability]
+      : [ability];
+  }
+  const kind = parsed.kind ?? 'item';
+  return [buildItem(kind, fieldsForKind(parsed, kind), result.text, image, fallbackName)];
+}
+
+/**
  * Обновляет уже существующую карточку по результату нового распознавания её фото.
  * id, тип (предмет/умение), «надето» и картинка сохраняются; распознаваемые поля и бонусы
- * заменяются свежими, а то, что OCR найти не смог, остаётся как было. Слот, выбранный руками, не трогаем.
+ * заменяются свежими, а то, что OCR найти не смогло, остаётся как было. Слот, выбранный руками, не трогаем.
+ * Карточка артефакта обновляет ту часть, которой является запись (предмет или вложенная способность).
  */
 export function reparsedItem(item: EquipItem, result: OcrResult): EquipItem {
-  const parsed = parseCardFields(result);
+  const f = fieldsForKind(parseCardFields(result), item.kind);
   const isAbility = item.kind === 'ability';
   return {
     ...item,
-    name: parsed.name || item.name,
-    path: parsed.path ?? item.path,
-    slot: isAbility ? item.slot : (item.slot ?? parsed.slot),
-    rarity: parsed.rarity ?? item.rarity,
-    category: isAbility ? (parsed.category ?? item.category) : item.category,
-    level: parsed.level ?? item.level,
-    flavorText: parsed.flavorText ?? item.flavorText,
-    effect: result.text || item.effect,
-    activation: isAbility ? (parsed.activation ?? item.activation) : item.activation,
-    cooldown: isAbility ? (parsed.cooldown ?? item.cooldown) : item.cooldown,
-    cast: isAbility ? (parsed.cast ?? item.cast) : item.cast,
-    duration: isAbility ? (parsed.duration ?? item.duration) : item.duration,
-    statBonuses: parsed.statBonuses ?? {},
+    name: f.name || item.name,
+    path: f.path ?? item.path,
+    slot: isAbility ? item.slot : (item.slot ?? f.slot),
+    rarity: f.rarity ?? item.rarity,
+    category: isAbility ? (f.category ?? item.category) : item.category,
+    level: f.level ?? item.level,
+    flavorText: f.flavorText ?? item.flavorText,
+    effect: f.effect ?? (result.text || item.effect),
+    activation: isAbility ? (f.activation ?? item.activation) : item.activation,
+    cooldown: isAbility ? (f.cooldown ?? item.cooldown) : item.cooldown,
+    cast: isAbility ? (f.cast ?? item.cast) : item.cast,
+    duration: isAbility ? (f.duration ?? item.duration) : item.duration,
+    statBonuses: f.statBonuses ?? {},
+    artifact: f.artifact || item.artifact,
   };
 }

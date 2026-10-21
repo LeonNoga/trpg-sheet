@@ -78,18 +78,28 @@ export function SpeciesBonusesCard({ title, list, onChange, pickFromNames, fixed
 }
 
 interface DnaListsProps {
-  titles: [string, string];
+  /** Заголовки списков по порядку: видовые, обычные (с лимитом по уровню), артефактные. */
+  titles: string[];
   lists: TraitList[];
   level: number;
   /** Названия умений/ДНК/технологий персонажа — можно выбрать в слот из списка. */
   abilityNames?: string[];
+  /** Умения, пришедшие от артефактов: в списке артефактных слотов они предлагаются первыми. */
+  artifactAbilityNames?: string[];
   onChange: (lists: TraitList[]) => void;
 }
 
 /** Строк в первом списке (видовые ДНК и т.п.) по умолчанию столько; дальше добавляются плюсиком. */
 const BASE_FREE_LINES = 5;
 
-export function DnaListsCard({ titles, lists, level, abilityNames = [], onChange }: DnaListsProps) {
+export function DnaListsCard({
+  titles,
+  lists,
+  level,
+  abilityNames = [],
+  artifactAbilityNames = [],
+  onChange,
+}: DnaListsProps) {
   const limit = abilitySlotLimit(level);
 
   function updateList(id: string, updater: (l: TraitList) => TraitList) {
@@ -105,12 +115,21 @@ export function DnaListsCard({ titles, lists, level, abilityNames = [], onChange
   }
 
   const datalistId = `ability-names-${lists[0]?.id ?? 'x'}`;
+  const artifactDatalistId = `${datalistId}-artifact`;
+  const artifactOptions = [...new Set([...artifactAbilityNames, ...abilityNames])];
 
   return (
     <div className="card">
       {abilityNames.length > 0 && (
         <datalist id={datalistId}>
           {[...new Set(abilityNames)].map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      )}
+      {artifactOptions.length > 0 && (
+        <datalist id={artifactDatalistId}>
+          {artifactOptions.map((name) => (
             <option key={name} value={name} />
           ))}
         </datalist>
@@ -143,7 +162,7 @@ export function DnaListsCard({ titles, lists, level, abilityNames = [], onChange
                       onChange={(e) => setSlot(list.id, i, e.target.value)}
                       placeholder={`${i + 1})`}
                       // Стрелка справа открывает названия с соседней вкладки; можно и просто вписать текст.
-                      list={abilityNames.length > 0 ? datalistId : undefined}
+                      list={idx === 2 ? (artifactOptions.length > 0 ? artifactDatalistId : undefined) : abilityNames.length > 0 ? datalistId : undefined}
                       autoComplete="off"
                     />
                     {!limited && i >= BASE_FREE_LINES && (

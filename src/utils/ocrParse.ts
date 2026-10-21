@@ -1,4 +1,4 @@
-import type { BonusKey, ItemPath, Rarity } from '../types';
+import type { BonusKey, ItemPath, Rarity, SlotType } from '../types';
 
 const RARITY_WORDS: Record<string, Rarity> = {
   'ОБЫЧНАЯ': 'common',
@@ -74,8 +74,21 @@ function detectPath(text: string): ItemPath | null {
   return null;
 }
 
+/** Данные карточки артефакта: сам артефакт — предмет, а «Вложенная способность» — отдельное умение. */
+export interface ParsedArtifact {
+  abilityName?: string;
+  /** «ДНК-способность», «умение», «технология» — как написано на карточке. */
+  abilityKindWord?: string;
+  abilityRarity?: Rarity;
+  abilityEffect?: string;
+}
+
 export interface ParsedCard {
-  kind?: 'item' | 'ability';
+  kind?: 'item' | 'ability' | 'artifact';
+  /** Название слота с карточки артефакта («Руки», «Шея», «Щит»). */
+  slotLabel?: string;
+  slot?: SlotType;
+  artifact?: ParsedArtifact;
   name?: string;
   rarity?: Rarity;
   category?: string;
@@ -87,8 +100,10 @@ export interface ParsedCard {
 
 // Умения опознаём по сетке "Активация/Откат", подписи "Эффект умения/мутации/технологии"
 // или по типу в плашке/названии (Сыворотка ДНК, ДНК Мутация, Книга умения, Технология, Шар технологий).
-function detectKind(text: string, category: string | undefined, name: string | undefined): 'item' | 'ability' {
+function detectKind(text: string, category: string | undefined, name: string | undefined): 'item' | 'ability' | 'artifact' {
   const lower = text.toLowerCase();
+  // Артефакт: плашка «АРТЕФАКТ • …» или блок «Вложенная …-способность «…»» (у него тоже есть сетка Активация/Откат).
+  if (/артефакт/.test((category ?? '').toLowerCase()) || /вложенн[а-яё]*\s+[^«\n]{0,40}«/.test(lower)) return 'artifact';
   if (/активаци/.test(lower) && /откат/.test(lower)) return 'ability';
   if (/эффект\s+(умения|мутации|технологии)/.test(lower)) return 'ability';
   const header = `${category ?? ''} ${name ?? ''}`.toLowerCase();
@@ -118,7 +133,7 @@ export function parseCardText(raw: string): ParsedCard {
     result.rarity = RARITY_WORDS[rarityWord];
 
     const parts = badgeLine
-      .split(/\s+[•·.\-–—]\s+/)
+      .split(/\s+[•·.\-–—+*»|]\s+/)
       .map((p) => p.replace(/^[^\wа-яёА-ЯЁ]+/, '').trim())
       .filter(Boolean);
     const categoryPart = parts.find((p) => !RARITY_WORDS_BY_LENGTH.includes(p.toUpperCase()));
@@ -180,17 +195,21 @@ export function parseCardText(raw: string): ParsedCard {
     }
   }
 
-  // Бонусы берём только из фразы "Даёт +N к X, +M к Y": в прозе эффекта умений тоже бывают
-  // "+N к ...", но они условные (в определённом состоянии) и не должны становиться постоянными.
+  // Бонусы берём только из строки-итога: у предметов это «Даёт +N к X», у артефактов — «Свойства: …».
+  // В прозе эффекта тоже бывают "+N к ..." (условные, в определённом состоянии) — они не должны становиться постоянными.
   const bonuses: Partial<Record<BonusKey, number>> = {};
   // «Защита: 12 ПЗ» — пункты защиты самого предмета; «ПЗ» OCR нередко читает как «П3»/«ПЗ.».
   // Если «ПЗ» распознано криво, достаточно «Защита: N» с двоеточием (в прозе умений двоеточия там нет).
   const defenseMatch =
     text.match(/Защит[аы]\s*[:：]?\s*([+-]?\d+)\s*(?:П\s?[З3Ззз3]|пз)/i) ?? text.match(/Защит[аы]\s*[:：]\s*([+-]?\d+)/i);
   if (defenseMatch) bonuses.defense = Number(defenseMatch[1]);
-  const giveIndex = text.search(/Д[аa][её]т/i);
+  const propsIndex = result.kind === 'artifact' ? text.search(/Свойств[аы]/i) : -1;
+  const giveIndex = propsIndex >= 0 ? propsIndex : text.search(/Д[аa][её]т/i);
   if (giveIndex >= 0) {
     const bonusText = text.slice(giveIndex);
+    // У артефактов защита пишется в той же строке: «Свойства: + 2 ПЗ: +9 к Стойкости, …».
+    const propsDefense = propsIndex >= 0 ? bonusText.match(/([+-]\s?\d+)\s*П\s?[З3Ззз3]/i) : null;
+    if (propsDefense) bonuses.defense = Number(propsDefense[1].replace(/\s/g, ''));
     const bonusPattern = /([+-]\s?\d+)\s*к\s+([А-Яа-яЁё]+(?:\s+[А-Яа-яЁё]+)?)/g;
     let m: RegExpExecArray | null;
     while ((m = bonusPattern.exec(bonusText))) {
@@ -201,5 +220,70 @@ export function parseCardText(raw: string): ParsedCard {
   }
   if (Object.keys(bonuses).length > 0) result.statBonuses = bonuses;
 
+  if (result.kind === 'artifact') parseArtifactExtras(text, lines, result);
+
   return result;
+}
+
+/** Слот артефакта по подписи «Слот: Руки» → тип слота схемы экипировки (если он там есть). */
+const SLOT_LABEL_WORDS: [RegExp, SlotType][] = [
+  [/^(рук|кист|ладон)/, 'gloves'],
+  [/^(шея|ше[июе]|груд)/, 'amulets'],
+  [/^(голов|шлем)/, 'headwear'],
+  [/^(глаз|лиц|очки)/, 'glasses'],
+  [/^(уш|серьг)/, 'earrings'],
+  [/^плеч/, 'shoulders'],
+  [/^(тел|торс|корпус|брон)/, 'armor'],
+  [/^(пояс|талия)/, 'belt'],
+  [/^(спин|плащ)/, 'cloak'],
+  [/^(запяст|браслет)/, 'bracelets'],
+  [/^(предплеч|наруч)/, 'bracers'],
+  [/^локт/, 'elbows'],
+  [/^бедр/, 'thigh'],
+  [/^колен/, 'knees'],
+  [/^голен/, 'shins'],
+  [/^(ног|ступн|обув)/, 'boots'],
+  [/^(палец|пальц|кольц)/, 'rings'],
+];
+
+export function slotFromLabel(label: string): SlotType | undefined {
+  const lower = label.trim().toLowerCase();
+  return SLOT_LABEL_WORDS.find(([pattern]) => pattern.test(lower))?.[1];
+}
+
+const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+/** Слот, флейвор в «ёлочках» и вложенная способность артефакта. */
+function parseArtifactExtras(text: string, lines: string[], result: ParsedCard): void {
+  const slotMatch = text.match(/Слот\s*[:：]\s*([А-Яа-яЁё]+)/i);
+  if (slotMatch) {
+    result.slotLabel = slotMatch[1];
+    result.slot = slotFromLabel(slotMatch[1]);
+  }
+
+  // Флейвор артефакта: строки между «… Слот: X» и блоком «Вложенная …».
+  const slotLine = lines.findIndex((l) => /Слот\s*[:：]/i.test(l));
+  const embeddedLine = lines.findIndex((l) => /вложенн/i.test(l));
+  if (slotLine >= 0) {
+    const body = lines.slice(slotLine + 1, embeddedLine > slotLine ? embeddedLine : undefined);
+    const flavor = clean(body.join(' ')).replace(/^[«"]\s*/, '').replace(/[»"]\.?$/, '').trim();
+    if (flavor.length >= 10) result.flavorText = flavor;
+  }
+
+  // «Вложенная ДНК-способность «Название» (Редкость)» + текст способности до сетки «Активация/Откат».
+  const embedded = text.match(/Вложенн[а-яё]*\s+([^«\n]{0,40}?)«([\s\S]{2,90}?)»\s*\(([А-Яа-яЁё]+)\)/i);
+  const artifact: ParsedArtifact = {};
+  if (embedded) {
+    artifact.abilityKindWord = clean(embedded[1]) || undefined;
+    artifact.abilityName = clean(embedded[2]);
+    const rarityWord = findRarityWord(embedded[3]);
+    if (rarityWord) artifact.abilityRarity = RARITY_WORDS[rarityWord];
+    const rest = text.slice((embedded.index ?? 0) + embedded[0].length);
+    const gridIndex = rest.search(/АКТИВАЦ/i);
+    const effect = clean(gridIndex >= 0 ? rest.slice(0, gridIndex) : rest)
+      .replace(/(\s[^А-Яа-яЁёA-Za-z0-9]{1,2})+$/, '') // обрывок иконки перед подписью «Активация»
+      .trim();
+    if (effect) artifact.abilityEffect = effect;
+  }
+  result.artifact = artifact;
 }

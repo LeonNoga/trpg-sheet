@@ -94,10 +94,10 @@ export const PATH_SPECIES_FIELD_LABEL: Record<Path, string> = {
   tech: 'Модель',
 };
 
-export const PATH_TRAIT_LABELS: Record<Path, { bonuses: string; dnaA: string; dnaB: string }> = {
-  genetic: { bonuses: 'Видовые бонусы', dnaA: 'Видовые ДНК', dnaB: 'ДНК' },
-  magic: { bonuses: 'Классовые бонусы', dnaA: 'Классовые умения', dnaB: 'Умения' },
-  tech: { bonuses: 'Бонусы Модели', dnaA: 'Технологии Модели', dnaB: 'Технологии' },
+export const PATH_TRAIT_LABELS: Record<Path, { bonuses: string; dnaA: string; dnaB: string; artifact: string }> = {
+  genetic: { bonuses: 'Видовые бонусы', dnaA: 'Видовые ДНК', dnaB: 'ДНК', artifact: 'Артефактные ДНК' },
+  magic: { bonuses: 'Классовые бонусы', dnaA: 'Классовые умения', dnaB: 'Умения', artifact: 'Артефактные умения' },
+  tech: { bonuses: 'Бонусы Модели', dnaA: 'Технологии Модели', dnaB: 'Технологии', artifact: 'Артефактные технологии' },
 };
 
 export const RARITY_ORDER: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'unique'];

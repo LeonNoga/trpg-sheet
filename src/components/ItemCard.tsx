@@ -34,6 +34,7 @@ export function ItemCard({ item, path, showEquipToggle, selected, onSelect, onTo
               item.rarity ? RARITY_LABELS[item.rarity] : null,
               item.path && item.path !== 'none' ? ITEM_PATH_LABELS[item.path] : null,
               item.kind === 'ability' ? item.category : item.slot ? SLOT_TYPE_LABELS[item.slot] : null,
+              item.kind === 'item' && item.artifact ? 'Артефакт' : null,
               item.level ? `ур. ${item.level}` : null,
             ]
               .filter(Boolean)

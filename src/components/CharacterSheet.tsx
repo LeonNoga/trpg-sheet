@@ -307,10 +307,11 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             </div>
             <div style={{ flex: 2, minWidth: 320 }}>
               <DnaListsCard
-                titles={[traitLabels.dnaA, traitLabels.dnaB]}
+                titles={[traitLabels.dnaA, traitLabels.dnaB, traitLabels.artifact]}
                 lists={character.dnaLists}
                 level={character.level}
                 abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
+                artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
                 onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
               />
             </div>

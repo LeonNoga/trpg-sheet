@@ -101,15 +101,22 @@ export function extractAbilityGrid(words: OcrWord[]): AbilityGrid {
   const cell = (rowFrom: number, rowTo: number, right: boolean) =>
     joinWords(below.filter((w) => cy(w) > rowFrom && cy(w) < rowTo && (cx(w) >= split) === right));
 
-  const row1To = row2Labels ? row2Labels.top : Infinity;
+  // Под сеткой у артефактов и предметов идёт строка «Свойства: … / Даёт …» — она не часть ячеек.
+  const gridBottom = row2Labels ? row2Labels.bottom : row1Top;
+  const footer = words
+    .filter((w) => /^\W*(СВОЙСТВ|ДАЁТ|ДАЕТ)/.test(w.text.toUpperCase()) && w.y0 > gridBottom)
+    .sort((a, b) => a.y0 - b.y0)[0];
+  const limit = footer ? footer.y0 - 2 : Infinity;
+
+  const row1To = row2Labels ? row2Labels.top : limit;
   const act = cell(row1Top, row1To, false);
   const cool = cell(row1Top, row1To, true);
   if (act) result.activation = act;
   if (cool) result.cooldown = cool;
 
   if (row2Labels) {
-    const c = cell(row2Labels.bottom, Infinity, false);
-    const d = cell(row2Labels.bottom, Infinity, true);
+    const c = cell(row2Labels.bottom, limit, false);
+    const d = cell(row2Labels.bottom, limit, true);
     if (c) result.cast = c;
     if (d) result.duration = d;
   }

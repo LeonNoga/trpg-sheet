@@ -8,7 +8,7 @@ import {
   SLOT_TYPES,
 } from '../data/statsConfig';
 import { fileToImageDataUrl } from '../utils/file';
-import { parseCardFields, recognizeOnce } from '../utils/ocrCards';
+import { fieldsForKind, parseCardFields, recognizeOnce } from '../utils/ocrCards';
 import { NumberField } from './NumberField';
 import type { BonusKey, EquipItem, ItemPath, Path, SlotType } from '../types';
 
@@ -71,11 +71,14 @@ export function ItemEditor({ item, path, onSave, onCancel }: Props) {
       const result = await recognizeOnce(draft.image);
       const text = result.text;
       if (text) {
-        const parsed = parseCardFields(result);
+        // Для артефакта берём ту часть карточки, которая соответствует редактируемой записи (предмет или способность).
+        const parsed = fieldsForKind(parseCardFields(result), draft.kind);
+        const addition = parsed.effect ?? text;
         setDraft((d) => ({
           ...d,
+          artifact: d.artifact || parsed.artifact || undefined,
           effect: d.effect ? `${d.effect}
-${text}` : text,
+${addition}` : addition,
           name: d.name || parsed.name || d.name,
           rarity: d.rarity ?? parsed.rarity,
           category: d.category || parsed.category,
@@ -152,6 +155,17 @@ ${text}` : text,
             </select>
           </div>
         )}
+        <div className="field" style={{ maxWidth: 140 }}>
+          <label>Артефакт</label>
+          <label className="toggle" title="Артефактные умения попадают в список «Артефактные …» на вкладке персонажа">
+            <input
+              type="checkbox"
+              checked={!!draft.artifact}
+              onChange={(e) => updateField('artifact', e.target.checked || undefined)}
+            />
+            {draft.kind === 'ability' ? 'от артефакта' : 'это артефакт'}
+          </label>
+        </div>
         <div className="field" style={{ maxWidth: 100 }}>
           <label>Уровень</label>
           <input

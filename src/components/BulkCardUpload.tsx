@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { fileToImageDataUrl } from '../utils/file';
-import { createOcrSession, itemFromCard } from '../utils/ocrCards';
+import { createOcrSession, itemsFromCard } from '../utils/ocrCards';
 import type { OcrSession } from '../utils/ocrCards';
 import type { EquipItem } from '../types';
 
@@ -45,14 +45,15 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
         try {
           const image = await fileToImageDataUrl(file, 2400);
           const result = await session.recognize(image);
-          const item = itemFromCard(result, result.image ?? image, file.name.replace(/\.[^.]+$/, ''));
-          onCard(item);
+          // Обычно одна запись на карточку; артефакт даёт умение и (если есть свойства) ещё предмет.
+          const cards = itemsFromCard(result, result.image ?? image, file.name.replace(/\.[^.]+$/, ''));
+          cards.forEach((card) => onCard(card));
           setBulk(
             (b) =>
               b && {
                 ...b,
-                items: b.items + (item.kind === 'item' ? 1 : 0),
-                abilities: b.abilities + (item.kind === 'ability' ? 1 : 0),
+                items: b.items + cards.filter((c) => c.kind === 'item').length,
+                abilities: b.abilities + cards.filter((c) => c.kind === 'ability').length,
                 problems: result.text ? b.problems : [...b.problems, `${file.name}: текст не распознан, добавлено без данных`],
               },
           );

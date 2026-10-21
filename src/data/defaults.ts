@@ -39,7 +39,7 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
     abilities: [],
     equippedSlots: {},
     speciesBonuses: blankTraitList(0),
-    dnaLists: [blankTraitList(5), blankTraitList(5)],
+    dnaLists: [blankTraitList(5), blankTraitList(5), blankTraitList(5)],
     group: '',
     points: 0,
     developmentPoints: 0,
@@ -82,7 +82,11 @@ export function normalizeCharacter(raw: Character): Character {
       raw.speciesBonuses && raw.speciesBonuses.slots.some((s) => s.trim())
         ? raw.speciesBonuses
         : { ...(raw.speciesBonuses ?? blankTraitList(0)), slots: [] },
-    dnaLists: raw.dnaLists ?? [blankTraitList(5), blankTraitList(5)],
+    // Третий список — артефактные ДНК/умения/технологии; у старых карточек его не было.
+    dnaLists: [
+      ...(raw.dnaLists ?? [blankTraitList(5), blankTraitList(5)]),
+      ...Array.from({ length: Math.max(0, 3 - (raw.dnaLists?.length ?? 2)) }, () => blankTraitList(5)),
+    ],
     group: raw.group ?? '',
     points: raw.points ?? 0,
     developmentPoints: raw.developmentPoints ?? 0,
