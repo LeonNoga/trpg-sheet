@@ -29,9 +29,10 @@ export function SkillsEditor({ character, onChangeSkill }: Props) {
               const current = character.skills[skill] ?? 0;
               return (
                 <div className="skill-row" key={skill}>
-                  <span className="skill-name">{skill}</span>
                   <div className="skill-levels">
-                    {SKILL_LEVELS.filter((l) => l.level !== 0).map((l) => (
+                    {SKILL_LEVELS.filter((l) => l.level !== 0)
+                      .reverse()
+                      .map((l) => (
                       <button
                         key={l.level}
                         type="button"
@@ -44,6 +45,7 @@ export function SkillsEditor({ character, onChangeSkill }: Props) {
                       </button>
                     ))}
                   </div>
+                  <span className="skill-name">{skill}</span>
                 </div>
               );
             })}

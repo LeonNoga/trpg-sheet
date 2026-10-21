@@ -7,6 +7,7 @@ import { ItemsBlock } from './ItemsBlock';
 import { BulkCardUpload } from './BulkCardUpload';
 import { NumberField } from './NumberField';
 import { SpeciesBonusesCard, DnaListsCard } from './TraitBlocks';
+import { PortraitCard } from './PortraitCard';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
@@ -294,6 +295,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         <>
           <div className="row">
             <div style={{ flex: 1, minWidth: 260 }}>
+              <PortraitCard portrait={character.portrait} onChange={(portrait) => patch((c) => ({ ...c, portrait }))} />
               <SpeciesBonusesCard
                 title={traitLabels.bonuses}
                 list={character.speciesBonuses}
@@ -305,6 +307,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 titles={[traitLabels.dnaA, traitLabels.dnaB]}
                 lists={character.dnaLists}
                 level={character.level}
+                abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
                 onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
               />
             </div>

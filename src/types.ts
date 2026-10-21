@@ -100,6 +100,8 @@ export interface Character {
   classRarity?: Rarity;
   /** Очки за новый уровень для «Уникального» класса — у него ставка не стандартная, её сообщает Мастер. */
   uniqueLevelPoints?: number;
+  /** Портрет персонажа (data URL, уменьшенный) — показывается в списке и на вкладке «Персонаж». */
+  portrait?: string;
   path: Path;
   resistanceSource: ResistanceSource;
   initiativeSource: InitiativeSource;

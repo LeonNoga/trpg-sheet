@@ -55,6 +55,14 @@ function statKeyForPhrase(phrase: string): BonusKey | null {
   return null;
 }
 
+/** Убирает OCR-мусор перед названием: «а | Шкура», «| Название», одиночные символы и разделители. */
+function cleanName(raw: string): string {
+  let name = raw.trim();
+  name = name.replace(/^([A-Za-zА-Яа-я0-9]{1,2}\s*[|¦!]\s*)+/, '');
+  name = name.replace(/^[^A-Za-zА-Яа-яЁё«"]+/, '');
+  return name.trim() || raw.trim();
+}
+
 function detectPath(text: string): ItemPath | null {
   const lower = text.toLowerCase();
   if (/магическ/.test(lower)) return 'magic';
@@ -133,7 +141,7 @@ export function parseCardText(raw: string): ParsedCard {
           }
         }
       }
-      result.name = name;
+      result.name = cleanName(name);
     }
   } else if (lines[0]?.length >= 3) {
     result.name = lines[0];
@@ -152,6 +160,24 @@ export function parseCardText(raw: string): ParsedCard {
     // Открывающая кавычка описания может потеряться при OCR, и тогда совпадение цепляет хвост названия («"Шмель"»).
     const flavor = flavorMatch[1].replace(/\s+/g, ' ').replace(/^[^А-Яа-яA-Za-z0-9]+/, '').trim();
     if (flavor) result.flavorText = flavor;
+  }
+  if (!result.flavorText) {
+    // На фото кавычки описания часто теряются: берём строки между «Уровень N» и блоком «Защита/Даёт/…».
+    const levelLine = lines.findIndex((l) => /Уровень\s*\d/i.test(l));
+    if (levelLine >= 0) {
+      const body: string[] = [];
+      for (const line of lines.slice(levelLine + 1)) {
+        if (/^\W{0,3}(защит|д[аa][её]т|активаци|эффект|откат)/i.test(line)) break;
+        body.push(line);
+      }
+      const flavor = body
+        .join(' ')
+        .replace(/["«»]/g, '')
+        .replace(/(^|\s)[^\wА-Яа-яЁё]+(?=\s|$)/g, ' ') // одиночные символы-мусор между словами
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (flavor.length >= 10) result.flavorText = flavor;
+    }
   }
 
   // Бонусы берём только из фразы "Даёт +N к X, +M к Y": в прозе эффекта умений тоже бывают

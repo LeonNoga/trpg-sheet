@@ -61,7 +61,7 @@ export function normalizeCharacter(raw: Character): Character {
   // Раньше бюджет хранился числом (и пересчитывался при смене уровня). Всё, что сверх
   // положенного по уровню, переезжает в "доп. очки", чтобы существующие карточки не изменились.
   const { statPointsBudget: legacyBudget, ...rest } = legacy;
-  return {
+  return pruneEquippedSlots({
     ...rest,
     // Старая модель: бюджет = 100 + 2 за каждый уровень + ручные очки.
     levelPoints: raw.levelPoints ?? 2 * (raw.level - 1),
@@ -87,7 +87,24 @@ export function normalizeCharacter(raw: Character): Character {
     inspirationPoints: raw.inspirationPoints ?? [false, false, false],
     infectionStatus: raw.infectionStatus ?? { success: [false, false, false], fail: [false, false, false] },
     notes: raw.notes ?? '',
-  };
+  });
+}
+
+/**
+ * Убирает из слотов экипировки id предметов, которых больше нет у персонажа (удалённых),
+ * иначе слот остаётся «занятым» невидимым предметом.
+ */
+export function pruneEquippedSlots<T extends Pick<Character, 'items' | 'equippedSlots'>>(character: T): T {
+  const ids = new Set(character.items.map((i) => i.id));
+  const slots = character.equippedSlots ?? {};
+  let changed = false;
+  const next: Record<string, string[]> = {};
+  for (const [key, list] of Object.entries(slots)) {
+    const kept = list.filter((id) => ids.has(id));
+    if (kept.length !== list.length) changed = true;
+    next[key] = kept;
+  }
+  return changed ? { ...character, equippedSlots: next } : character;
 }
 
 export function createBlankEquipItem(kind: 'item' | 'ability'): EquipItem {

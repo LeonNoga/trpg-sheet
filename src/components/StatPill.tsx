@@ -1,4 +1,6 @@
-import { STAT_MIN, milestoneEffect, statMilestone } from '../data/statsConfig';
+import { useEffect, useRef, useState } from 'react';
+import { STAT_MIN, milestoneEffects, statMilestone } from '../data/statsConfig';
+import type { MilestoneEffect } from '../data/statsConfig';
 import { modifier } from '../data/formulas';
 import type { BonusSource } from '../data/formulas';
 import { HoverCard, StatBreakdownCard } from './HoverCard';
@@ -17,35 +19,77 @@ interface Props {
   onChange: (value: number) => void;
 }
 
+/** Названия открытых бонусов под характеристикой; по нажатию на название раскрывается полное описание. */
+function MilestoneNotes({ effects }: { effects: MilestoneEffect[] }) {
+  const [openId, setOpenId] = useState<number | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (openId === null) return;
+    const close = (e: Event) => {
+      if (!ref.current?.contains(e.target as Node)) setOpenId(null);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [openId]);
+
+  if (effects.length === 0) return null;
+  const open = effects.find((e) => e.threshold === openId);
+
+  return (
+    <div className="milestone-notes" ref={ref}>
+      {effects.map((effect) => (
+        <button
+          key={effect.threshold}
+          type="button"
+          className="milestone-note"
+          aria-expanded={openId === effect.threshold}
+          onClick={() => setOpenId(openId === effect.threshold ? null : effect.threshold)}
+        >
+          ⚑ {effect.title}
+        </button>
+      ))}
+      {open && (
+        <div className="hover-card milestone-card" role="note">
+          <div className="hover-card-title">
+            {open.title} <span className="muted">· {open.kind}, порог {open.threshold}</span>
+          </div>
+          {open.activation && (
+            <div className="hover-card-line">
+              Активация: <b>{open.activation}</b>
+            </div>
+          )}
+          <div className="hover-card-line">{open.text}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
- * Характеристика: название, редактируемая база, модификатор. Подсвечивается на порогах 50 и 100;
- * бонус порога 50 пишется под блоком, а при наведении показывается расклад «база + предметы = итого».
+ * Характеристика как на бумажной карточке: название, своя база (редактируется), итог с предметами
+ * (показывается всегда) и модификатор. Подсвечивается на порогах 50 и 100; при наведении — расклад
+ * «база + предметы = итого», открытые бонусы порогов пишутся под блоком.
  */
 export function StatPill({ statKey, path, label, base, bonus, sources = [], onChange }: Props) {
   const total = base + bonus;
   const mod = modifier(total);
   const milestone = statMilestone(total);
-  const effect = milestoneEffect(statKey, total, path);
+  const effects = milestoneEffects(statKey, total, path);
 
   return (
     <div className="stat-pill-wrap">
       <HoverCard card={<StatBreakdownCard label={label} base={base} sources={sources} />}>
         <div className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}>
-          <span className="stat-pill-name">
-            {label}
-            {(bonus !== 0 || milestone) && (
-              <span className={milestone ? 'stat-value-milestone' : 'muted'}> ({total})</span>
-            )}
+          <span className="stat-pill-name">{label}</span>
+          <NumberField min={STAT_MIN} value={base} onChange={onChange} aria-label={`${label}: базовое значение`} />
+          <span className={`stat-pill-total ${milestone ? 'stat-value-milestone' : ''}`} title="Итог с предметами">
+            {total}
           </span>
-          <NumberField min={STAT_MIN} value={base} onChange={onChange} />
           <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
         </div>
       </HoverCard>
-      {effect && (
-        <div className="milestone-note">
-          ⚑ <b>{effect.title}</b> — {effect.text}
-        </div>
-      )}
+      <MilestoneNotes effects={effects} />
     </div>
   );
 }

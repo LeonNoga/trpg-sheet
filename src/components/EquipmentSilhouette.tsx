@@ -165,7 +165,9 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
   const [showAll, setShowAll] = useState(false);
   const narrow = useNarrow();
 
-  const idsIn = (key: string) => character.equippedSlots[key] ?? [];
+  // Только существующие предметы: удалённые не должны занимать слот.
+  const existingIds = new Set(character.items.map((i) => i.id));
+  const idsIn = (key: string) => (character.equippedSlots[key] ?? []).filter((id) => existingIds.has(id));
   const itemsIn = (key: string): EquipItem[] =>
     idsIn(key)
       .map((id) => character.items.find((i) => i.id === id))

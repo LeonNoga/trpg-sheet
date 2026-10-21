@@ -74,13 +74,15 @@ interface DnaListsProps {
   titles: [string, string];
   lists: TraitList[];
   level: number;
+  /** Названия умений/ДНК/технологий персонажа — можно выбрать в слот из списка. */
+  abilityNames?: string[];
   onChange: (lists: TraitList[]) => void;
 }
 
 /** Строк в первом списке (видовые ДНК и т.п.) по умолчанию столько; дальше добавляются плюсиком. */
 const BASE_FREE_LINES = 5;
 
-export function DnaListsCard({ titles, lists, level, onChange }: DnaListsProps) {
+export function DnaListsCard({ titles, lists, level, abilityNames = [], onChange }: DnaListsProps) {
   const limit = abilitySlotLimit(level);
 
   function updateList(id: string, updater: (l: TraitList) => TraitList) {
@@ -125,6 +127,21 @@ export function DnaListsCard({ titles, lists, level, onChange }: DnaListsProps) 
                       onChange={(e) => setSlot(list.id, i, e.target.value)}
                       placeholder={`${i + 1})`}
                     />
+                    {abilityNames.length > 0 && (
+                      <select
+                        className="slot-pick"
+                        value=""
+                        title="Выбрать из добавленных на соседней вкладке"
+                        onChange={(e) => e.target.value && setSlot(list.id, i, e.target.value)}
+                      >
+                        <option value="">Из списка…</option>
+                        {abilityNames.map((name, n) => (
+                          <option key={n} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {!limited && i >= BASE_FREE_LINES && (
                       <button
                         type="button"

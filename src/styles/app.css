@@ -289,11 +289,40 @@ input, select, textarea {
   flex: 1;
 }
 
-.milestone-note {
+.milestone-notes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   margin: 4px 0 0 12px;
+}
+
+.milestone-note {
+  padding: 2px 0;
+  border: none;
+  background: none;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  text-align: left;
   color: #c0392b;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.hover-card.milestone-card {
+  top: 100%;
+  left: 0;
+  width: 300px;
+  pointer-events: auto;
+}
+
+.stat-pill-total {
+  padding: 8px 6px;
+  min-width: 44px;
+  text-align: center;
+  font-weight: 700;
+  border-right: 1px solid var(--border);
 }
 
 .budget-bar {
@@ -463,8 +492,13 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0;
+  padding: 4px 6px;
   font-size: 13px;
+  border-bottom: 1px dotted var(--border);
+}
+
+.skill-row:hover {
+  background: var(--surface-2);
 }
 
 .skill-name {
@@ -1466,4 +1500,50 @@ table.ref-table input {
 
 .hover-card .pos {
   color: #1e8449;
+}
+
+.portrait-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.portrait-img {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.portrait-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+}
+
+.char-list-card {
+  position: relative;
+}
+
+.char-list-card .list-portrait {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.slot-pick {
+  max-width: 120px;
+  font-size: 12px;
 }

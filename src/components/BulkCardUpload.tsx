@@ -43,9 +43,9 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
         if (cancelRef.current) break;
         setBulk((b) => b && { ...b, current: file.name });
         try {
-          const image = await fileToImageDataUrl(file);
+          const image = await fileToImageDataUrl(file, 2400);
           const result = await session.recognize(image);
-          const item = itemFromCard(result, image, file.name.replace(/\.[^.]+$/, ''));
+          const item = itemFromCard(result, result.image ?? image, file.name.replace(/\.[^.]+$/, ''));
           onCard(item);
           setBulk(
             (b) =>

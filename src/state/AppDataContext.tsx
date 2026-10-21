@@ -7,6 +7,7 @@ import {
   saveCharacter,
   saveLootTray,
 } from '../storage/db';
+import { pruneEquippedSlots } from '../data/defaults';
 import { applyExperience } from '../data/progression';
 import { createBlankCharacter } from '../data/defaults';
 import type { Character, EquipItem, Path, Roster } from '../types';
@@ -52,7 +53,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateCharacter = useCallback((character: Character) => {
-    const leveled = applyExperience(character);
+    const leveled = pruneEquippedSlots(applyExperience(character));
     const next: Character = { ...leveled, updatedAt: Date.now() };
     setCharacters((prev) => prev.map((c) => (c.id === next.id ? next : c)));
     void saveCharacter(next);
