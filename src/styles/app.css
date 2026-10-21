@@ -267,18 +267,18 @@ input, select, textarea {
    зависит от темы пути, чтобы всегда бросаться в глаза как предупреждение. */
 .stat-pill.milestone-50,
 .stat-pill.milestone-100 {
-  border: 2px solid #c0392b;
+  border: 2px solid #1a73ff;
 }
 
 .stat-pill.milestone-100 {
-  border-color: #ff1a3c;
-  background: rgba(255, 26, 60, 0.1);
-  box-shadow: 0 0 0 3px rgba(255, 26, 60, 0.35), 0 0 12px rgba(255, 26, 60, 0.4);
+  border-color: #0a5cff;
+  background: rgba(26, 115, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(26, 115, 255, 0.35), 0 0 12px rgba(26, 115, 255, 0.45);
 }
 
 .stat-value-milestone {
   font-weight: 800;
-  color: #c0392b;
+  color: #1a73ff;
 }
 
 .stat-pill-wrap {
@@ -305,7 +305,7 @@ input, select, textarea {
   font-size: 12px;
   font-weight: 700;
   text-align: left;
-  color: #c0392b;
+  color: #1a73ff;
   cursor: pointer;
   text-decoration: underline dotted;
 }
@@ -1546,4 +1546,18 @@ table.ref-table input {
 .slot-pick {
   max-width: 120px;
   font-size: 12px;
+}
+
+.fixed-bonus {
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Стрелка выбора из списка (datalist) видна всегда, а не только при наведении. */
+input[list]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
 }

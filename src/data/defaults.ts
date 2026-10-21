@@ -38,7 +38,7 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
     items: [],
     abilities: [],
     equippedSlots: {},
-    speciesBonuses: blankTraitList(3),
+    speciesBonuses: blankTraitList(0),
     dnaLists: [blankTraitList(5), blankTraitList(5)],
     group: '',
     points: 0,
@@ -77,7 +77,11 @@ export function normalizeCharacter(raw: Character): Character {
     },
     skillTrainingDays: raw.skillTrainingDays ?? {},
     equippedSlots: raw.equippedSlots ?? {},
-    speciesBonuses: raw.speciesBonuses ?? blankTraitList(3),
+    // Три пустые строки старых карточек заменены неизменяемыми бонусами класса — пустые убираем, записанное сохраняем.
+    speciesBonuses:
+      raw.speciesBonuses && raw.speciesBonuses.slots.some((s) => s.trim())
+        ? raw.speciesBonuses
+        : { ...(raw.speciesBonuses ?? blankTraitList(0)), slots: [] },
     dnaLists: raw.dnaLists ?? [blankTraitList(5), blankTraitList(5)],
     group: raw.group ?? '',
     points: raw.points ?? 0,

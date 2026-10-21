@@ -8,9 +8,11 @@ interface BonusesProps {
   onChange: (list: TraitList) => void;
   /** Если задано — показывает выпадающий список для быстрого добавления строки по имени существующего предмета. */
   pickFromNames?: string[];
+  /** Неизменяемые строки-бонусы по правилам системы — показываются над свободными строками. */
+  fixedLines?: string[];
 }
 
-export function SpeciesBonusesCard({ title, list, onChange, pickFromNames }: BonusesProps) {
+export function SpeciesBonusesCard({ title, list, onChange, pickFromNames, fixedLines = [] }: BonusesProps) {
   const [pick, setPick] = useState('');
 
   function setLine(index: number, value: string) {
@@ -30,6 +32,11 @@ export function SpeciesBonusesCard({ title, list, onChange, pickFromNames }: Bon
   return (
     <div className="card">
       <h3 className="card-title">{title}</h3>
+      {fixedLines.map((line) => (
+        <div className="fixed-bonus" key={line}>
+          {line}
+        </div>
+      ))}
       {list.slots.map((line, i) => (
         <div className="row" key={i} style={{ marginBottom: 4 }}>
           <input value={line} onChange={(e) => setLine(i, e.target.value)} placeholder="Строка" />
@@ -97,8 +104,17 @@ export function DnaListsCard({ titles, lists, level, abilityNames = [], onChange
     });
   }
 
+  const datalistId = `ability-names-${lists[0]?.id ?? 'x'}`;
+
   return (
     <div className="card">
+      {abilityNames.length > 0 && (
+        <datalist id={datalistId}>
+          {[...new Set(abilityNames)].map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      )}
       <div className="row">
         {lists.map((list, idx) => {
           const limited = idx === 1;
@@ -126,22 +142,10 @@ export function DnaListsCard({ titles, lists, level, abilityNames = [], onChange
                       value={list.slots[i] ?? ''}
                       onChange={(e) => setSlot(list.id, i, e.target.value)}
                       placeholder={`${i + 1})`}
+                      // Стрелка справа открывает названия с соседней вкладки; можно и просто вписать текст.
+                      list={abilityNames.length > 0 ? datalistId : undefined}
+                      autoComplete="off"
                     />
-                    {abilityNames.length > 0 && (
-                      <select
-                        className="slot-pick"
-                        value=""
-                        title="Выбрать из добавленных на соседней вкладке"
-                        onChange={(e) => e.target.value && setSlot(list.id, i, e.target.value)}
-                      >
-                        <option value="">Из списка…</option>
-                        {abilityNames.map((name, n) => (
-                          <option key={n} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
                     {!limited && i >= BASE_FREE_LINES && (
                       <button
                         type="button"

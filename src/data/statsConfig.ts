@@ -137,6 +137,16 @@ export function levelPointsRate(classRarity?: Rarity, uniqueRate?: number): numb
   return CLASS_RARITY_LEVEL_POINTS[classRarity ?? 'common'];
 }
 
+/** Неизменяемые бонусы блока «Видовые/Классовые бонусы»: первая строка зависит от редкости класса. */
+export function classBonusLines(classRarity?: Rarity, uniqueRate?: number): string[] {
+  const rarity = classRarity ? ` (${CLASS_RARITY_LABELS[classRarity]})` : '';
+  return [
+    `Бонус очков характеристик: +${levelPointsRate(classRarity, uniqueRate)} за уровень${rarity}`,
+    'Откат классовых способностей уменьшается',
+    'Стоимость классовых умений уменьшается на 50%',
+  ];
+}
+
 // Пороги суммарного значения характеристики (база + снаряжение). На 50 открывается именной
 // бонус; на 100 — второй уровень подсветки, сами бонусы автор пропишет позже.
 export const STAT_MILESTONE_BONUS = 50;

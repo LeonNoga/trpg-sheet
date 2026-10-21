@@ -14,6 +14,7 @@ import { AdditionalInfoTab } from './AdditionalInfoTab';
 import { PrintableSheet, printCharacterSheet } from './PrintableSheet';
 import {
   CLASS_RARITY_LABELS,
+  classBonusLines as getClassBonusLines,
   PATH_ABILITY_LABELS,
   PATH_LABELS,
   PATH_SPECIES_FIELD_LABEL,
@@ -164,6 +165,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   }
 
   const traitLabels = PATH_TRAIT_LABELS[character.path];
+  const classBonusLines = getClassBonusLines(character.classRarity, character.uniqueLevelPoints);
 
   return (
     <div className={`theme-${character.path}`}>
@@ -298,6 +300,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               <PortraitCard portrait={character.portrait} onChange={(portrait) => patch((c) => ({ ...c, portrait }))} />
               <SpeciesBonusesCard
                 title={traitLabels.bonuses}
+                fixedLines={classBonusLines}
                 list={character.speciesBonuses}
                 onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
               />
