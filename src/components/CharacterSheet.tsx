@@ -28,7 +28,7 @@ import { MAX_LEVEL, levelPointsAfterManualLevel } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import { HistoryDialog } from './HistoryDialog';
 import { ShortRestDialog } from './ShortRestDialog';
-import { AbilityUseBar } from './AbilityUseBar';
+import type { SlotUseInfo } from './SlotUseButton';
 import {
   applyUse,
   checkShortage,
@@ -181,24 +181,38 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     }
   }
 
-  /** Строка «Применить» под способностью — только если у неё есть стоимость, откат или дневной лимит. */
-  function abilityUseBar(item: EquipItem) {
+  /** Кнопка применения рядом со слотом способности: только если у способности есть стоимость, откат или дневной лимит. */
+  function slotUse(name: string): SlotUseInfo | null {
     const c = character!;
+    const key = name.trim().toLowerCase();
+    const item = key ? c.abilities.find((a) => a.name.trim().toLowerCase() === key) : undefined;
+    if (!item) return null;
     const base = parseActivationCost(item.activation);
     const reduced = reduceResourceCost(c, base.resource);
     const daily = isDailyLimited(item);
     const cooldown = hasCooldown(item);
     if (base.resource === 0 && base.stamina === 0 && !daily && !cooldown) return null;
-    return (
-      <AbilityUseBar
-        cost={{ resource: reduced.value, stamina: base.stamina }}
-        resourceLabel={PATH_RESOURCE_LABEL[c.path]}
-        note={reduced.note && reduced.value !== base.resource ? `${reduced.note} (было ${base.resource})` : undefined}
-        usage={c.usage?.[item.id]}
-        onUse={() => applyAbility(item)}
-        onClear={(which) => clearUsageFlag(item.id, which)}
-      />
-    );
+
+    const costParts = [
+      reduced.value ? `−${reduced.value} ${PATH_RESOURCE_LABEL[c.path]}` : '',
+      base.stamina ? `−${base.stamina} Вын.` : '',
+    ].filter(Boolean);
+    const usage = c.usage?.[item.id];
+    const reasons: string[] = [];
+    if (usage?.cooldown) reasons.push(`Откат: ${item.cooldown?.trim() || 'идёт'}`);
+    if (usage?.daily) reasons.push('Уже использовано сегодня (раз в день)');
+    const note = reduced.note && reduced.value !== base.resource ? ` (${reduced.note}, было ${base.resource})` : '';
+    return {
+      id: item.id,
+      costText: costParts.join(', '),
+      tooltip: `Применить «${item.name}»${costParts.length ? `: ${costParts.join(', ')}` : ''}${note}`,
+      cooling: reasons.length > 0,
+      reasons,
+    };
+  }
+
+  function resetCooldown(id: string) {
+    patch((c) => clearUsage(clearUsage(c, id, 'cooldown'), id, 'daily'));
   }
 
   function changeSkill(skill: string, level: SkillLevel) {
@@ -454,6 +468,12 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             level={character.level}
             abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
             artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
+            slotUse={slotUse}
+            onUseAbility={(id) => {
+              const item = character.abilities.find((a) => a.id === id);
+              if (item) applyAbility(item);
+            }}
+            onResetCooldown={resetCooldown}
             onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
           />
 
@@ -525,7 +545,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           onChange={(abilities: EquipItem[]) => patch((c) => ({ ...c, abilities }))}
           addLabel={PATH_ABILITY_LABELS[character.path].add}
           emptyText={PATH_ABILITY_LABELS[character.path].empty}
-          cardExtra={abilityUseBar}
           toolbar={<BulkCardUpload onCard={addCardToCharacter} getExisting={() => [...(characterRef.current?.items ?? []), ...(characterRef.current?.abilities ?? [])]} />}
           onCompanion={addCardToCharacter}
         />

@@ -1511,3 +1511,39 @@ input[list]::-webkit-calendar-picker-indicator {
     mix-blend-mode: screen;
   }
 }
+
+.slot-use-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.slot-use {
+  white-space: nowrap;
+  padding-inline: 8px;
+}
+
+.slot-use.cooling {
+  opacity: 0.55;
+  filter: grayscale(1);
+  cursor: help;
+}
+
+.hover-card.slot-use-card {
+  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  width: 220px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.slot-row {
+  flex-wrap: nowrap;
+}
+
+.slot-row input {
+  min-width: 0;
+}

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { abilitySlotLimit } from '../data/statsConfig';
+import { SlotUseButton } from './SlotUseButton';
+import type { SlotUseInfo } from './SlotUseButton';
 import type { TraitList } from '../types';
 
 interface BonusesProps {
@@ -90,6 +92,10 @@ interface DnaListsProps {
   abilityNames?: string[];
   /** Умения, пришедшие от артефактов: в списке артефактных слотов они предлагаются первыми. */
   artifactAbilityNames?: string[];
+  /** Сведения о способности по названию из слота: если есть стоимость или откат — рядом со слотом появляется кнопка применения. */
+  slotUse?: (name: string) => SlotUseInfo | null;
+  onUseAbility?: (id: string) => void;
+  onResetCooldown?: (id: string) => void;
   onChange: (lists: TraitList[]) => void;
 }
 
@@ -102,6 +108,9 @@ export function DnaListsCard({
   level,
   abilityNames = [],
   artifactAbilityNames = [],
+  slotUse,
+  onUseAbility,
+  onResetCooldown,
   onChange,
 }: DnaListsProps) {
   const limit = abilitySlotLimit(level);
@@ -160,7 +169,7 @@ export function DnaListsCard({
                   key={i}
                   style={{ marginBottom: 4 }}
                 >
-                  <div className="row">
+                  <div className="row slot-row">
                     <input
                       value={list.slots[i] ?? ''}
                       onChange={(e) => setSlot(list.id, i, e.target.value)}
@@ -169,6 +178,16 @@ export function DnaListsCard({
                       list={idx === 2 ? (artifactOptions.length > 0 ? artifactDatalistId : undefined) : abilityNames.length > 0 ? datalistId : undefined}
                       autoComplete="off"
                     />
+                    {(() => {
+                      const info = slotUse?.(list.slots[i] ?? '');
+                      return info ? (
+                        <SlotUseButton
+                          info={info}
+                          onUse={() => onUseAbility?.(info.id)}
+                          onResetCooldown={() => onResetCooldown?.(info.id)}
+                        />
+                      ) : null;
+                    })()}
                     {!limited && i >= BASE_FREE_LINES && (
                       <button
                         type="button"
