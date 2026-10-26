@@ -105,9 +105,9 @@ export function startNewDay(character: Character): Character {
   return { ...character, usage: {} };
 }
 
-/** Сколько здоровья даёт длительный отдых: модификатор Живучести (с предметами), не меньше нуля. */
+/** Сколько здоровья даёт длительный отдых: модификатор Живучести (с предметами), но не меньше 1. */
 export function longRestHealing(character: Character): number {
-  return Math.max(0, modifier(totalStat(character, 'vitality')));
+  return Math.max(1, modifier(totalStat(character, 'vitality')));
 }
 
 /**

@@ -85,14 +85,14 @@ describe('применение, день и отдых', () => {
     expect(rested.usage).toEqual({});
   });
 
-  it('здоровье при отдыхе не превышает максимум и не уменьшается', () => {
+  it('здоровье при отдыхе не превышает максимум, не уменьшается и растёт минимум на 1', () => {
     const base = character();
     const full = { ...base, baseStats: { ...base.baseStats, vitality: 30 }, pools: { hp: 999, staminaPoints: 0, resourcePoints: 0 } };
     expect(longRest(full).pools.hp).toBe(999); // больше максимума (временные хиты) не трогаем
     const nearMax = { ...full, pools: { ...full.pools, hp: computeDerivedStats(full).hp - 1 } };
     expect(longRest(nearMax).pools.hp).toBe(computeDerivedStats(nearMax).hp);
-    const weak = { ...base, pools: { hp: 3, staminaPoints: 0, resourcePoints: 0 } }; // мод. Живучести 5 → −1
-    expect(longRestHealing(weak)).toBe(0);
-    expect(longRest(weak).pools.hp).toBe(3);
+    const weak = { ...base, pools: { hp: 3, staminaPoints: 0, resourcePoints: 0 } }; // мод. Живучести 5 → −1, но минимум +1
+    expect(longRestHealing(weak)).toBe(1);
+    expect(longRest(weak).pools.hp).toBe(4);
   });
 });
