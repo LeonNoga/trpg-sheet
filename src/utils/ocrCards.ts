@@ -12,6 +12,8 @@ export interface OcrResult {
   words: OcrWord[];
   /** Текст второго прохода с локальной бинаризацией — читает бледные строки (путь, уровень, описание), которые теряются в первом. */
   altText?: string;
+  /** Средняя уверенность Tesseract (0–100) по основному проходу. */
+  confidence?: number;
   /** Фото после обрезки по листу и поворота (если они понадобились) — его и стоит хранить в карточке. */
   image?: string;
 }
@@ -27,7 +29,13 @@ export interface OcrSession {
 /** Один воркер Tesseract на всю пачку карточек: язык грузится один раз, а не на каждый файл. */
 export async function createOcrSession(): Promise<OcrSession> {
   const { createWorker } = await import('tesseract.js');
-  const worker = await createWorker('rus+eng');
+  // Воркер, ядро и языки берутся с нашего сайта (см. scripts/copy-ocr-assets.mjs): работает без внешнего CDN и офлайн.
+  const base = `${import.meta.env.BASE_URL}ocr`;
+  const worker = await createWorker('rus+eng', undefined, {
+    workerPath: `${base}/worker.min.js`,
+    corePath: `${base}/core`,
+    langPath: `${base}/lang`,
+  });
 
   /** Быстрый прогон уменьшенной копии: сколько «карточных» слов нашлось и насколько уверенно. */
   async function probe(canvas: HTMLCanvasElement) {
@@ -80,6 +88,7 @@ export async function createOcrSession(): Promise<OcrSession> {
       return {
         text,
         altText,
+        confidence: result.data.confidence,
         words: result.data.tsv ? wordsFromTsv(result.data.tsv) : [],
         image: display,
       };
@@ -177,7 +186,35 @@ export function fieldsForKind(f: CardFields, kind: 'item' | 'ability'): KindFiel
   };
 }
 
-function buildItem(kind: 'item' | 'ability', f: KindFields, rawText: string, image: string, fallbackName: string): EquipItem {
+/** Что на карточке не нашлось или распознано неуверенно — это игрок увидит значком «Проверьте». */
+function reviewFlags(kind: 'item' | 'ability', f: KindFields, result: OcrResult): string[] {
+  if (!result.text) return ['текст не распознан'];
+  const flags: string[] = [];
+  if (!f.name) flags.push('название');
+  if (!f.rarity) flags.push('редкость');
+  if (!f.path) flags.push('путь');
+  if (!f.artifact && f.level == null) flags.push('уровень');
+  if (kind === 'ability') {
+    if (!f.activation) flags.push('активация');
+    if (!f.cooldown) flags.push('откат');
+    if (!f.cast) flags.push('каст');
+    if (!f.duration) flags.push('длительность');
+  } else if (/д[аa][её]т|свойств|защит[аы]\s*[:：]/i.test(result.text) && Object.keys(f.statBonuses ?? {}).length === 0) {
+    flags.push('бонусы');
+  }
+  if ((result.confidence ?? 100) < 70) flags.push('качество распознавания');
+  return flags;
+}
+
+function buildItem(
+  kind: 'item' | 'ability',
+  f: KindFields,
+  result: OcrResult,
+  image: string,
+  fallbackName: string,
+): EquipItem {
+  const rawText = result.text;
+  const flags = reviewFlags(kind, f, result);
   return {
     ...createBlankEquipItem(kind),
     name: f.name || fallbackName,
@@ -196,6 +233,7 @@ function buildItem(kind: 'item' | 'ability', f: KindFields, rawText: string, ima
     // Предмет «не надет» по умолчанию; умения всегда активны.
     equipped: kind === 'ability',
     artifact: f.artifact || undefined,
+    review: flags.length > 0 ? flags : undefined,
     image,
   };
 }
@@ -207,14 +245,14 @@ function buildItem(kind: 'item' | 'ability', f: KindFields, rawText: string, ima
 export function itemsFromCard(result: OcrResult, image: string, fallbackName: string): EquipItem[] {
   const parsed = parseCardFields(result);
   if (parsed.kind === 'artifact') {
-    const ability = buildItem('ability', fieldsForKind(parsed, 'ability'), result.text, image, fallbackName);
+    const ability = buildItem('ability', fieldsForKind(parsed, 'ability'), result, image, fallbackName);
     const hasBonuses = Object.keys(parsed.statBonuses ?? {}).length > 0;
     return hasBonuses
-      ? [buildItem('item', fieldsForKind(parsed, 'item'), result.text, image, fallbackName), ability]
+      ? [buildItem('item', fieldsForKind(parsed, 'item'), result, image, fallbackName), ability]
       : [ability];
   }
   const kind = parsed.kind ?? 'item';
-  return [buildItem(kind, fieldsForKind(parsed, kind), result.text, image, fallbackName)];
+  return [buildItem(kind, fieldsForKind(parsed, kind), result, image, fallbackName)];
 }
 
 /**

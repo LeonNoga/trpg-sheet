@@ -474,7 +474,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             onChange={(items: EquipItem[]) => patch((c) => ({ ...c, items }))}
             addLabel="+ Добавить предмет"
             emptyText="Предметов пока нет."
-            toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
+            toolbar={<BulkCardUpload onCard={addCardToCharacter} getExisting={() => [...(characterRef.current?.items ?? []), ...(characterRef.current?.abilities ?? [])]} />}
             onCompanion={addCardToCharacter}
           />
         </>
@@ -490,7 +490,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           addLabel={PATH_ABILITY_LABELS[character.path].add}
           emptyText={PATH_ABILITY_LABELS[character.path].empty}
           cardExtra={abilityUseBar}
-          toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
+          toolbar={<BulkCardUpload onCard={addCardToCharacter} getExisting={() => [...(characterRef.current?.items ?? []), ...(characterRef.current?.abilities ?? [])]} />}
           onCompanion={addCardToCharacter}
         />
       )}

@@ -1700,3 +1700,18 @@ input[list]::-webkit-calendar-picker-indicator {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+.review-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 6px 10px;
+  border: 1px dashed var(--warn);
+  border-radius: 10px;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+}

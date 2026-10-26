@@ -42,7 +42,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
 
   function saveEdited(item: EquipItem) {
-    onChange(items.map((i) => (i.id === item.id ? item : i)));
+    onChange(items.map((i) => (i.id === item.id ? { ...item, review: undefined } : i)));
     setEditingId(null);
   }
 
@@ -132,6 +132,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
             onSelect={(on) => toggleSelected(item.id, on)}
             onToggleEquipped={() => toggleEquipped(item.id)}
             extra={cardExtra?.(item)}
+            onDismissReview={() => onChange(items.map((i) => (i.id === item.id ? { ...i, review: undefined } : i)))}
             onEdit={() => setEditingId(item.id)}
             onDelete={() => remove(item.id)}
           />

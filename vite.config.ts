@@ -27,6 +27,17 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // Файлы OCR (≈10 МБ) не кладём в предзагрузку: они кэшируются при первом использовании распознавания.
+        globIgnores: ['**/ocr/**'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/ocr/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'ocr-assets', cacheableResponse: { statuses: [0, 200] } },
+          },
+        ],
+      },
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Карточка персонажа НРИ',

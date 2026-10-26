@@ -12,11 +12,13 @@ interface Props {
   onToggleEquipped: () => void;
   /** Дополнительный блок под текстом карточки (например, кнопка «Применить» у способностей). */
   extra?: ReactNode;
+  /** Подтвердить, что распознанные данные проверены — убирает значок «Проверьте». */
+  onDismissReview?: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function ItemCard({ item, path, showEquipToggle, selected, onSelect, extra, onToggleEquipped, onEdit, onDelete }: Props) {
+export function ItemCard({ item, path, showEquipToggle, selected, onSelect, extra, onDismissReview, onToggleEquipped, onEdit, onDelete }: Props) {
   const bonusEntries = Object.entries(item.statBonuses) as [BonusKey, number][];
   const props = item.kind === 'ability' && [item.activation, item.cooldown, item.cast, item.duration].some(Boolean);
 
@@ -51,6 +53,17 @@ export function ItemCard({ item, path, showEquipToggle, selected, onSelect, extr
           </label>
         )}
       </div>
+
+      {item.review && item.review.length > 0 && (
+        <div className="review-badge">
+          <span>⚠ Проверьте: {item.review.join(', ')}</span>
+          {onDismissReview && (
+            <button className="btn btn-sm btn-ghost" onClick={onDismissReview}>
+              Всё верно
+            </button>
+          )}
+        </div>
+      )}
 
       {item.flavorText && <p className="item-flavor">"{item.flavorText}"</p>}
       {item.effect && <p className="item-effect">{item.effect}</p>}

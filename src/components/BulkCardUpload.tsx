@@ -7,6 +7,8 @@ import type { EquipItem } from '../types';
 interface Props {
   /** Вызывается для каждой распознанной карточки сразу после обработки (прогресс не теряется при остановке). */
   onCard: (item: EquipItem) => void;
+  /** Уже имеющиеся записи — для поиска возможных дубликатов (то же название и тип). */
+  getExisting?: () => EquipItem[];
   label?: string;
 }
 
@@ -18,10 +20,12 @@ interface BulkState {
   items: number;
   abilities: number;
   problems: string[];
+  review: number;
+  duplicates: string[];
 }
 
 /** Пакетная загрузка фото карточек: OCR, определение предмет/умение и автозаполнение полей. */
-export function BulkCardUpload({ onCard, label = 'Загрузить карточки (OCR)' }: Props) {
+export function BulkCardUpload({ onCard, getExisting, label = 'Загрузить карточки (OCR)' }: Props) {
   const [bulk, setBulk] = useState<BulkState | null>(null);
   const cancelRef = useRef(false);
   const input = useRef<HTMLInputElement>(null);
@@ -32,9 +36,10 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
     if (files.length === 0) return;
 
     cancelRef.current = false;
-    setBulk({ running: true, done: 0, total: files.length, current: '', items: 0, abilities: 0, problems: [] });
+    setBulk({ running: true, done: 0, total: files.length, current: '', items: 0, abilities: 0, problems: [], review: 0, duplicates: [] });
 
     let session: OcrSession | null = null;
+    const added: EquipItem[] = [];
     try {
       session = await createOcrSession();
       for (const file of files) {
@@ -45,13 +50,28 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
           const result = await session.recognize(image);
           // Обычно одна запись на карточку; артефакт даёт умение и (если есть свойства) ещё предмет.
           const cards = itemsFromCard(result, result.image ?? image, file.name.replace(/\.[^.]+$/, ''));
-          cards.forEach((card) => onCard(card));
+          // Возможные дубликаты: то же название и тип среди уже имеющихся и добавленных в этой пачке. Не пропускаем — только помечаем.
+          const normalize = (name: string) => name.trim().toLowerCase();
+          const known = [...(getExisting?.() ?? []), ...added];
+          const dupNames: string[] = [];
+          const marked = cards.map((card) => {
+            const dup = known.some((k) => k.kind === card.kind && normalize(k.name) === normalize(card.name));
+            if (!dup) return card;
+            dupNames.push(card.name);
+            return { ...card, review: [...(card.review ?? []), 'возможный дубликат'] };
+          });
+          marked.forEach((card) => {
+            added.push(card);
+            onCard(card);
+          });
           setBulk(
             (b) =>
               b && {
                 ...b,
                 items: b.items + cards.filter((c) => c.kind === 'item').length,
                 abilities: b.abilities + cards.filter((c) => c.kind === 'ability').length,
+                review: b.review + marked.filter((c) => c.review && c.review.length > 0).length,
+                duplicates: [...b.duplicates, ...dupNames],
                 problems: result.text ? b.problems : [...b.problems, `${file.name}: текст не распознан, добавлено без данных`],
               },
           );
@@ -67,7 +87,7 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
         (b) =>
           b && {
             ...b,
-            problems: [...b.problems, 'Не удалось запустить распознавание (при первом запуске нужен интернет для загрузки языка).'],
+            problems: [...b.problems, 'Не удалось запустить распознавание (не удалось загрузить данные распознавания; при первом запуске нужен интернет).'],
           },
       );
     } finally {
@@ -112,6 +132,14 @@ export function BulkCardUpload({ onCard, label = 'Загрузить карто�
                 Готово: добавлено предметов — {bulk.items}, умений — {bulk.abilities}
                 {bulk.done < bulk.total ? ` (остановлено на ${bulk.done} из ${bulk.total})` : ''}
               </strong>
+              {bulk.review > 0 && (
+                <span className="muted">
+                  Помечено значком «⚠ Проверьте»: {bulk.review} — откройте их и убедитесь, что данные распознаны верно.
+                </span>
+              )}
+              {bulk.duplicates.length > 0 && (
+                <span className="error-text">Возможные дубликаты (добавлены с пометкой): {bulk.duplicates.join(', ')}</span>
+              )}
               {bulk.problems.map((p) => (
                 <span className="error-text" key={p}>
                   {p}

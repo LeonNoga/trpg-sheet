@@ -65,7 +65,7 @@ export function LootTray() {
   }
 
   function saveEdited(item: EquipItem) {
-    updateLootTray(lootTray.map((i) => (i.id === item.id ? item : i)));
+    updateLootTray(lootTray.map((i) => (i.id === item.id ? { ...item, review: undefined } : i)));
     setEditingId(null);
   }
 
@@ -146,7 +146,7 @@ export function LootTray() {
         />
       </div>
 
-      <BulkCardUpload onCard={(item) => addToLootTray([item])} />
+      <BulkCardUpload onCard={(item) => addToLootTray([item])} getExisting={() => trayRef.current} />
 
       {editorForNew && (
         <ItemEditor
@@ -230,6 +230,7 @@ export function LootTray() {
             <ItemCard
               item={item}
               showEquipToggle={false}
+              onDismissReview={() => updateLootTray(lootTray.map((i) => (i.id === item.id ? { ...i, review: undefined } : i)))}
               selected={selected.has(item.id)}
               onSelect={(on) =>
                 setSelected((prev) => {
