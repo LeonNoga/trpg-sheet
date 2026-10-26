@@ -126,3 +126,47 @@ export function longRest(character: Character): Character {
     },
   };
 }
+
+export const SHORT_REST_STEP_MINUTES = 10;
+
+export interface ShortRestGains {
+  /** Сколько полных десятиминуток отдыха посчитано (остаток минут не считается). */
+  periods: number;
+  /** Прибавка за одну десятиминутку: модификатор характеристики, но не меньше 1. */
+  staminaPerPeriod: number;
+  resourcePerPeriod: number;
+  /** Итоговая прибавка с учётом максимума пула. */
+  stamina: number;
+  resource: number;
+}
+
+/**
+ * Короткий отдых: за каждые полные 10 минут выносливость и ресурс (Дух / Энергия / Биоэнергия) восстанавливаются
+ * на модификатор Выносливости / Ресурса (не меньше 1), но не выше максимума.
+ */
+export function shortRestGains(character: Character, minutes: number): ShortRestGains {
+  const periods = Math.max(0, Math.floor((Number.isFinite(minutes) ? minutes : 0) / SHORT_REST_STEP_MINUTES));
+  const staminaPerPeriod = Math.max(1, modifier(totalStat(character, 'endurance')));
+  const resourcePerPeriod = Math.max(1, modifier(totalStat(character, 'resource')));
+  const max = computeDerivedStats(character);
+  const room = (current: number, limit: number) => Math.max(0, limit - current);
+  return {
+    periods,
+    staminaPerPeriod,
+    resourcePerPeriod,
+    stamina: Math.min(periods * staminaPerPeriod, room(character.pools.staminaPoints, max.staminaPoints)),
+    resource: Math.min(periods * resourcePerPeriod, room(character.pools.resourcePoints, max.resourcePoints)),
+  };
+}
+
+export function shortRest(character: Character, minutes: number): Character {
+  const gains = shortRestGains(character, minutes);
+  return {
+    ...character,
+    pools: {
+      ...character.pools,
+      staminaPoints: character.pools.staminaPoints + gains.stamina,
+      resourcePoints: character.pools.resourcePoints + gains.resource,
+    },
+  };
+}

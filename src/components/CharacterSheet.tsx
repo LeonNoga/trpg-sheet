@@ -27,6 +27,7 @@ import {
 import { MAX_LEVEL, levelPointsAfterManualLevel } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import { HistoryDialog } from './HistoryDialog';
+import { ShortRestDialog } from './ShortRestDialog';
 import { AbilityUseBar } from './AbilityUseBar';
 import {
   applyUse,
@@ -36,6 +37,7 @@ import {
   isDailyLimited,
   longRest,
   longRestHealing,
+  shortRest,
   milestoneUsageKey,
   parseActivationCost,
   reduceResourceCost,
@@ -78,6 +80,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const { showUndo } = useUndo();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  const [shortRestOpen, setShortRestOpen] = useState(false);
   const character = characters.find((c) => c.id === characterId);
   const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
@@ -311,6 +314,16 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           </div>
         </details>
       </div>
+      {shortRestOpen && (
+        <ShortRestDialog
+          character={character}
+          onCancel={() => setShortRestOpen(false)}
+          onConfirm={(minutes) => {
+            patch((c) => shortRest(c, minutes));
+            setShortRestOpen(false);
+          }}
+        />
+      )}
       {historyOpen && <HistoryDialog character={character} onClose={() => setHistoryOpen(false)} />}
 
       <div className="card">
@@ -448,6 +461,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <div className="card-title-row">
               <h3 className="card-title">Характеристики и показатели</h3>
               <div className="rest-buttons">
+                <button className="btn btn-sm" onClick={() => setShortRestOpen(true)} title="За каждые 10 минут — модификатор Выносливости и ресурса">
+                  ⏱ Короткий отдых
+                </button>
                 <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: снять откаты и дневные ограничения">
                   ☀ Новый день
                 </button>
