@@ -11,8 +11,8 @@ import { PortraitCard } from './PortraitCard';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
-import { renderSheetPage } from '../utils/sheetImage';
-import { saveImageFile } from '../storage/saveFile';
+import { renderSheetPages } from '../utils/sheetImage';
+import { saveImageFiles } from '../storage/saveFile';
 import {
   CLASS_RARITY_LABELS,
   classBonusLines as getClassBonusLines,
@@ -273,9 +273,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   async function handleSaveImage() {
     setImageBusy(true);
     try {
-      const blob = await renderSheetPage(character!);
+      const blobs = await renderSheetPages(character!);
       const name = (character!.characterName.trim() || 'character').replace(/[\\/:*?"<>|]+/g, '_');
-      await saveImageFile(`${name}.png`, blob);
+      await saveImageFiles(blobs.map((blob, i) => ({ fileName: `${name}-лист${i + 1}.png`, blob })));
     } catch (err) {
       console.error(err);
       alert('Не удалось нарисовать картинку.');

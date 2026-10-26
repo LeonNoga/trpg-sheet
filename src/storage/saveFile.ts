@@ -60,29 +60,36 @@ export async function saveJsonFile(fileName: string, payload: unknown): Promise<
 }
 
 export interface ImageFallbackDetail {
-  fileName: string;
-  url: string;
+  images: { fileName: string; url: string }[];
 }
 
 /**
- * Сохранение картинки: на телефоне — через «Поделиться» (там же «Сохранить в Фото/Файлы», Telegram…), на компьютере —
- * обычное скачивание. Если меню недоступно (встроенный браузер), показываем картинку, которую можно сохранить долгим нажатием.
+ * Сохранение картинок (листы карточки): на телефоне — одним вызовом «Поделиться» со всеми файлами (там же «Сохранить в Фото»,
+ * Telegram…), на компьютере — обычное скачивание по очереди. Если меню недоступно (встроенный браузер),
+ * показываем картинки, которые можно сохранить долгим нажатием.
  */
-export async function saveImageFile(fileName: string, blob: Blob): Promise<boolean> {
+export async function saveImageFiles(files: { fileName: string; blob: Blob }[]): Promise<boolean> {
   if (!isTouchFirstDevice()) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    for (const { fileName, blob } of files) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      // Небольшая пауза: браузеры блокируют слишком частые подряд скачивания.
+      await new Promise((r) => setTimeout(r, 250));
+    }
     return true;
   }
 
   if (typeof navigator.share === 'function') {
-    const data: ShareData = { files: [new File([blob], fileName, { type: 'image/png' })], title: fileName };
+    const data: ShareData = {
+      files: files.map(({ fileName, blob }) => new File([blob], fileName, { type: 'image/png' })),
+      title: files[0]?.fileName,
+    };
     if (!navigator.canShare || navigator.canShare(data)) {
       try {
         await navigator.share(data);
@@ -94,7 +101,9 @@ export async function saveImageFile(fileName: string, blob: Blob): Promise<boole
   }
 
   window.dispatchEvent(
-    new CustomEvent<ImageFallbackDetail>(IMAGE_FALLBACK_EVENT, { detail: { fileName, url: URL.createObjectURL(blob) } }),
+    new CustomEvent<ImageFallbackDetail>(IMAGE_FALLBACK_EVENT, {
+      detail: { images: files.map(({ fileName, blob }) => ({ fileName, url: URL.createObjectURL(blob) })) },
+    }),
   );
   return true;
 }

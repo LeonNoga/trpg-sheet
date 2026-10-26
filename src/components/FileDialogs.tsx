@@ -79,12 +79,14 @@ export function ImageFallbackDialog() {
           Нажмите на картинку и удерживайте, затем выберите «Сохранить в Фото» (или «Скопировать»). Если меню нет — откройте
           приложение в Safari/Chrome.
         </p>
-        <img src={detail.url} alt={detail.fileName} style={{ width: '100%', borderRadius: 8 }} />
+        {detail.images.map((image) => (
+          <img key={image.url} src={image.url} alt={image.fileName} style={{ width: '100%', borderRadius: 8, marginBottom: 8 }} />
+        ))}
         <div className="item-actions">
           <button
             className="btn btn-ghost"
             onClick={() => {
-              URL.revokeObjectURL(detail.url);
+              detail.images.forEach((image) => URL.revokeObjectURL(image.url));
               setDetail(null);
             }}
           >

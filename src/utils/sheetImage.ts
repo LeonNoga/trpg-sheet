@@ -1,8 +1,11 @@
 import magicTemplate from '../assets/templates/magic.png';
 import geneticTemplate from '../assets/templates/genetic.png';
 import techTemplate from '../assets/templates/tech.png';
+import page2Template from '../assets/templates/page2.png';
+import page3Template from '../assets/templates/page3.png';
 import { classBonusLines, SKILLS } from '../data/statsConfig';
-import { bonusSum, computeDerivedStats, modifier, totalStat } from '../data/formulas';
+import { statPointsBudget } from '../data/progression';
+import { bonusSum, computeDerivedStats, modifier, sumBaseStats, totalStat } from '../data/formulas';
 import type { Character, Path, StatKey } from '../types';
 
 // Рендер карточки «как на бумаге»: поверх шаблона листа 2000×1413 пишутся значения в нужных местах.
@@ -84,13 +87,25 @@ function shortBonusLines(character: Character): string[] {
   return [points.replace('Бонус очков характеристик', 'Очки характеристик'), 'Откат классовых способностей ↓', 'Стоимость классовых умений −50%'];
 }
 
-export async function renderSheetPage(character: Character): Promise<Blob> {
-  const template = await loadImage(TEMPLATES[character.path]);
+async function startPage(templateUrl: string) {
+  const template = await loadImage(templateUrl);
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(template, 0, 0, WIDTH, HEIGHT);
+  return { canvas, ctx };
+}
+
+function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Не удалось создать картинку.'))), 'image/png'),
+  );
+}
+
+/** Лист 1: характеристики, показатели, навыки, списки умений. */
+async function renderMainPage(character: Character): Promise<Blob> {
+  const { canvas, ctx } = await startPage(TEMPLATES[character.path]);
 
   // Шапка
   drawText(ctx, character.characterName, 142, 124, { size: 40, maxWidth: 820 });
@@ -148,5 +163,165 @@ export async function renderSheetPage(character: Character): Promise<Blob> {
     }
   });
 
-  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Не удалось создать картинку.'))), 'image/png'));
+  return toBlob(canvas);
+}
+
+// ---------- Лист 2: доп. информация ----------
+
+const LINE_PITCH = 47.6;
+const range = (start: number, count: number) => Array.from({ length: count }, (_, i) => Math.round(start + i * LINE_PITCH));
+
+const WEAPON_LINES = range(759, 14); // «Системное оружие»
+const GEAR_LINES = range(137, 27); // «Системное снаряжение»
+const NOTES_LINES = range(567, 18); // «Заметки»
+const NOTES_OVERFLOW_LINES = range(92, 28); // правая колонка — продолжение заметок
+
+/** Переносит текст по словам в строки не шире maxWidth (с учётом абзацев). */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, size: number): string[] {
+  ctx.font = `500 ${size}px "Segoe UI", "Helvetica Neue", Arial, sans-serif`;
+  const lines: string[] = [];
+  for (const paragraph of text.split('\n')) {
+    let current = '';
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      const attempt = current ? `${current} ${word}` : word;
+      if (ctx.measureText(attempt).width <= maxWidth || !current) current = attempt;
+      else {
+        lines.push(current);
+        current = word;
+      }
+    }
+    lines.push(current);
+  }
+  return lines;
+}
+
+function drawRing(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+}
+
+async function renderExtraPage(character: Character): Promise<Blob> {
+  const { canvas, ctx } = await startPage(page2Template);
+
+  // Группа, очки
+  drawText(ctx, character.group, 208, 70, { size: 34, maxWidth: 270 });
+  drawText(ctx, `${sumBaseStats(character)}/${statPointsBudget(character)}`, 92, 410, { size: 32, align: 'center', maxWidth: 120 });
+  drawText(ctx, character.points, 92, 507, { size: 38, align: 'center', maxWidth: 120 });
+  drawText(ctx, character.developmentPoints, 92, 587, { size: 38, align: 'center', maxWidth: 120 });
+
+  // Системное оружие / снаряжение — построчно
+  character.systemWeapons.slots
+    .filter((s) => s.trim())
+    .slice(0, WEAPON_LINES.length)
+    .forEach((line, i) => drawText(ctx, line, 56, WEAPON_LINES[i] - 17, { size: 27, maxWidth: 430 }));
+  character.systemGear.slots
+    .filter((s) => s.trim())
+    .slice(0, GEAR_LINES.length)
+    .forEach((line, i) => drawText(ctx, line, 540, GEAR_LINES[i] - 17, { size: 27, maxWidth: 372 }));
+
+  // Очки вдохновения: сколько отмечено
+  const inspiration = character.inspirationPoints.filter(Boolean).length;
+  if (character.inspirationPoints.length > 0) {
+    drawText(ctx, `${inspiration}`, 1435, 68, { size: 46, align: 'center', bold: true });
+  }
+
+  // Статус заражения: кольцо вокруг отмеченных значков
+  const columns = [1168, 1290, 1410];
+  character.infectionStatus.success.forEach((on, i) => on && drawRing(ctx, columns[i], 262, 50));
+  character.infectionStatus.fail.forEach((on, i) => on && drawRing(ctx, columns[i], 385, 50));
+
+  // Заметки: сначала в блок «Заметки», остаток — в правую колонку
+  const notes = character.notes.trim();
+  if (notes) {
+    const first = wrapText(ctx, notes, 372, 27);
+    first.slice(0, NOTES_LINES.length).forEach((line, i) => drawText(ctx, line, 1088, NOTES_LINES[i] - 17, { size: 27 }));
+    const rest = first.slice(NOTES_LINES.length).join(' ');
+    if (rest.trim()) {
+      wrapText(ctx, rest, 432, 27)
+        .slice(0, NOTES_OVERFLOW_LINES.length)
+        .forEach((line, i) => drawText(ctx, line, 1513, NOTES_OVERFLOW_LINES[i] - 17, { size: 27 }));
+    }
+  }
+
+  return toBlob(canvas);
+}
+
+// ---------- Лист 3: экипировка ----------
+
+interface SlotBox {
+  /** Ключ слота схемы экипировки. */
+  key: string;
+  x: number;
+  /** Центры строк внутри рамки. */
+  ys: number[];
+  width: number;
+}
+
+const ringYs = [790, 818, 846, 875, 903];
+const handYs = [1213, 1261, 1309];
+
+const SLOT_BOXES: SlotBox[] = [
+  { key: 'glasses', x: 655, ys: [86], width: 195 },
+  { key: 'headwear', x: 900, ys: [86], width: 195 },
+  { key: 'earrings', x: 1170, ys: [93, 121, 149, 176], width: 168 },
+  { key: 'cloak', x: 620, ys: [168], width: 195 },
+  { key: 'amulets', x: 1220, ys: [262, 290, 318], width: 170 },
+  { key: 'shoulders', x: 587, ys: [248], width: 195 },
+  { key: 'armor', x: 1247, ys: [400], width: 195 },
+  { key: 'elbows', x: 555, ys: [333], width: 195 },
+  { key: 'belt', x: 1247, ys: [482], width: 195 },
+  { key: 'bracers', x: 555, ys: [416], width: 195 },
+  { key: 'gloves', x: 1247, ys: [566], width: 195 },
+  { key: 'bracelets', x: 585, ys: [503, 531, 559, 587], width: 165 },
+  { key: 'ringsLeft', x: 580, ys: ringYs, width: 165 },
+  { key: 'thigh', x: 555, ys: [992], width: 195 },
+  { key: 'shins', x: 555, ys: [1068], width: 195 },
+  { key: 'ringsRight', x: 1275, ys: ringYs, width: 165 },
+  { key: 'knees', x: 1247, ys: [992], width: 195 },
+  { key: 'boots', x: 1247, ys: [1068], width: 195 },
+  { key: 'handR', x: 552, ys: handYs, width: 425 },
+  { key: 'handL', x: 1018, ys: handYs, width: 425 },
+];
+
+const INVENTORY_LINES = range(92, 27);
+
+async function renderEquipmentPage(character: Character): Promise<Blob> {
+  const { canvas, ctx } = await startPage(page3Template);
+  const itemName = (id: string) => character.items.find((i) => i.id === id)?.name;
+  const placed = new Set<string>();
+
+  for (const box of SLOT_BOXES) {
+    const ids = character.equippedSlots[box.key] ?? [];
+    const names = ids.map((id) => {
+      placed.add(id);
+      return itemName(id);
+    }).filter((n): n is string => !!n);
+    if (names.length === 0) continue;
+    if (box.ys.length === 1) {
+      // Одна строка в рамке: несколько предметов перечисляем через запятую (шрифт сам уменьшится).
+      drawText(ctx, names.join(', '), box.x, box.ys[0], { size: 24, maxWidth: box.width });
+    } else {
+      names.slice(0, box.ys.length).forEach((name, i) => drawText(ctx, name, box.x, box.ys[i], { size: 24, maxWidth: box.width }));
+    }
+  }
+
+  // Остальные предметы (не стоящие в слотах) — списком в боковых колонках: сначала левая, затем правая.
+  const rest = character.items.filter((i) => !placed.has(i.id) && i.name.trim());
+  const perColumn = INVENTORY_LINES.length;
+  rest.slice(0, perColumn).forEach((item, i) =>
+    drawText(ctx, item.name, 66, INVENTORY_LINES[i] - 17, { size: 27, maxWidth: 430 }),
+  );
+  rest.slice(perColumn, perColumn * 2).forEach((item, i) =>
+    drawText(ctx, item.name, 1500, INVENTORY_LINES[i] - 17, { size: 27, maxWidth: 430 }),
+  );
+
+  return toBlob(canvas);
+}
+
+/** Все три листа бумажной карточки: основной, дополнительная информация и экипировка. */
+export async function renderSheetPages(character: Character): Promise<Blob[]> {
+  return [await renderMainPage(character), await renderExtraPage(character), await renderEquipmentPage(character)];
 }
