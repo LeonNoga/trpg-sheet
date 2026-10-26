@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   addToTrash,
@@ -18,33 +18,9 @@ import {
 import type { AppMeta, Snapshot, TrashEntry } from '../storage/db';
 import { createBlankCharacter, pruneEquippedSlots } from '../data/defaults';
 import { applyExperience } from '../data/progression';
+import { AppDataContext } from './useAppData';
+import type { AppDataContextValue } from './useAppData';
 import type { Character, EquipItem, Path, Roster } from '../types';
-
-interface AppDataContextValue {
-  loading: boolean;
-  characters: Character[];
-  lootTray: EquipItem[];
-  meta: AppMeta;
-  /** Недавно удалённые персонажи (хранятся 30 дней, не больше 5). */
-  trash: TrashEntry[];
-  createCharacter: (path: Path, roster?: Roster) => Character;
-  updateCharacter: (character: Character) => void;
-  removeCharacter: (id: string) => void;
-  /** Копия персонажа с новым id (для «Клонировать»). */
-  cloneCharacter: (id: string) => Character | null;
-  importCharacter: (character: Character, roster?: Roster) => void;
-  restoreBackup: (characters: Character[], lootTray: EquipItem[]) => void;
-  updateLootTray: (items: EquipItem[]) => void;
-  /** Добавляет в начало трея (безопасно вызывать подряд из асинхронного цикла). */
-  addToLootTray: (items: EquipItem[]) => void;
-  updateMeta: (patch: Partial<AppMeta>) => void;
-  restoreFromTrash: (id: string) => void;
-  getSnapshots: (id: string) => Promise<Snapshot[]>;
-  /** Откатывает персонажа к снимку; текущее состояние само сохраняется как ещё один снимок. */
-  restoreSnapshot: (snapshot: Snapshot) => void;
-}
-
-const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 const SAVE_DELAY_MS = 600;
 const SNAPSHOT_EVERY_MS = 15 * 60 * 1000;
@@ -342,10 +318,4 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   if (loading) return null;
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
-}
-
-export function useAppData(): AppDataContextValue {
-  const ctx = useContext(AppDataContext);
-  if (!ctx) throw new Error('useAppData must be used within AppDataProvider');
-  return ctx;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
+import { useAppData } from '../state/useAppData';
 import { StatsEditor, StatBudgetBar } from './StatsEditor';
 import { DerivedStatsPanel } from './DerivedStatsPanel';
 import { SkillsEditor } from './SkillsEditor';

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { useAppData } from '../state/useAppData';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
 import { SkillsEditor } from './SkillsEditor';
@@ -41,7 +41,7 @@ import {
   startNewDay,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
-import { useUndo } from '../state/UndoContext';
+import { useUndo } from '../state/useUndo';
 import type {
   Character,
   EquipItem,
@@ -83,10 +83,15 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const [levelDraft, setLevelDraft] = useState(character?.level ?? 1);
   // Актуальная карточка вне рендера: пакетная загрузка добавляет карточки по одной из async-цикла.
   const characterRef = useRef(character);
-
-  useEffect(() => {
-    if (character) setLevelDraft(character.level);
-  }, [character?.level]);
+  useLayoutEffect(() => {
+    characterRef.current = character;
+  });
+  // Уровень изменился (опыт, ручная смена) — поле «Уровень» показывает новое значение.
+  const [seenLevel, setSeenLevel] = useState(character?.level);
+  if (character && character.level !== seenLevel) {
+    setSeenLevel(character.level);
+    setLevelDraft(character.level);
+  }
 
   if (!character) {
     return (
@@ -100,8 +105,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       </div>
     );
   }
-
-  characterRef.current = character;
 
   function addCardToCharacter(item: EquipItem) {
     const current = characterRef.current!;

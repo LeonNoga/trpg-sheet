@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { FocusEvent, InputHTMLAttributes } from 'react';
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'type'> & {
@@ -20,10 +20,12 @@ function stripLeadingZeros(raw: string): string {
  */
 export function NumberField({ value, onChange, onBlur, ...rest }: Props) {
   const [text, setText] = useState(String(value));
-
-  useEffect(() => {
+  // Значение изменили снаружи (например, кнопкой «+» или сбросом) — обновляем текст прямо во время рендера.
+  const [seenValue, setSeenValue] = useState(value);
+  if (value !== seenValue) {
+    setSeenValue(value);
     setText(String(value));
-  }, [value]);
+  }
 
   function handleChange(raw: string) {
     const normalized = stripLeadingZeros(raw);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
+import { useAppData } from '../state/useAppData';
 import { exportBackup } from '../storage/exportImport';
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -24,6 +24,7 @@ function isStandalone(): boolean {
 export function NoticeBar() {
   const { characters, lootTray, meta, updateMeta } = useAppData();
   const [persisted, setPersisted] = useState<boolean | null>(null);
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     const storage = navigator.storage;
@@ -36,7 +37,6 @@ export function NoticeBar() {
 
   if (characters.length === 0 && lootTray.length === 0) return null;
 
-  const now = Date.now();
   const lastBackup = meta.lastBackupAt;
   const oldest = Math.min(...characters.map((c) => c.createdAt || now), now);
   const backupStale = lastBackup ? now - lastBackup > REMIND_AFTER_DAYS * DAY_MS : now - oldest > 3 * DAY_MS;

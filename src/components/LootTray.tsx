@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAppData } from '../state/useAppData';
 import { ItemCard } from './ItemCard';
 import { ItemEditor } from './ItemEditor';
 import { createBlankEquipItem } from '../data/defaults';
@@ -8,7 +8,7 @@ import { exportTray, importTrayFromFile } from '../storage/exportImport';
 import { BulkCardUpload } from './BulkCardUpload';
 import { PasteImportButton } from './FileDialogs';
 import { SelectionToolbar } from './SelectionToolbar';
-import { useUndo } from '../state/UndoContext';
+import { useUndo } from '../state/useUndo';
 import { reinsertRemoved } from '../utils/undoHelpers';
 import type { BonusKey, EquipItem, ItemPath, Rarity } from '../types';
 
@@ -33,7 +33,9 @@ export function LootTray() {
   const trayInput = useRef<HTMLInputElement>(null);
   const { showUndo } = useUndo();
   const trayRef = useRef(lootTray);
-  trayRef.current = lootTray;
+  useEffect(() => {
+    trayRef.current = lootTray;
+  });
 
   const filtersActive = kindFilter !== 'all' || rarityFilter !== 'all' || pathFilter !== 'all' || bonusFilter !== 'all' || query.trim() !== '';
 

@@ -1,12 +1,13 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ItemCard } from './ItemCard';
 import { SelectionToolbar } from './SelectionToolbar';
 import { ItemEditor } from './ItemEditor';
-import { EMPTY_ITEM_FILTERS, ItemFilterBar, applyItemFilters } from './ItemFilterBar';
-import type { ItemFilterState } from './ItemFilterBar';
+import { ItemFilterBar } from './ItemFilterBar';
+import { EMPTY_ITEM_FILTERS, applyItemFilters } from '../utils/itemFilters';
+import type { ItemFilterState } from '../utils/itemFilters';
 import { createBlankEquipItem } from '../data/defaults';
-import { useUndo } from '../state/UndoContext';
+import { useUndo } from '../state/useUndo';
 import { reinsertRemoved } from '../utils/undoHelpers';
 import type { EquipItem, Path } from '../types';
 
@@ -34,9 +35,11 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   const { showUndo } = useUndo();
   // Актуальный список для отмены: к моменту нажатия «Отменить» он мог измениться.
   const itemsRef = useRef(items);
-  itemsRef.current = items;
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    itemsRef.current = items;
+    onChangeRef.current = onChange;
+  });
 
   const visible = useMemo(() => applyItemFilters(items, filters), [items, filters]);
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;

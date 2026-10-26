@@ -1,12 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-
-interface UndoValue {
-  /** Показывает уведомление «Удалено… Отменить»; undo вызывается по нажатию (в течение 8 секунд). */
-  showUndo: (message: string, undo: () => void) => void;
-}
-
-const UndoContext = createContext<UndoValue | null>(null);
+import { UndoContext } from './useUndo';
 
 const VISIBLE_MS = 8000;
 
@@ -44,10 +38,4 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       )}
     </UndoContext.Provider>
   );
-}
-
-export function useUndo(): UndoValue {
-  const ctx = useContext(UndoContext);
-  if (!ctx) throw new Error('useUndo must be used within UndoProvider');
-  return ctx;
 }

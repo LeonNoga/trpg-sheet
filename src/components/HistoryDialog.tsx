@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
+import { useAppData } from '../state/useAppData';
 import type { Snapshot } from '../storage/db';
 import type { Character } from '../types';
 

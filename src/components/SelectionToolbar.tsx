@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createOcrSession, reparsedItem } from '../utils/ocrCards';
 import { reinsertRemoved } from '../utils/undoHelpers';
-import { useUndo } from '../state/UndoContext';
+import { useUndo } from '../state/useUndo';
 import type { OcrSession } from '../utils/ocrCards';
 import type { EquipItem } from '../types';
 
@@ -30,7 +30,9 @@ export function SelectionToolbar({ allItems, visibleItems, selected, onSelectedC
   const { showUndo } = useUndo();
   // Распознавание идёт долго; результат применяем к свежему списку, а не к тому, что был при запуске.
   const latest = useRef({ allItems, onChangeAll });
-  latest.current = { allItems, onChangeAll };
+  useEffect(() => {
+    latest.current = { allItems, onChangeAll };
+  });
 
   if (allItems.length === 0) return null;
 

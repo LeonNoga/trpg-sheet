@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useAppData } from '../state/AppDataContext';
+import { useAppData } from '../state/useAppData';
 import { PATH_LABELS } from '../data/statsConfig';
 import { importCharacterFromFile } from '../storage/exportImport';
 import { PasteImportButton } from './FileDialogs';
