@@ -30,7 +30,9 @@ import { HistoryDialog } from './HistoryDialog';
 import { ShortRestDialog } from './ShortRestDialog';
 import type { SlotUseInfo } from './SlotUseButton';
 import {
+  applyMilestoneRestore,
   applyUse,
+  computeAbilityCost,
   checkShortage,
   clearUsage,
   hasCooldown,
@@ -39,8 +41,6 @@ import {
   longRestHealing,
   shortRest,
   milestoneUsageKey,
-  parseActivationCost,
-  reduceResourceCost,
   startNewDay,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
@@ -146,8 +146,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   /** Применение способности: списывает стоимость из пулов (с учётом скидки Интеллекта) и отмечает откат / дневной лимит. */
   function applyAbility(item: EquipItem) {
     const c = characterRef.current!;
-    const base = parseActivationCost(item.activation);
-    const cost = { ...base, resource: reduceResourceCost(c, base.resource).value };
+    const { cost } = computeAbilityCost(c, item);
     const lacks = checkShortage(c, cost);
     if (lacks.length > 0 && !confirm(`Не хватает: ${lacks.join('; ')}. Применить всё равно?`)) return;
     patch((cc) => applyUse(cc, item.id, cost, { cooldown: hasCooldown(item), daily: isDailyLimited(item) }));
@@ -158,7 +157,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     const cost = { resource: 0, stamina: effect.stamina ?? 0 };
     const lacks = checkShortage(c, cost);
     if (lacks.length > 0 && !confirm(`Не хватает: ${lacks.join('; ')}. Применить всё равно?`)) return;
-    patch((cc) => applyUse(cc, milestoneUsageKey(stat, effect.threshold), cost, { daily: effect.daily }));
+    patch((cc) => applyMilestoneRestore(applyUse(cc, milestoneUsageKey(stat, effect.threshold), cost, { daily: effect.daily }), effect.restore));
   }
 
   function clearUsageFlag(key: string, which: 'cooldown' | 'daily') {
@@ -187,21 +186,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     const key = name.trim().toLowerCase();
     const item = key ? c.abilities.find((a) => a.name.trim().toLowerCase() === key) : undefined;
     if (!item) return null;
-    const base = parseActivationCost(item.activation);
-    const reduced = reduceResourceCost(c, base.resource);
+    const { cost, base, notes } = computeAbilityCost(c, item);
     const daily = isDailyLimited(item);
     const cooldown = hasCooldown(item);
     if (base.resource === 0 && base.stamina === 0 && !daily && !cooldown) return null;
 
     const costParts = [
-      reduced.value ? `−${reduced.value} ${PATH_RESOURCE_LABEL[c.path]}` : '',
-      base.stamina ? `−${base.stamina} Вын.` : '',
+      cost.resource ? `−${cost.resource} ${PATH_RESOURCE_LABEL[c.path]}` : '',
+      cost.stamina ? `−${cost.stamina} Вын.` : '',
     ].filter(Boolean);
     const usage = c.usage?.[item.id];
     const reasons: string[] = [];
     if (usage?.cooldown) reasons.push(`Откат: ${item.cooldown?.trim() || 'идёт'}`);
     if (usage?.daily) reasons.push('Уже использовано сегодня (раз в день)');
-    const note = reduced.note && reduced.value !== base.resource ? ` (${reduced.note}, было ${base.resource})` : '';
+    const wasParts = [base.resource ? `${base.resource}` : '', base.stamina ? `${base.stamina} Вын.` : ''].filter(Boolean);
+    const note = notes.length > 0 ? ` (${notes.join(', ')}; по карточке было ${wasParts.join(' + ')})` : '';
     return {
       id: item.id,
       costText: costParts.join(', '),

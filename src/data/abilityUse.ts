@@ -1,4 +1,5 @@
 import { computeDerivedStats, modifier, totalStat } from './formulas';
+import type { MilestoneRestore } from './milestones';
 import type { Character, EquipItem } from '../types';
 
 /** Ячейка учёта применения способности: идёт ли откат и израсходован ли дневной лимит. */
@@ -169,4 +170,70 @@ export function shortRest(character: Character, minutes: number): Character {
       resourcePoints: character.pools.resourcePoints + gains.resource,
     },
   };
+}
+
+/** Название способности из слота «классовых» списков (Видовые ДНК / Классовые умения / Технологии Модели) — для скидки −50% на стоимость. */
+export function isClassAbility(character: Character, abilityName: string): boolean {
+  const key = abilityName.trim().toLowerCase();
+  if (!key) return false;
+  return (character.dnaLists[0]?.slots ?? []).some((slot) => slot.trim().toLowerCase() === key);
+}
+
+const halveDown = (value: number) => (value > 0 ? Math.max(1, Math.floor(value / 2)) : 0);
+
+export interface AbilityCostResult {
+  /** Итоговая стоимость с учётом всех скидок. */
+  cost: AbilityCost;
+  /** Стоимость по тексту карточки. */
+  base: AbilityCost;
+  /** Какие скидки сработали — для подсказки. */
+  notes: string[];
+}
+
+/**
+ * Стоимость применения способности: из текста активации, затем −50% для классовых умений (округление вниз, минимум 1)
+ * и скидка Интеллекта на траты ресурса (она считается от уже сниженной цены).
+ */
+export function computeAbilityCost(character: Character, item: Pick<EquipItem, 'name' | 'activation'>): AbilityCostResult {
+  const base = parseActivationCost(item.activation);
+  const notes: string[] = [];
+  let { resource, stamina } = base;
+  if ((resource > 0 || stamina > 0) && isClassAbility(character, item.name)) {
+    resource = halveDown(resource);
+    stamina = halveDown(stamina);
+    notes.push('классовое умение −50%');
+  }
+  const reduced = reduceResourceCost(character, resource);
+  if (reduced.note && reduced.value !== resource) notes.push(reduced.note);
+  return { cost: { resource: reduced.value, stamina }, base, notes };
+}
+
+/** Эффект активного бонуса порога: восстановление пулов и здоровья (применяется после списания стоимости). */
+export function applyMilestoneRestore(character: Character, restore?: MilestoneRestore): Character {
+  if (!restore) return character;
+  const max = computeDerivedStats(character);
+  const pools = { ...character.pools };
+  const vitality = totalStat(character, 'vitality');
+  switch (restore) {
+    case 'stamina-half':
+      pools.staminaPoints = Math.max(pools.staminaPoints, Math.min(max.staminaPoints, pools.staminaPoints + Math.ceil(max.staminaPoints / 2)));
+      break;
+    case 'stamina-full':
+      pools.staminaPoints = Math.max(pools.staminaPoints, max.staminaPoints);
+      break;
+    case 'resource-half':
+      pools.resourcePoints = Math.max(pools.resourcePoints, Math.min(max.resourcePoints, pools.resourcePoints + Math.ceil(max.resourcePoints / 2)));
+      break;
+    case 'resource-full':
+      pools.resourcePoints = Math.max(pools.resourcePoints, max.resourcePoints);
+      break;
+    case 'hp-half-vitality':
+      pools.hp = Math.max(pools.hp, Math.min(max.hp, pools.hp + Math.floor(vitality / 2)));
+      break;
+    case 'last-stand':
+      // Хиты становятся равными модификатору Живучести (не меньше 1) — вместо потери сознания.
+      pools.hp = Math.max(1, modifier(vitality));
+      break;
+  }
+  return { ...character, pools };
 }

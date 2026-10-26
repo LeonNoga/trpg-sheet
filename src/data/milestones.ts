@@ -13,6 +13,25 @@ export function statMilestone(total: number): 50 | 100 | null {
   return null;
 }
 
+/** Автоматический эффект активного бонуса порога. */
+export type MilestoneRestore =
+  | 'stamina-half'
+  | 'stamina-full'
+  | 'resource-half'
+  | 'resource-full'
+  | 'hp-half-vitality'
+  | 'last-stand';
+
+/** Что сделает кнопка «Применить» — для подписи рядом с ней. */
+export const RESTORE_LABELS: Record<MilestoneRestore, string> = {
+  'stamina-half': 'вернёт половину пула Выносливости',
+  'stamina-full': 'вернёт весь пул Выносливости',
+  'resource-half': 'вернёт половину пула ресурса',
+  'resource-full': 'вернёт весь пул ресурса',
+  'hp-half-vitality': 'вернёт хиты на половину Живучести',
+  'last-stand': 'хиты станут равны модификатору Живучести',
+};
+
 export interface MilestoneEffect {
   /** Порог, на котором открывается бонус. */
   threshold: 50 | 100;
@@ -24,6 +43,8 @@ export interface MilestoneEffect {
   stamina?: number;
   /** Можно применить один раз в день — до «Нового дня». */
   daily?: boolean;
+  /** Что восстанавливает при применении (считается автоматически, см. applyMilestoneRestore). */
+  restore?: MilestoneRestore;
   text: string;
 }
 
@@ -69,6 +90,7 @@ const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<50 | 100, (path:
   endurance: {
     50: () => ({
       title: 'Адреналин',
+      restore: 'stamina-half',
       daily: true,
       kind: 'Актив',
       activation: '1 действие, 1 раз за день',
@@ -76,6 +98,7 @@ const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<50 | 100, (path:
     }),
     100: () => ({
       title: 'Второе дыхание',
+      restore: 'stamina-full',
       daily: true,
       kind: 'Актив',
       activation: '1 действие, 1 раз за день',
@@ -85,6 +108,7 @@ const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<50 | 100, (path:
   vitality: {
     50: () => ({
       title: 'Отказ умирать',
+      restore: 'last-stand',
       stamina: 5, daily: true,
       kind: 'Актив',
       activation: 'автоматически, 5 Выносливости, 1 раз за день; действия и реакции не тратятся',
@@ -92,6 +116,7 @@ const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<50 | 100, (path:
     }),
     100: () => ({
       title: 'Ускоренная регенерация',
+      restore: 'hp-half-vitality',
       stamina: 10, daily: true,
       kind: 'Актив',
       activation: '1 действие, 10 Выносливости, 1 раз за день',
@@ -137,6 +162,7 @@ const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<50 | 100, (path:
   resource: {
     50: (path) => ({
       title: 'Резонанс',
+      restore: 'resource-half',
       daily: true,
       kind: 'Актив',
       activation: '1 действие, 1 раз за день',
@@ -144,6 +170,7 @@ const MILESTONE_EFFECTS: Partial<Record<StatKey, Partial<Record<50 | 100, (path:
     }),
     100: (path) => ({
       title: 'Сверхновая',
+      restore: 'resource-full',
       daily: true,
       kind: 'Актив',
       activation: '1 действие, 1 раз за день',

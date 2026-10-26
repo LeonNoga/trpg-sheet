@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { STAT_MIN, milestoneEffects, statMilestone } from '../data/statsConfig';
+import { RESTORE_LABELS } from '../data/statsConfig';
 import type { MilestoneEffect } from '../data/statsConfig';
 import { milestoneUsageKey } from '../data/abilityUse';
 import type { UsageState } from '../data/abilityUse';
@@ -80,6 +81,7 @@ function MilestoneNotes({ statKey, effects, usage, onUse, onClearUsage }: NotesP
             <AbilityUseBar
               cost={{ resource: 0, stamina: open.stamina ?? 0 }}
               resourceLabel=""
+              note={open.restore ? `Применить ${RESTORE_LABELS[open.restore]}` : undefined}
               usage={usage?.[milestoneUsageKey(statKey, open.threshold)]}
               onUse={() => onUse(open)}
               onClear={(which) => onClearUsage?.(milestoneUsageKey(statKey, open.threshold), which)}
