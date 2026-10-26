@@ -35,6 +35,7 @@ import {
   hasCooldown,
   isDailyLimited,
   longRest,
+  longRestHealing,
   milestoneUsageKey,
   parseActivationCost,
   reduceResourceCost,
@@ -170,7 +171,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   function handleLongRest() {
     if (
       confirm(
-        'Длительный отдых: здоровье, выносливость и ресурс восстановятся до максимума, откаты и дневные ограничения снимутся.',
+        `Длительный отдых: выносливость и ресурс восстановятся до максимума, здоровье — на ${longRestHealing(character!)} (модификатор Живучести), откаты и дневные ограничения снимутся.`,
       )
     ) {
       patch(longRest);
@@ -450,7 +451,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: снять откаты и дневные ограничения">
                   ☀ Новый день
                 </button>
-                <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон: восстановить пулы и снять откаты">
+                <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон: здоровье +мод. Живучести, выносливость и ресурс до максимума, откаты снимаются">
                   🌙 Длительный отдых
                 </button>
               </div>

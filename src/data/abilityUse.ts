@@ -1,4 +1,4 @@
-import { computeDerivedStats, totalStat } from './formulas';
+import { computeDerivedStats, modifier, totalStat } from './formulas';
 import type { Character, EquipItem } from '../types';
 
 /** Ячейка учёта применения способности: идёт ли откат и израсходован ли дневной лимит. */
@@ -105,12 +105,24 @@ export function startNewDay(character: Character): Character {
   return { ...character, usage: {} };
 }
 
-/** «Длительный отдых» (долгий сон): всё, что и новый день, плюс пулы здоровья, выносливости и ресурса до максимума. */
+/** Сколько здоровья даёт длительный отдых: модификатор Живучести (с предметами), не меньше нуля. */
+export function longRestHealing(character: Character): number {
+  return Math.max(0, modifier(totalStat(character, 'vitality')));
+}
+
+/**
+ * «Длительный отдых» (долгий сон): всё, что и новый день; выносливость и ресурс — до максимума;
+ * здоровье восстанавливается на модификатор Живучести (но не выше максимума).
+ */
 export function longRest(character: Character): Character {
   const max = computeDerivedStats(character);
   return {
     ...character,
     usage: {},
-    pools: { hp: max.hp, staminaPoints: max.staminaPoints, resourcePoints: max.resourcePoints },
+    pools: {
+      hp: Math.max(character.pools.hp, Math.min(max.hp, character.pools.hp + longRestHealing(character))),
+      staminaPoints: max.staminaPoints,
+      resourcePoints: max.resourcePoints,
+    },
   };
 }

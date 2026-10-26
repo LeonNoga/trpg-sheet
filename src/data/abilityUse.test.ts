@@ -6,6 +6,7 @@ import {
   hasCooldown,
   isDailyLimited,
   longRest,
+  longRestHealing,
   parseActivationCost,
   reduceResourceCost,
   startNewDay,
@@ -69,11 +70,29 @@ describe('применение, день и отдых', () => {
     expect(next.pools).toEqual(c.pools);
   });
 
-  it('длительный отдых восстанавливает пулы до максимума и снимает отметки', () => {
-    const c = applyUse(character({ pools: { hp: 1, staminaPoints: 0, resourcePoints: 0 } }), 'a1', { resource: 0, stamina: 0 }, { daily: true });
-    const rested = longRest(c);
+  it('длительный отдых: выносливость и ресурс до максимума, здоровье — на модификатор Живучести, отметки снимаются', () => {
+    const base = character();
+    const c = applyUse(
+      { ...base, baseStats: { ...base.baseStats, vitality: 30 }, pools: { hp: 1, staminaPoints: 0, resourcePoints: 0 } },
+      'a1',
+      { resource: 0, stamina: 0 },
+      { daily: true },
+    );
     const max = computeDerivedStats(c);
-    expect(rested.pools).toEqual({ hp: max.hp, staminaPoints: max.staminaPoints, resourcePoints: max.resourcePoints });
+    const rested = longRest(c);
+    expect(longRestHealing(c)).toBe(4); // (30 − 10) / 5
+    expect(rested.pools).toEqual({ hp: 5, staminaPoints: max.staminaPoints, resourcePoints: max.resourcePoints });
     expect(rested.usage).toEqual({});
+  });
+
+  it('здоровье при отдыхе не превышает максимум и не уменьшается', () => {
+    const base = character();
+    const full = { ...base, baseStats: { ...base.baseStats, vitality: 30 }, pools: { hp: 999, staminaPoints: 0, resourcePoints: 0 } };
+    expect(longRest(full).pools.hp).toBe(999); // больше максимума (временные хиты) не трогаем
+    const nearMax = { ...full, pools: { ...full.pools, hp: computeDerivedStats(full).hp - 1 } };
+    expect(longRest(nearMax).pools.hp).toBe(computeDerivedStats(nearMax).hp);
+    const weak = { ...base, pools: { hp: 3, staminaPoints: 0, resourcePoints: 0 } }; // мод. Живучести 5 → −1
+    expect(longRestHealing(weak)).toBe(0);
+    expect(longRest(weak).pools.hp).toBe(3);
   });
 });
