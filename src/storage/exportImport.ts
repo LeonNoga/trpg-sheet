@@ -1,6 +1,7 @@
 import { normalizeCharacter } from '../data/defaults';
 import { v4 as uuid } from 'uuid';
 import { saveJsonFile } from './saveFile';
+import { CURRENT_SCHEMA_VERSION, isFromNewerSchema } from '../data/migrations';
 import type { BackupFile, Character, CharacterExportFile, EquipItem, TrayFile } from '../types';
 
 async function readJson(file: File): Promise<unknown> {
@@ -12,11 +13,11 @@ async function readJson(file: File): Promise<unknown> {
   }
 }
 
-export function exportCharacter(character: Character): Promise<void> {
+export function exportCharacter(character: Character): Promise<boolean> {
   const payload: CharacterExportFile = {
     fileType: 'trpg-sheet-character',
     version: 1,
-    character,
+    character: { ...character, schemaVersion: CURRENT_SCHEMA_VERSION },
   };
   const safeName = character.characterName.trim().replace(/[\\/:*?"<>|]+/g, '_') || 'character';
   return saveJsonFile(`${safeName}.json`, payload);
@@ -36,10 +37,14 @@ export async function importCharacterFromFile(file: File): Promise<Character> {
     throw new Error('Это не похоже на файл карточки персонажа.');
   }
 
+  if (isFromNewerSchema(character)) {
+    throw new Error('Файл создан более новой версией приложения. Закройте и заново откройте приложение (чтобы оно обновилось) и повторите импорт.');
+  }
+
   return normalizeCharacter(character);
 }
 
-export function exportBackup(characters: Character[], lootTray: EquipItem[]): Promise<void> {
+export function exportBackup(characters: Character[], lootTray: EquipItem[]): Promise<boolean> {
   const payload: BackupFile = {
     fileType: 'trpg-sheet-backup',
     version: 1,
@@ -59,6 +64,10 @@ export async function importBackupFromFile(file: File): Promise<{ characters: Ch
     throw new Error('Это не файл резервной копии. Выберите файл, сохранённый кнопкой «Сохранить резервную копию».');
   }
 
+  if (data.characters.some((c) => c && isFromNewerSchema(c))) {
+    throw new Error('Копия создана более новой версией приложения. Закройте и заново откройте приложение (чтобы оно обновилось) и повторите.');
+  }
+
   const characters = data.characters
     .filter((c): c is Character => !!c && typeof c === 'object' && !!c.id && !!c.baseStats)
     .map(normalizeCharacter);
@@ -66,7 +75,7 @@ export async function importBackupFromFile(file: File): Promise<{ characters: Ch
   return { characters, lootTray: Array.isArray(data.lootTray) ? data.lootTray : [] };
 }
 
-export function exportTray(items: EquipItem[]): Promise<void> {
+export function exportTray(items: EquipItem[]): Promise<boolean> {
   const payload: TrayFile = {
     fileType: 'trpg-sheet-tray',
     version: 1,

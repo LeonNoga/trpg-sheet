@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { createOcrSession, reparsedItem } from '../utils/ocrCards';
+import { reinsertRemoved } from '../utils/undoHelpers';
+import { useUndo } from '../state/UndoContext';
 import type { OcrSession } from '../utils/ocrCards';
 import type { EquipItem } from '../types';
 
@@ -25,6 +27,7 @@ interface ReparseState {
 export function SelectionToolbar({ allItems, visibleItems, selected, onSelectedChange, onChangeAll }: Props) {
   const [state, setState] = useState<ReparseState | null>(null);
   const cancelRef = useRef(false);
+  const { showUndo } = useUndo();
   // Распознавание идёт долго; результат применяем к свежему списку, а не к тому, что был при запуске.
   const latest = useRef({ allItems, onChangeAll });
   latest.current = { allItems, onChangeAll };
@@ -44,9 +47,15 @@ export function SelectionToolbar({ allItems, visibleItems, selected, onSelectedC
   }
 
   function deleteSelected() {
-    if (!confirm(`Удалить выбранные записи: ${selectedCount}? Это нельзя отменить.`)) return;
+    if (!confirm(`Удалить выбранные записи: ${selectedCount}?`)) return;
+    const removed = latest.current.allItems
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => selected.has(item.id));
     latest.current.onChangeAll(latest.current.allItems.filter((i) => !selected.has(i.id)));
     onSelectedChange(new Set());
+    showUndo(`Удалено записей: ${removed.length}`, () =>
+      latest.current.onChangeAll(reinsertRemoved(latest.current.allItems, removed)),
+    );
   }
 
   async function reparseSelected() {

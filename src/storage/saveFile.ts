@@ -31,12 +31,13 @@ function classicDownload(fileName: string, text: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-export async function saveJsonFile(fileName: string, payload: unknown): Promise<void> {
+/** Возвращает false, если пользователь закрыл меню «Поделиться» (файл не сохранён). */
+export async function saveJsonFile(fileName: string, payload: unknown): Promise<boolean> {
   const text = JSON.stringify(payload, null, 2);
 
   if (!isTouchFirstDevice()) {
     classicDownload(fileName, text);
-    return;
+    return true;
   }
 
   if (typeof navigator.share === 'function') {
@@ -46,12 +47,13 @@ export async function saveJsonFile(fileName: string, payload: unknown): Promise<
       if (navigator.canShare && !navigator.canShare(data)) continue;
       try {
         await navigator.share(data);
-        return;
+        return true;
       } catch (err) {
-        if (err instanceof DOMException && err.name === 'AbortError') return; // пользователь закрыл меню
+        if (err instanceof DOMException && err.name === 'AbortError') return false; // пользователь закрыл меню
       }
     }
   }
 
   showFallback(fileName, text);
+  return true;
 }

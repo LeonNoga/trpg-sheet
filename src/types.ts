@@ -96,6 +96,8 @@ export interface InfectionStatus {
 
 export interface Character {
   id: string;
+  /** Версия схемы данных (см. data/migrations.ts); у карточек, созданных до её введения, отсутствует. */
+  schemaVersion?: number;
   roster: Roster;
   playerName: string;
   characterName: string;

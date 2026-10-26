@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useAppData } from '../state/AppDataContext';
 import { PATH_LABELS } from '../data/statsConfig';
 import { importCharacterFromFile } from '../storage/exportImport';
@@ -17,7 +17,12 @@ interface Props {
 export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate, importLabel }: Props) {
   const { characters, importCharacter } = useAppData();
   const fileInput = useRef<HTMLInputElement>(null);
-  const list = characters.filter((c) => c.roster === roster);
+  const [query, setQuery] = useState('');
+  const all = characters.filter((c) => c.roster === roster);
+  const q = query.trim().toLowerCase();
+  const list = q
+    ? all.filter((c) => `${c.characterName} ${c.playerName} ${c.species}`.toLowerCase().includes(q))
+    : all;
 
   async function handleImport(file: File | undefined) {
     if (!file) return;
@@ -52,8 +57,20 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
         />
       </div>
 
+      {all.length > 4 && (
+        <input
+          className="tray-search"
+          style={{ marginBottom: 12 }}
+          placeholder="Поиск по имени, игроку, классу"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      )}
+
       {list.length === 0 ? (
-        <div className="empty-state">{emptyHint ?? 'Пока нет ни одного персонажа.'}</div>
+        <div className="empty-state">
+          {all.length > 0 ? 'Никого не найдено.' : (emptyHint ?? 'Пока нет ни одного персонажа.')}
+        </div>
       ) : (
         <div className="char-list-grid">
           {list.map((c) => (

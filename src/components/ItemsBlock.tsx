@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ItemCard } from './ItemCard';
 import { SelectionToolbar } from './SelectionToolbar';
@@ -6,6 +6,8 @@ import { ItemEditor } from './ItemEditor';
 import { EMPTY_ITEM_FILTERS, ItemFilterBar, applyItemFilters } from './ItemFilterBar';
 import type { ItemFilterState } from './ItemFilterBar';
 import { createBlankEquipItem } from '../data/defaults';
+import { useUndo } from '../state/UndoContext';
+import { reinsertRemoved } from '../utils/undoHelpers';
 import type { EquipItem, Path } from '../types';
 
 interface Props {
@@ -27,6 +29,12 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const { showUndo } = useUndo();
+  // Актуальный список для отмены: к моменту нажатия «Отменить» он мог измениться.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const visible = useMemo(() => applyItemFilters(items, filters), [items, filters]);
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
@@ -42,7 +50,13 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   }
 
   function remove(id: string) {
+    const index = items.findIndex((i) => i.id === id);
+    const removed = items[index];
+    if (!removed) return;
     onChange(items.filter((i) => i.id !== id));
+    showUndo(`Удалено: «${removed.name || 'Без названия'}»`, () =>
+      onChangeRef.current(reinsertRemoved(itemsRef.current, [{ item: removed, index }])),
+    );
   }
 
   function toggleSelected(id: string, on: boolean) {

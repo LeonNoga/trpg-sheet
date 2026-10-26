@@ -8,6 +8,8 @@ import { exportTray, importTrayFromFile } from '../storage/exportImport';
 import { BulkCardUpload } from './BulkCardUpload';
 import { PasteImportButton } from './FileDialogs';
 import { SelectionToolbar } from './SelectionToolbar';
+import { useUndo } from '../state/UndoContext';
+import { reinsertRemoved } from '../utils/undoHelpers';
 import type { BonusKey, EquipItem, ItemPath, Rarity } from '../types';
 
 type KindFilter = 'all' | 'item' | 'ability';
@@ -29,6 +31,9 @@ export function LootTray() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const trayInput = useRef<HTMLInputElement>(null);
+  const { showUndo } = useUndo();
+  const trayRef = useRef(lootTray);
+  trayRef.current = lootTray;
 
   const filtersActive = kindFilter !== 'all' || rarityFilter !== 'all' || pathFilter !== 'all' || bonusFilter !== 'all' || query.trim() !== '';
 
@@ -70,7 +75,13 @@ export function LootTray() {
   }
 
   function remove(id: string) {
+    const index = lootTray.findIndex((i) => i.id === id);
+    const removed = lootTray[index];
+    if (!removed) return;
     updateLootTray(lootTray.filter((i) => i.id !== id));
+    showUndo(`Удалено из трея: «${removed.name || 'Без названия'}»`, () =>
+      updateLootTray(reinsertRemoved(trayRef.current, [{ item: removed, index }])),
+    );
   }
 
   function giveToCharacter(item: EquipItem) {

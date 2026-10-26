@@ -4,7 +4,7 @@ import { PasteImportButton } from './FileDialogs';
 import { exportBackup, importBackupFromFile } from '../storage/exportImport';
 
 export function BackupPanel() {
-  const { characters, lootTray, restoreBackup } = useAppData();
+  const { characters, lootTray, restoreBackup, updateMeta, meta, trash, restoreFromTrash } = useAppData();
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function handleRestore(file: File | undefined) {
@@ -33,7 +33,13 @@ export function BackupPanel() {
         Сохраните копию всех персонажей (включая мастер-вид и трей лута) одним файлом и держите её в надёжном месте.
       </p>
       <div className="top-actions" style={{ marginBottom: 0 }}>
-        <button className="btn btn-primary" onClick={() => exportBackup(characters, lootTray)} disabled={characters.length === 0 && lootTray.length === 0}>
+        <button
+          className="btn btn-primary"
+          onClick={async () => {
+            if (await exportBackup(characters, lootTray)) updateMeta({ lastBackupAt: Date.now() });
+          }}
+          disabled={characters.length === 0 && lootTray.length === 0}
+        >
           Сохранить резервную копию ({characters.length})
         </button>
         <button className="btn" onClick={() => fileInput.current?.click()}>
@@ -48,6 +54,35 @@ export function BackupPanel() {
           onChange={(e) => handleRestore(e.target.files?.[0])}
         />
       </div>
+      {meta.lastBackupAt && (
+        <p className="muted" style={{ marginBottom: 0 }}>
+          Последняя копия: {new Date(meta.lastBackupAt).toLocaleString('ru-RU')}
+        </p>
+      )}
+
+      {trash.length > 0 && (
+        <details style={{ marginTop: 12 }}>
+          <summary>Недавно удалённые персонажи ({trash.length})</summary>
+          <p className="muted">Хранятся 30 дней (не больше 5).</p>
+          {trash.map((entry) => (
+            <div className="history-row" key={entry.character.id}>
+              <div>
+                <b>{entry.character.characterName || 'Без имени'}</b>
+                <div className="muted">
+                  Ур. {entry.character.level} · удалён {new Date(entry.deletedAt).toLocaleDateString('ru-RU')}
+                </div>
+              </div>
+              <button className="btn btn-sm" onClick={() => restoreFromTrash(entry.character.id)}>
+                Вернуть
+              </button>
+            </div>
+          ))}
+        </details>
+      )}
+
+      <p className="muted" style={{ marginBottom: 0, marginTop: 12, fontSize: 11 }}>
+        Версия {__APP_VERSION__} · сборка {new Date(__BUILD_DATE__).toLocaleString('ru-RU')} · {__GIT_HASH__}
+      </p>
     </div>
   );
 }

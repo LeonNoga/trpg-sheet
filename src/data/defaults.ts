@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
-import { STAT_MIN, STAT_ORDER, STARTING_STAT_POINTS } from './statsConfig';
+import { STAT_MIN, STAT_ORDER } from './statsConfig';
+import { CURRENT_SCHEMA_VERSION, migrateCharacter } from './migrations';
 import type { Character, EquipItem, Path, Roster, StatKey, TraitList } from '../types';
 
 export function blankBaseStats(): Record<StatKey, number> {
@@ -16,6 +17,7 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
   const now = Date.now();
   return {
     id: uuid(),
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     roster,
     playerName: '',
     characterName: '',
@@ -56,20 +58,14 @@ export function createBlankCharacter(path: Path, roster: Roster = 'personal'): C
 /** Заполняет отсутствующие поля у персонажа, сохранённого/импортированного до
  * появления новых блоков — чтобы старые файлы и записи в IndexedDB не ломали
  * карточку после обновления схемы. */
-export function normalizeCharacter(raw: Character): Character {
-  const legacy = raw as Character & { keyStat?: string; statPointsBudget?: number };
-  // Раньше бюджет хранился числом (и пересчитывался при смене уровня). Всё, что сверх
-  // положенного по уровню, переезжает в "доп. очки", чтобы существующие карточки не изменились.
-  const { statPointsBudget: legacyBudget, ...rest } = legacy;
+export function normalizeCharacter(input: Character): Character {
+  const raw = migrateCharacter(input);
   return pruneEquippedSlots({
-    ...rest,
-    // Старая модель: бюджет = 100 + 2 за каждый уровень + ручные очки.
-    levelPoints: raw.levelPoints ?? 2 * (raw.level - 1),
-    bonusStatPoints:
-      raw.bonusStatPoints ??
-      (legacyBudget !== undefined ? legacyBudget - (STARTING_STAT_POINTS + 2 * (raw.level - 1)) : 0),
-    resistanceSource: raw.resistanceSource ?? (legacy.keyStat as Character['resistanceSource']) ?? 'auto',
+    ...raw,
     initiativeSource: raw.initiativeSource ?? 'auto',
+    resistanceSource: raw.resistanceSource ?? 'auto',
+    levelPoints: raw.levelPoints ?? 2 * (raw.level - 1),
+    bonusStatPoints: raw.bonusStatPoints ?? 0,
     pools: raw.pools ?? {
       hp: raw.baseStats.vitality + raw.level,
       staminaPoints: raw.baseStats.endurance,
@@ -77,11 +73,7 @@ export function normalizeCharacter(raw: Character): Character {
     },
     skillTrainingDays: raw.skillTrainingDays ?? {},
     equippedSlots: raw.equippedSlots ?? {},
-    // Три пустые строки старых карточек заменены неизменяемыми бонусами класса — пустые убираем, записанное сохраняем.
-    speciesBonuses:
-      raw.speciesBonuses && raw.speciesBonuses.slots.some((s) => s.trim())
-        ? raw.speciesBonuses
-        : { ...(raw.speciesBonuses ?? blankTraitList(0)), slots: [] },
+    speciesBonuses: raw.speciesBonuses ?? blankTraitList(0),
     // Третий список — артефактные ДНК/умения/технологии; у старых карточек его не было.
     dnaLists: [
       ...(raw.dnaLists ?? [blankTraitList(5), blankTraitList(5)]),

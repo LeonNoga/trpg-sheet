@@ -24,6 +24,8 @@ import {
 } from '../data/statsConfig';
 import { MAX_LEVEL, levelPointsAfterManualLevel } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
+import { HistoryDialog } from './HistoryDialog';
+import { useUndo } from '../state/UndoContext';
 import type {
   Character,
   EquipItem,
@@ -55,7 +57,9 @@ function tabsFor(path: Path): { key: Tab; label: string }[] {
 }
 
 export function CharacterSheet({ characterId, onBack }: Props) {
-  const { characters, updateCharacter, removeCharacter } = useAppData();
+  const { characters, updateCharacter, removeCharacter, restoreFromTrash, cloneCharacter, updateMeta } = useAppData();
+  const { showUndo } = useUndo();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const character = characters.find((c) => c.id === characterId);
   const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
@@ -161,8 +165,19 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   }
 
   function handleDelete() {
-    if (confirm(`Удалить персонажа «${character!.characterName || 'без имени'}»? Это необратимо.`)) {
-      removeCharacter(character!.id);
+    const target = character!;
+    if (confirm(`Удалить персонажа «${target.characterName || 'без имени'}»?`)) {
+      removeCharacter(target.id);
+      // Удалённый персонаж 30 дней лежит в корзине (внизу списка персонажей) — здесь его можно вернуть сразу.
+      showUndo(`Персонаж «${target.characterName || 'без имени'}» удалён`, () => restoreFromTrash(target.id));
+      onBack();
+    }
+  }
+
+  function handleClone() {
+    const copy = cloneCharacter(character!.id);
+    if (copy) {
+      showUndo('Копия создана — она в списке персонажей', () => removeCharacter(copy.id));
       onBack();
     }
   }
@@ -177,16 +192,33 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         <button className="btn" onClick={onBack}>
           ← К списку
         </button>
-        <button className="btn" onClick={() => exportCharacter(character)}>
+        <button
+          className="btn"
+          onClick={async () => {
+            if (await exportCharacter(character)) updateMeta({ lastBackupAt: Date.now() });
+          }}
+        >
           Экспорт в JSON
         </button>
         <button className="btn" onClick={() => printCharacterSheet(character)}>
           Сохранить в PDF
         </button>
-        <button className="btn btn-danger" onClick={handleDelete}>
-          Удалить персонажа
-        </button>
+        <details className="more-menu">
+          <summary className="btn">Ещё ▾</summary>
+          <div className="more-menu-list">
+            <button className="btn btn-ghost" onClick={() => setHistoryOpen(true)}>
+              История версий
+            </button>
+            <button className="btn btn-ghost" onClick={handleClone}>
+              Клонировать
+            </button>
+            <button className="btn btn-ghost btn-danger" onClick={handleDelete}>
+              Удалить персонажа
+            </button>
+          </div>
+        </details>
       </div>
+      {historyOpen && <HistoryDialog character={character} onClose={() => setHistoryOpen(false)} />}
 
       <div className="card">
         <span className="pill-badge">{PATH_LABELS[character.path]}</span>

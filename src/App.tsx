@@ -7,6 +7,8 @@ import { ReferenceSheetScreen } from './components/ReferenceSheetScreen';
 import { GMView } from './components/GMView';
 import { BackupPanel } from './components/BackupPanel';
 import { ExportFallbackDialog } from './components/FileDialogs';
+import { NoticeBar } from './components/NoticeBar';
+import { UndoProvider } from './state/UndoContext';
 import type { Roster } from './types';
 
 type View =
@@ -43,6 +45,7 @@ function Shell() {
       </header>
 
       <ExportFallbackDialog />
+      <NoticeBar />
 
       <main className="app-main">
         {view.screen === 'list' && (
@@ -87,7 +90,9 @@ function Shell() {
 export default function App() {
   return (
     <AppDataProvider>
-      <Shell />
+      <UndoProvider>
+        <Shell />
+      </UndoProvider>
     </AppDataProvider>
   );
 }
