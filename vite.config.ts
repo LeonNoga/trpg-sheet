@@ -36,6 +36,12 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'ocr-assets', cacheableResponse: { statuses: [0, 200] } },
           },
+          {
+            // Картинки (силуэт, шаблоны листов) — после первого показа доступны офлайн.
+            urlPattern: ({ url }) => /\/assets\/.*\.(png|webp|jpg)$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'images', cacheableResponse: { statuses: [0, 200] } },
+          },
         ],
       },
       includeAssets: ['favicon.svg'],

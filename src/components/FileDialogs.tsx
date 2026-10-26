@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { EXPORT_FALLBACK_EVENT } from '../storage/saveFile';
-import type { ExportFallbackDetail } from '../storage/saveFile';
+import { EXPORT_FALLBACK_EVENT, IMAGE_FALLBACK_EVENT } from '../storage/saveFile';
+import type { ExportFallbackDetail, ImageFallbackDetail } from '../storage/saveFile';
 
 async function copyText(text: string, area: HTMLTextAreaElement | null): Promise<boolean> {
   try {
@@ -54,6 +54,43 @@ export function ExportFallbackDialog() {
         {copied === false && (
           <p className="error-text">Не удалось скопировать автоматически: выделите текст и скопируйте вручную.</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Показывает готовую картинку, когда системное меню «Поделиться» недоступно: её можно сохранить долгим нажатием. */
+export function ImageFallbackDialog() {
+  const [detail, setDetail] = useState<ImageFallbackDetail | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => setDetail((e as CustomEvent<ImageFallbackDetail>).detail);
+    window.addEventListener(IMAGE_FALLBACK_EVENT, handler);
+    return () => window.removeEventListener(IMAGE_FALLBACK_EVENT, handler);
+  }, []);
+
+  if (!detail) return null;
+
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <div className="modal-box">
+        <h3 className="card-title">Карточка готова</h3>
+        <p className="muted">
+          Нажмите на картинку и удерживайте, затем выберите «Сохранить в Фото» (или «Скопировать»). Если меню нет — откройте
+          приложение в Safari/Chrome.
+        </p>
+        <img src={detail.url} alt={detail.fileName} style={{ width: '100%', borderRadius: 8 }} />
+        <div className="item-actions">
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              URL.revokeObjectURL(detail.url);
+              setDetail(null);
+            }}
+          >
+            Закрыть
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -11,7 +11,8 @@ import { PortraitCard } from './PortraitCard';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
-import { PrintableSheet, printCharacterSheet } from './PrintableSheet';
+import { renderSheetPage } from '../utils/sheetImage';
+import { saveImageFile } from '../storage/saveFile';
 import {
   CLASS_RARITY_LABELS,
   classBonusLines as getClassBonusLines,
@@ -75,6 +76,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const { characters, updateCharacter, removeCharacter, restoreFromTrash, cloneCharacter, updateMeta } = useAppData();
   const { showUndo } = useUndo();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
   const character = characters.find((c) => c.id === characterId);
   const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
@@ -247,6 +249,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     }
   }
 
+  /** Карточка «как на бумаге»: значения поверх шаблона листа выбранного пути, PNG — в «Поделиться» или на скачивание. */
+  async function handleSaveImage() {
+    setImageBusy(true);
+    try {
+      const blob = await renderSheetPage(character!);
+      const name = (character!.characterName.trim() || 'character').replace(/[\\/:*?"<>|]+/g, '_');
+      await saveImageFile(`${name}.png`, blob);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось нарисовать картинку.');
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
   function handleClone() {
     const copy = cloneCharacter(character!.id);
     if (copy) {
@@ -260,7 +277,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
   return (
     <div className={`theme-${character.path}`}>
-      <PrintableSheet character={character} />
       <div className="top-actions">
         <button className="btn" onClick={onBack}>
           ← К списку
@@ -273,8 +289,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         >
           Экспорт в JSON
         </button>
-        <button className="btn" onClick={() => printCharacterSheet(character)}>
-          Сохранить в PDF
+        <button className="btn" onClick={() => void handleSaveImage()} disabled={imageBusy}>
+          {imageBusy ? 'Рисуем…' : 'Сохранить картинкой'}
         </button>
         <details className="more-menu">
           <summary className="btn">Ещё ▾</summary>

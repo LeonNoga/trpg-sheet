@@ -4,6 +4,7 @@
 // «Поделиться» (там же «Сохранить в Файлы», Telegram, Почта…), а если оно недоступно — показываем текст для копирования.
 
 export const EXPORT_FALLBACK_EVENT = 'trpg-export-fallback';
+export const IMAGE_FALLBACK_EVENT = 'trpg-image-fallback';
 
 export interface ExportFallbackDetail {
   fileName: string;
@@ -55,5 +56,45 @@ export async function saveJsonFile(fileName: string, payload: unknown): Promise<
   }
 
   showFallback(fileName, text);
+  return true;
+}
+
+export interface ImageFallbackDetail {
+  fileName: string;
+  url: string;
+}
+
+/**
+ * Сохранение картинки: на телефоне — через «Поделиться» (там же «Сохранить в Фото/Файлы», Telegram…), на компьютере —
+ * обычное скачивание. Если меню недоступно (встроенный браузер), показываем картинку, которую можно сохранить долгим нажатием.
+ */
+export async function saveImageFile(fileName: string, blob: Blob): Promise<boolean> {
+  if (!isTouchFirstDevice()) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    return true;
+  }
+
+  if (typeof navigator.share === 'function') {
+    const data: ShareData = { files: [new File([blob], fileName, { type: 'image/png' })], title: fileName };
+    if (!navigator.canShare || navigator.canShare(data)) {
+      try {
+        await navigator.share(data);
+        return true;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return false;
+      }
+    }
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<ImageFallbackDetail>(IMAGE_FALLBACK_EVENT, { detail: { fileName, url: URL.createObjectURL(blob) } }),
+  );
   return true;
 }

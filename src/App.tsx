@@ -6,7 +6,7 @@ import { CharacterSheet } from './components/CharacterSheet';
 import { ReferenceSheetScreen } from './components/ReferenceSheetScreen';
 import { GMView } from './components/GMView';
 import { BackupPanel } from './components/BackupPanel';
-import { ExportFallbackDialog } from './components/FileDialogs';
+import { ExportFallbackDialog, ImageFallbackDialog } from './components/FileDialogs';
 import { NoticeBar } from './components/NoticeBar';
 import { UndoProvider } from './state/UndoContext';
 import { applyTheme, loadTheme, nextTheme, THEME_LABELS } from './theme';
@@ -59,6 +59,7 @@ function Shell() {
       </header>
 
       <ExportFallbackDialog />
+      <ImageFallbackDialog />
       <NoticeBar />
 
       <main className="app-main">
