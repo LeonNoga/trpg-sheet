@@ -9,6 +9,10 @@
   --accent-soft: #f0d9d2;
   --ok: #3f7d4f;
   --warn: #c07a1f;
+  --danger: #c0392b;
+  --milestone: #1a73ff;
+  --milestone-strong: #0a5cff;
+  --milestone-rgb: 26, 115, 255;
   --radius: 14px;
   --radius-pill: 999px;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -29,6 +33,77 @@
 .theme-tech {
   --accent: #5b6470;
   --accent-soft: #e2e4e8;
+}
+
+
+/* Тёмная тема: явный выбор в шапке или системная настройка, если выбрано «Авто». */
+:root[data-theme='dark'] {
+  --bg: #161412;
+  --surface: #211e1b;
+  --surface-2: #2a2622;
+  --border: #433d36;
+  --text: #ece7de;
+  --text-muted: #aaa293;
+  --accent: #e58468;
+  --accent-soft: #4a2c24;
+  --ok: #6fc088;
+  --warn: #e5a84e;
+  --danger: #ff7262;
+  --milestone: #5aa2ff;
+  --milestone-strong: #8bbcff;
+  --milestone-rgb: 90, 162, 255;
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] .theme-genetic {
+  --accent: #52c97c;
+  --accent-soft: #1f3b2a;
+}
+
+:root[data-theme='dark'] .theme-magic {
+  --accent: #cc82e6;
+  --accent-soft: #3b2547;
+}
+
+:root[data-theme='dark'] .theme-tech {
+  --accent: #a3adbb;
+  --accent-soft: #31353c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #161412;
+    --surface: #211e1b;
+    --surface-2: #2a2622;
+    --border: #433d36;
+    --text: #ece7de;
+    --text-muted: #aaa293;
+    --accent: #e58468;
+    --accent-soft: #4a2c24;
+    --ok: #6fc088;
+    --warn: #e5a84e;
+    --danger: #ff7262;
+    --milestone: #5aa2ff;
+    --milestone-strong: #8bbcff;
+    --milestone-rgb: 90, 162, 255;
+    color-scheme: dark;
+  }
+
+  :root:not([data-theme='light']) .theme-genetic {
+    --accent: #52c97c;
+    --accent-soft: #1f3b2a;
+  }
+
+  :root:not([data-theme='light']) .theme-magic {
+    --accent: #cc82e6;
+    --accent-soft: #3b2547;
+  }
+
+  :root:not([data-theme='light']) .theme-tech {
+    --accent: #a3adbb;
+    --accent-soft: #31353c;
+  }
+
 }
 
 * {
@@ -267,18 +342,18 @@ input, select, textarea {
    зависит от темы пути, чтобы всегда бросаться в глаза как предупреждение. */
 .stat-pill.milestone-50,
 .stat-pill.milestone-100 {
-  border: 2px solid #1a73ff;
+  border: 2px solid var(--milestone);
 }
 
 .stat-pill.milestone-100 {
-  border-color: #0a5cff;
-  background: rgba(26, 115, 255, 0.1);
-  box-shadow: 0 0 0 3px rgba(26, 115, 255, 0.35), 0 0 12px rgba(26, 115, 255, 0.45);
+  border-color: var(--milestone-strong);
+  background: rgba(var(--milestone-rgb), 0.1);
+  box-shadow: 0 0 0 3px rgba(var(--milestone-rgb), 0.35), 0 0 12px rgba(var(--milestone-rgb), 0.45);
 }
 
 .stat-value-milestone {
   font-weight: 800;
-  color: #1a73ff;
+  color: var(--milestone);
 }
 
 .stat-pill-wrap {
@@ -305,7 +380,7 @@ input, select, textarea {
   font-size: 12px;
   font-weight: 700;
   text-align: left;
-  color: #1a73ff;
+  color: var(--milestone);
   cursor: pointer;
   text-decoration: underline dotted;
 }
@@ -1305,12 +1380,12 @@ table.ref-table input {
 }
 
 .equipment-slot-btn.over {
-  border-color: #c0392b;
-  color: #c0392b;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .equipment-slot-btn.over .equipment-slot-count {
-  color: #c0392b;
+  color: var(--danger);
   font-weight: 700;
 }
 
@@ -1345,8 +1420,8 @@ table.ref-table input {
 
 .slot-limit-note.over,
 .slot-over input {
-  color: #c0392b;
-  border-color: #c0392b;
+  color: var(--danger);
+  border-color: var(--danger);
 }
 
 .selection-toolbar {
@@ -1495,11 +1570,11 @@ table.ref-table input {
 }
 
 .hover-card .neg {
-  color: #c0392b;
+  color: var(--danger);
 }
 
 .hover-card .pos {
-  color: #1e8449;
+  color: var(--ok);
 }
 
 .portrait-card {
@@ -1611,8 +1686,8 @@ input[list]::-webkit-calendar-picker-indicator {
   max-width: min(92vw, 460px);
   padding: 10px 14px;
   border-radius: 14px;
-  background: #2b2824;
-  color: #fff;
+  background: var(--text);
+  color: var(--bg);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   font-size: 14px;
 }
@@ -1714,4 +1789,26 @@ input[list]::-webkit-calendar-picker-indicator {
   color: var(--warn);
   font-size: 12px;
   font-weight: 600;
+}
+
+.theme-toggle {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* Схема экипировки: контур тела — картинка со светлым фоном; в тёмной теме инвертируем и «вычитаем» фон. */
+.equipment-diagram .body-image {
+  mix-blend-mode: multiply;
+}
+
+:root[data-theme='dark'] .equipment-diagram .body-image {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .equipment-diagram .body-image {
+    filter: invert(1);
+    mix-blend-mode: screen;
+  }
 }

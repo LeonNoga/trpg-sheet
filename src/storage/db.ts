@@ -44,8 +44,6 @@ export interface AppMeta {
   backupSnoozeUntil?: number;
   /** Скрыта ли подсказка «Добавить на экран Домой». */
   installHintDismissed?: boolean;
-  /** Выбранная тема: авто/светлая/тёмная. */
-  theme?: 'auto' | 'light' | 'dark';
 }
 
 const META_KEY = 'meta';

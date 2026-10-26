@@ -9,6 +9,8 @@ import { BackupPanel } from './components/BackupPanel';
 import { ExportFallbackDialog } from './components/FileDialogs';
 import { NoticeBar } from './components/NoticeBar';
 import { UndoProvider } from './state/UndoContext';
+import { applyTheme, loadTheme, nextTheme, THEME_LABELS } from './theme';
+import type { Theme } from './theme';
 import type { Roster } from './types';
 
 type View =
@@ -20,6 +22,7 @@ type View =
 
 function Shell() {
   const [view, setView] = useState<View>({ screen: 'list' });
+  const [theme, setTheme] = useState<Theme>(loadTheme);
 
   const topTab: 'list' | 'gm' | 'reference' =
     view.screen === 'gm' ? 'gm' : view.screen === 'reference' ? 'reference' : 'list';
@@ -42,6 +45,17 @@ function Shell() {
             Памятка и прогрессия
           </button>
         </nav>
+        <button
+          className="btn btn-sm theme-toggle"
+          title="Тема оформления: нажмите, чтобы переключить"
+          onClick={() => {
+            const next = nextTheme(theme);
+            applyTheme(next);
+            setTheme(next);
+          }}
+        >
+          ◐ {THEME_LABELS[theme]}
+        </button>
       </header>
 
       <ExportFallbackDialog />

@@ -241,13 +241,13 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
                 y1={y + BOX_H / 2}
                 x2={slot.anchor[0]}
                 y2={slot.anchor[1]}
-                stroke="#222"
+                stroke="var(--text)"
                 strokeWidth={2}
               />
             );
           })}
 
-        <image href={bodyUrl} x={FIGURE.x} y={FIGURE.y} width={FIGURE.w} height={FIGURE.h} />
+        <image className="body-image" href={bodyUrl} x={FIGURE.x} y={FIGURE.y} width={FIGURE.w} height={FIGURE.h} />
 
         {SLOTS.map((slot) => {
           const has = idsIn(slot.key).length > 0;
@@ -263,9 +263,9 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
               <title>{slot.label}</title>
               {slot.zone.map((z, i) =>
                 renderShape(z, i, 0, {
-                  fill: over ? '#c0392b' : 'var(--accent)',
+                  fill: over ? 'var(--danger)' : 'var(--accent)',
                   fillOpacity: has ? 0.55 : 0.001,
-                  stroke: over ? '#c0392b' : selected || has ? 'var(--accent)' : 'none',
+                  stroke: over ? 'var(--danger)' : selected || has ? 'var(--accent)' : 'none',
                   strokeWidth: 2,
                   strokeDasharray: selected && !has ? '6 4' : undefined,
                   pointerEvents: 'all',
@@ -290,14 +290,14 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
                   width={BOX_W}
                   height={BOX_H}
                   rx={14}
-                  fill={count > 0 ? 'var(--accent-soft)' : '#fff'}
-                  stroke={over ? '#c0392b' : selected || count > 0 ? 'var(--accent)' : '#222'}
+                  fill={count > 0 ? 'var(--accent-soft)' : 'var(--surface)'}
+                  stroke={over ? 'var(--danger)' : selected || count > 0 ? 'var(--accent)' : 'var(--text)'}
                   strokeWidth={selected || over ? 4 : 2.5}
                 />
-                <text x={x + 12} y={y + 25} fontSize={22} fontWeight={600} fill="#222">
+                <text x={x + 12} y={y + 25} fontSize={22} fontWeight={600} fill="var(--text)">
                   {slot.label}
                 </text>
-                <text x={x + 12} y={y + 48} fontSize={17} fill="#555">
+                <text x={x + 12} y={y + 48} fontSize={17} fill="var(--text-muted)">
                   {truncate(items.map((i) => i.name || 'Без названия').join(', '), 17)}
                 </text>
                 <text
@@ -306,7 +306,7 @@ export function EquipmentSilhouette({ character, onChange }: Props) {
                   fontSize={20}
                   textAnchor="end"
                   fontWeight={over ? 700 : 400}
-                  fill={over ? '#c0392b' : '#666'}
+                  fill={over ? 'var(--danger)' : 'var(--text-muted)'}
                 >
                   {count}/{slot.capacity}
                 </text>

@@ -8,6 +8,13 @@
     <meta name="theme-color" content="#b5482f" />
     <meta name="description" content="Карточка персонажа для самодельной настольной ролевой системы" />
     <title>Карточка персонажа НРИ</title>
+    <script>
+      // Тема применяется до отрисовки, чтобы страница не мигала светлым при тёмной теме.
+      try {
+        var t = localStorage.getItem('trpg-theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
