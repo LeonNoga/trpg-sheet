@@ -137,6 +137,8 @@ export interface Character {
   inspirationPoints: boolean[];
   infectionStatus: InfectionStatus;
   notes: string;
+  /** Учёт применения способностей: откаты и дневные лимиты (ключ — id записи или «m:стат:порог»). */
+  usage?: Record<string, { cooldown?: boolean; daily?: boolean }>;
   createdAt: number;
   updatedAt: number;
 }

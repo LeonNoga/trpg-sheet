@@ -19,6 +19,7 @@ import {
 } from '../data/formulas';
 import { DerivedBreakdownCard, HoverCard } from './HoverCard';
 import { NumberField } from './NumberField';
+import type { MilestoneEffect } from '../data/statsConfig';
 import { StatPill } from './StatPill';
 import type { Character, DerivedKey, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
@@ -28,6 +29,8 @@ interface Props {
   onChangePool: (key: 'hp' | 'staminaPoints' | 'resourcePoints', value: number) => void;
   onChangeInitiativeSource: (source: InitiativeSource) => void;
   onChangeResistanceSource: (source: ResistanceSource) => void;
+  onUseMilestone: (stat: StatKey, effect: MilestoneEffect) => void;
+  onClearUsage: (key: string, which: 'cooldown' | 'daily') => void;
 }
 
 // Дательный падеж для подписи "по ..." у статов, которые могут определять Сложность Сопротивления.
@@ -91,6 +94,8 @@ export function CharacteristicsPanel({
   onChangePool,
   onChangeInitiativeSource,
   onChangeResistanceSource,
+  onUseMilestone,
+  onClearUsage,
 }: Props) {
   const derived = computeDerivedStats(character);
   const resistanceAllowed = RESISTANCE_ALLOWED_STATS[character.path];
@@ -109,6 +114,9 @@ export function CharacteristicsPanel({
         bonus={bonusSum(character, statKey)}
         sources={bonusSources(character, statKey)}
         onChange={(v) => onChangeStat(statKey, v)}
+        usage={character.usage}
+        onUseMilestone={(effect) => onUseMilestone(statKey, effect)}
+        onClearUsage={onClearUsage}
       />
     );
   }

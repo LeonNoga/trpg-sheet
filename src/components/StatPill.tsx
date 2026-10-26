@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { STAT_MIN, milestoneEffects, statMilestone } from '../data/statsConfig';
 import type { MilestoneEffect } from '../data/statsConfig';
+import { milestoneUsageKey } from '../data/abilityUse';
+import type { UsageState } from '../data/abilityUse';
+import { AbilityUseBar } from './AbilityUseBar';
 import { modifier } from '../data/formulas';
 import type { BonusSource } from '../data/formulas';
 import { HoverCard, StatBreakdownCard } from './HoverCard';
@@ -17,10 +20,22 @@ interface Props {
   /** Какие именно предметы дают этот бонус — для всплывающей карточки. */
   sources?: BonusSource[];
   onChange: (value: number) => void;
+  /** Учёт применения активных бонусов порогов. */
+  usage?: Record<string, UsageState>;
+  onUseMilestone?: (effect: MilestoneEffect) => void;
+  onClearUsage?: (key: string, which: 'cooldown' | 'daily') => void;
 }
 
 /** Названия открытых бонусов под характеристикой; по нажатию на название раскрывается полное описание. */
-function MilestoneNotes({ effects }: { effects: MilestoneEffect[] }) {
+interface NotesProps {
+  statKey: StatKey;
+  effects: MilestoneEffect[];
+  usage?: Record<string, UsageState>;
+  onUse?: (effect: MilestoneEffect) => void;
+  onClearUsage?: (key: string, which: 'cooldown' | 'daily') => void;
+}
+
+function MilestoneNotes({ statKey, effects, usage, onUse, onClearUsage }: NotesProps) {
   const [openId, setOpenId] = useState<number | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -47,6 +62,7 @@ function MilestoneNotes({ effects }: { effects: MilestoneEffect[] }) {
           onClick={() => setOpenId(openId === effect.threshold ? null : effect.threshold)}
         >
           ⚑ {effect.title}
+          {usage?.[milestoneUsageKey(statKey, effect.threshold)]?.daily ? ' ✓' : ''}
         </button>
       ))}
       {open && (
@@ -60,6 +76,15 @@ function MilestoneNotes({ effects }: { effects: MilestoneEffect[] }) {
             </div>
           )}
           <div className="hover-card-line">{open.text}</div>
+          {open.kind === 'Актив' && onUse && (
+            <AbilityUseBar
+              cost={{ resource: 0, stamina: open.stamina ?? 0 }}
+              resourceLabel=""
+              usage={usage?.[milestoneUsageKey(statKey, open.threshold)]}
+              onUse={() => onUse(open)}
+              onClear={(which) => onClearUsage?.(milestoneUsageKey(statKey, open.threshold), which)}
+            />
+          )}
         </div>
       )}
     </div>
@@ -71,7 +96,7 @@ function MilestoneNotes({ effects }: { effects: MilestoneEffect[] }) {
  * (показывается всегда) и модификатор. Подсвечивается на порогах 50 и 100; при наведении — расклад
  * «база + предметы = итого», открытые бонусы порогов пишутся под блоком.
  */
-export function StatPill({ statKey, path, label, base, bonus, sources = [], onChange }: Props) {
+export function StatPill({ statKey, path, label, base, bonus, sources = [], onChange, usage, onUseMilestone, onClearUsage }: Props) {
   const total = base + bonus;
   const mod = modifier(total);
   const milestone = statMilestone(total);
@@ -89,7 +114,7 @@ export function StatPill({ statKey, path, label, base, bonus, sources = [], onCh
           <span className="stat-pill-mod">{mod >= 0 ? `+${mod}` : mod}</span>
         </div>
       </HoverCard>
-      <MilestoneNotes effects={effects} />
+      <MilestoneNotes statKey={statKey} effects={effects} usage={usage} onUse={onUseMilestone} onClearUsage={onClearUsage} />
     </div>
   );
 }

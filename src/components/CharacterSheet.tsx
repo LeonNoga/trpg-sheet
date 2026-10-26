@@ -17,6 +17,7 @@ import {
   classBonusLines as getClassBonusLines,
   PATH_ABILITY_LABELS,
   PATH_LABELS,
+  PATH_RESOURCE_LABEL,
   PATH_SPECIES_FIELD_LABEL,
   PATH_TRAIT_LABELS,
   RARITY_ORDER,
@@ -25,6 +26,20 @@ import {
 import { MAX_LEVEL, levelPointsAfterManualLevel } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import { HistoryDialog } from './HistoryDialog';
+import { AbilityUseBar } from './AbilityUseBar';
+import {
+  applyUse,
+  checkShortage,
+  clearUsage,
+  hasCooldown,
+  isDailyLimited,
+  longRest,
+  milestoneUsageKey,
+  parseActivationCost,
+  reduceResourceCost,
+  startNewDay,
+} from '../data/abilityUse';
+import type { MilestoneEffect } from '../data/statsConfig';
 import { useUndo } from '../state/UndoContext';
 import type {
   Character,
@@ -117,6 +132,64 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
   function changeResistanceSource(source: ResistanceSource) {
     patch((c) => ({ ...c, resistanceSource: source }));
+  }
+
+  /** Применение способности: списывает стоимость из пулов (с учётом скидки Интеллекта) и отмечает откат / дневной лимит. */
+  function applyAbility(item: EquipItem) {
+    const c = characterRef.current!;
+    const base = parseActivationCost(item.activation);
+    const cost = { ...base, resource: reduceResourceCost(c, base.resource).value };
+    const lacks = checkShortage(c, cost);
+    if (lacks.length > 0 && !confirm(`Не хватает: ${lacks.join('; ')}. Применить всё равно?`)) return;
+    patch((cc) => applyUse(cc, item.id, cost, { cooldown: hasCooldown(item), daily: isDailyLimited(item) }));
+  }
+
+  function applyMilestone(stat: StatKey, effect: MilestoneEffect) {
+    const c = characterRef.current!;
+    const cost = { resource: 0, stamina: effect.stamina ?? 0 };
+    const lacks = checkShortage(c, cost);
+    if (lacks.length > 0 && !confirm(`Не хватает: ${lacks.join('; ')}. Применить всё равно?`)) return;
+    patch((cc) => applyUse(cc, milestoneUsageKey(stat, effect.threshold), cost, { daily: effect.daily }));
+  }
+
+  function clearUsageFlag(key: string, which: 'cooldown' | 'daily') {
+    patch((c) => clearUsage(c, key, which));
+  }
+
+  function handleNewDay() {
+    if (confirm('Новый день: снять все откаты и дневные ограничения способностей. Здоровье, выносливость и ресурс не меняются.')) {
+      patch(startNewDay);
+    }
+  }
+
+  function handleLongRest() {
+    if (
+      confirm(
+        'Длительный отдых: здоровье, выносливость и ресурс восстановятся до максимума, откаты и дневные ограничения снимутся.',
+      )
+    ) {
+      patch(longRest);
+    }
+  }
+
+  /** Строка «Применить» под способностью — только если у неё есть стоимость, откат или дневной лимит. */
+  function abilityUseBar(item: EquipItem) {
+    const c = character!;
+    const base = parseActivationCost(item.activation);
+    const reduced = reduceResourceCost(c, base.resource);
+    const daily = isDailyLimited(item);
+    const cooldown = hasCooldown(item);
+    if (base.resource === 0 && base.stamina === 0 && !daily && !cooldown) return null;
+    return (
+      <AbilityUseBar
+        cost={{ resource: reduced.value, stamina: base.stamina }}
+        resourceLabel={PATH_RESOURCE_LABEL[c.path]}
+        note={reduced.note && reduced.value !== base.resource ? `${reduced.note} (было ${base.resource})` : undefined}
+        usage={c.usage?.[item.id]}
+        onUse={() => applyAbility(item)}
+        onClear={(which) => clearUsageFlag(item.id, which)}
+      />
+    );
   }
 
   function changeSkill(skill: string, level: SkillLevel) {
@@ -352,7 +425,17 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           />
 
           <div className="card">
-            <h3 className="card-title">Характеристики и показатели</h3>
+            <div className="card-title-row">
+              <h3 className="card-title">Характеристики и показатели</h3>
+              <div className="rest-buttons">
+                <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: снять откаты и дневные ограничения">
+                  ☀ Новый день
+                </button>
+                <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон: восстановить пулы и снять откаты">
+                  🌙 Длительный отдых
+                </button>
+              </div>
+            </div>
             <StatBudgetBar character={character} />
             <div className="field" style={{ maxWidth: 260 }}>
               <label>Награда мастера (доп. очки)</label>
@@ -368,6 +451,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               onChangePool={changePool}
               onChangeInitiativeSource={changeInitiativeSource}
               onChangeResistanceSource={changeResistanceSource}
+              onUseMilestone={applyMilestone}
+              onClearUsage={clearUsageFlag}
             />
           </div>
 
@@ -404,6 +489,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           onChange={(abilities: EquipItem[]) => patch((c) => ({ ...c, abilities }))}
           addLabel={PATH_ABILITY_LABELS[character.path].add}
           emptyText={PATH_ABILITY_LABELS[character.path].empty}
+          cardExtra={abilityUseBar}
           toolbar={<BulkCardUpload onCard={addCardToCharacter} />}
           onCompanion={addCardToCharacter}
         />

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { bonusLabel, ITEM_PATH_LABELS, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import type { BonusKey, EquipItem, Path } from '../types';
 
@@ -9,11 +10,13 @@ interface Props {
   selected?: boolean;
   onSelect?: (selected: boolean) => void;
   onToggleEquipped: () => void;
+  /** Дополнительный блок под текстом карточки (например, кнопка «Применить» у способностей). */
+  extra?: ReactNode;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-export function ItemCard({ item, path, showEquipToggle, selected, onSelect, onToggleEquipped, onEdit, onDelete }: Props) {
+export function ItemCard({ item, path, showEquipToggle, selected, onSelect, extra, onToggleEquipped, onEdit, onDelete }: Props) {
   const bonusEntries = Object.entries(item.statBonuses) as [BonusKey, number][];
   const props = item.kind === 'ability' && [item.activation, item.cooldown, item.cast, item.duration].some(Boolean);
 
@@ -72,6 +75,8 @@ export function ItemCard({ item, path, showEquipToggle, selected, onSelect, onTo
           ))}
         </div>
       )}
+
+      {extra}
 
       <div className="item-actions">
         <button className="btn btn-sm" onClick={onEdit}>

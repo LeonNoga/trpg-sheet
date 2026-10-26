@@ -22,9 +22,11 @@ interface Props {
   toolbar?: ReactNode;
   /** Вторая половина артефакта (умение/предмет) — добавляется в другой список персонажа. */
   onCompanion?: (item: EquipItem) => void;
+  /** Дополнительный блок под каждой карточкой. */
+  cardExtra?: (item: EquipItem) => ReactNode;
 }
 
-export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar, onCompanion }: Props) {
+export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar, onCompanion, cardExtra }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
@@ -129,6 +131,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
             selected={selected.has(item.id)}
             onSelect={(on) => toggleSelected(item.id, on)}
             onToggleEquipped={() => toggleEquipped(item.id)}
+            extra={cardExtra?.(item)}
             onEdit={() => setEditingId(item.id)}
             onDelete={() => remove(item.id)}
           />
