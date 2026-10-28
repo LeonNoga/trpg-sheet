@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { EXPORT_FALLBACK_EVENT, IMAGE_FALLBACK_EVENT } from '../storage/saveFile';
+import { downloadTextFile, EXPORT_FALLBACK_EVENT, IMAGE_FALLBACK_EVENT } from '../storage/saveFile';
 import type { ExportFallbackDetail, ImageFallbackDetail } from '../storage/saveFile';
 
 async function copyText(text: string, area: HTMLTextAreaElement | null): Promise<boolean> {
@@ -37,13 +37,16 @@ export function ExportFallbackDialog() {
       <div className="modal-box">
         <h3 className="card-title">Не получилось отправить файл</h3>
         <p className="muted">
-          Этот браузер не умеет передавать файлы. Скопируйте текст и отправьте его себе (в «Избранное» Telegram, заметки,
+          Не удалось открыть меню «Поделиться». Попробуйте «Скачать файл»; если он не скачивается, скопируйте текст и отправьте его себе (в «Избранное» Telegram, заметки,
           почту) — потом на нужном устройстве нажмите «Вставить текстом» рядом с кнопкой импорта. Либо откройте страницу
           в Safari/Chrome (меню «…» → «Открыть в Safari») и повторите — там файл отправляется напрямую.
         </p>
         <textarea ref={area} className="notes-textarea" readOnly value={detail.text} onFocus={(e) => e.target.select()} />
         <div className="item-actions">
-          <button className="btn btn-primary" onClick={async () => setCopied(await copyText(detail.text, area.current))}>
+          <button className="btn btn-primary" onClick={() => downloadTextFile(detail.fileName, detail.text)}>
+            Скачать файл
+          </button>
+          <button className="btn" onClick={async () => setCopied(await copyText(detail.text, area.current))}>
             Скопировать всё
           </button>
           <button className="btn btn-ghost" onClick={() => setDetail(null)}>

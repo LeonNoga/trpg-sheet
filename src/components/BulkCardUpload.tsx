@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fileToImageDataUrl } from '../utils/file';
 import { createOcrSession, itemsFromCard } from '../utils/ocrCards';
 import type { OcrSession } from '../utils/ocrCards';
@@ -29,11 +29,36 @@ export function BulkCardUpload({ onCard, getExisting, label = 'Загрузит�
   const [bulk, setBulk] = useState<BulkState | null>(null);
   const cancelRef = useRef(false);
   const input = useRef<HTMLInputElement>(null);
+  const processRef = useRef<(files: File[]) => Promise<void>>(async () => {});
+  const canReadClipboard =
+    typeof navigator !== 'undefined' &&
+    typeof navigator.clipboard?.read === 'function' &&
+    !window.matchMedia('(pointer: coarse)').matches;
+
+  /** Кнопка «Вставить из буфера» — для браузеров, где Ctrl+V не подходит (нужно разрешение на чтение буфера). */
+  async function pasteFromClipboard() {
+    try {
+      const items = await navigator.clipboard.read();
+      const files: File[] = [];
+      for (const item of items) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) files.push(new File([await item.getType(type)], `буфер-${files.length + 1}.png`, { type }));
+      }
+      if (files.length === 0) alert('В буфере обмена нет картинки. Скопируйте скриншот карточки и повторите.');
+      else await processFiles(files);
+    } catch {
+      alert('Не удалось прочитать буфер обмена. Нажмите Ctrl+V на этой странице — скриншот вставится так.');
+    }
+  }
 
   async function handleFiles(fileList: FileList | null) {
     const files = Array.from(fileList ?? []).filter((f) => f.type.startsWith('image/'));
     if (input.current) input.current.value = '';
-    if (files.length === 0) return;
+    await processFiles(files);
+  }
+
+  async function processFiles(files: File[]) {
+    if (files.length === 0 || bulk?.running) return;
 
     cancelRef.current = false;
     setBulk({ running: true, done: 0, total: files.length, current: '', items: 0, abilities: 0, problems: [], review: 0, duplicates: [] });
@@ -96,12 +121,32 @@ export function BulkCardUpload({ onCard, getExisting, label = 'Загрузит�
     }
   }
 
+  // Ctrl+V со скриншотом: картинка из буфера обмена обрабатывается как загруженная карточка.
+  useEffect(() => {
+    processRef.current = processFiles;
+  });
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const images = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+      if (images.length === 0) return;
+      e.preventDefault();
+      void processRef.current(images);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
+
   return (
     <div style={{ marginBottom: 12 }}>
       <div className="top-actions" style={{ marginBottom: 0 }}>
         <button className="btn btn-primary" onClick={() => input.current?.click()} disabled={bulk?.running}>
           {label}
         </button>
+        {canReadClipboard && (
+          <button className="btn" onClick={() => void pasteFromClipboard()} disabled={bulk?.running} title="Или просто нажмите Ctrl+V со скриншотом в буфере">
+            Вставить из буфера
+          </button>
+        )}
       </div>
       <input
         ref={input}

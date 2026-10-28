@@ -7,7 +7,6 @@ import { ItemsBlock } from './ItemsBlock';
 import { BulkCardUpload } from './BulkCardUpload';
 import { NumberField } from './NumberField';
 import { SpeciesBonusesCard, DnaListsCard } from './TraitBlocks';
-import { PortraitCard } from './PortraitCard';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
@@ -70,7 +69,7 @@ function tabsFor(path: Path): { key: Tab; label: string }[] {
     { key: 'character', label: 'Персонаж' },
     { key: 'equipment', label: 'Снаряжение' },
     { key: 'abilities', label: PATH_ABILITY_LABELS[path].tab },
-    { key: 'training', label: 'Прокачка навыков' },
+    { key: 'training', label: 'Навыки' },
     { key: 'info', label: 'Доп. информация' },
   ];
 }
@@ -360,6 +359,41 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <label>{PATH_SPECIES_FIELD_LABEL[character.path]}</label>
             <input value={character.species} onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))} />
           </div>
+          <div className="field" style={{ maxWidth: 220 }}>
+            <label>Редкость класса</label>
+            <select
+              value={character.classRarity ?? ''}
+              onChange={(e) =>
+                patch((c) => {
+                  const classRarity = (e.target.value || undefined) as Rarity | undefined;
+                  // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
+                  return {
+                    ...c,
+                    classRarity,
+                    uniqueLevelPoints: classRarity === 'unique' ? (c.uniqueLevelPoints ?? 15) : c.uniqueLevelPoints,
+                  };
+                })
+              }
+              title="Определяет, сколько очков характеристик даёт каждый новый уровень"
+            >
+              <option value="">Класс не выбран</option>
+              {RARITY_ORDER.map((r) => (
+                <option key={r} value={r}>
+                  {CLASS_RARITY_LABELS[r]}
+                </option>
+              ))}
+            </select>
+            <details className="class-hint">
+              <summary>Подсказка</summary>
+              <div className="class-hint-list">
+                {classBonusLines.map((line) => (
+                  <div className="fixed-bonus" key={line}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
         </div>
 
         <div className="header-fields-grid">
@@ -375,6 +409,17 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               title="Изменить вручную: опыт обнулится, очки за уровни пересчитаются"
             />
           </div>
+          {character.classRarity === 'unique' && (
+            <div className="field">
+              <label>Очков за уровень</label>
+              <NumberField
+                min={0}
+                value={character.uniqueLevelPoints ?? 15}
+                onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
+                title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
+              />
+            </div>
+          )}
           <div className="field">
             <label>Опыт (кошелёк)</label>
             <NumberField value={character.experience} onChange={(v) => patch((c) => ({ ...c, experience: v }))} />
@@ -407,59 +452,11 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
       {tab === 'character' && (
         <>
-          <div className="row">
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <PortraitCard portrait={character.portrait} onChange={(portrait) => patch((c) => ({ ...c, portrait }))} />
-            </div>
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <SpeciesBonusesCard
-                title={traitLabels.bonuses}
-                extra={
-                  <div className="class-rarity-row">
-                    <div className="field">
-                      <label>Редкость класса</label>
-                      <select
-                        value={character.classRarity ?? ''}
-                        onChange={(e) =>
-                          patch((c) => {
-                            const classRarity = (e.target.value || undefined) as Rarity | undefined;
-                            // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
-                            return {
-                              ...c,
-                              classRarity,
-                              uniqueLevelPoints: classRarity === 'unique' ? (c.uniqueLevelPoints ?? 15) : c.uniqueLevelPoints,
-                            };
-                          })
-                        }
-                        title="Определяет, сколько очков характеристик даёт каждый новый уровень"
-                      >
-                        <option value="">Класс не выбран</option>
-                        {RARITY_ORDER.map((r) => (
-                          <option key={r} value={r}>
-                            {CLASS_RARITY_LABELS[r]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {character.classRarity === 'unique' && (
-                      <div className="field" style={{ maxWidth: 140 }}>
-                        <label>Очков за уровень</label>
-                        <NumberField
-                          min={0}
-                          value={character.uniqueLevelPoints ?? 15}
-                          onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
-                          title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
-                        />
-                      </div>
-                    )}
-                  </div>
-                }
-                fixedLines={classBonusLines}
-                list={character.speciesBonuses}
-                onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
-              />
-            </div>
-          </div>
+          <SpeciesBonusesCard
+            title={traitLabels.bonuses}
+            list={character.speciesBonuses}
+            onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
+          />
 
           <DnaListsCard
             titles={[traitLabels.dnaA, traitLabels.dnaB, traitLabels.artifact]}
@@ -511,10 +508,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             />
           </div>
 
-          <div className="card">
-            <h3 className="card-title">Навыки</h3>
-            <SkillsEditor character={character} onChangeSkill={changeSkill} />
-          </div>
         </>
       )}
 
@@ -550,7 +543,13 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       )}
 
       {tab === 'training' && (
-        <SkillTrainingScreen character={character} onChangeDays={changeTrainingDays} onLevelUp={levelUpSkill} />
+        <>
+          <div className="card">
+            <h3 className="card-title">Навыки</h3>
+            <SkillsEditor character={character} onChangeSkill={changeSkill} />
+          </div>
+          <SkillTrainingScreen character={character} onChangeDays={changeTrainingDays} onLevelUp={levelUpSkill} />
+        </>
       )}
 
       {tab === 'info' && <AdditionalInfoTab character={character} onPatch={patch} />}

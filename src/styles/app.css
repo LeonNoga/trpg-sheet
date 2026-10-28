@@ -1547,3 +1547,18 @@ input[list]::-webkit-calendar-picker-indicator {
 .slot-row input {
   min-width: 0;
 }
+
+.class-hint {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.class-hint summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  width: fit-content;
+}
+
+.class-hint-list {
+  margin-top: 4px;
+}

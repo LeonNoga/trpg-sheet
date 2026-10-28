@@ -1,4 +1,5 @@
 import { NumberField } from './NumberField';
+import { PortraitCard } from './PortraitCard';
 import { SpeciesBonusesCard, NotesCard } from './TraitBlocks';
 import type { Character, InfectionStatus, TraitList } from '../types';
 
@@ -38,6 +39,8 @@ export function AdditionalInfoTab({ character, onPatch }: Props) {
 
   return (
     <div>
+      <PortraitCard portrait={character.portrait} onChange={(portrait) => onPatch((c) => ({ ...c, portrait }))} />
+
       <div className="card">
         <div className="field">
           <label>Группа</label>

@@ -19,7 +19,8 @@ function showFallback(fileName: string, text: string): void {
   window.dispatchEvent(new CustomEvent<ExportFallbackDetail>(EXPORT_FALLBACK_EVENT, { detail: { fileName, text } }));
 }
 
-function classicDownload(fileName: string, text: string): void {
+/** Обычное скачивание текстового файла (в Chrome на Android и на компьютере оно работает, во встроенных браузерах — нет). */
+export function downloadTextFile(fileName: string, text: string): void {
   // charset обязателен: без него браузер может показать кириллицу кракозябрами.
   const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -37,7 +38,7 @@ export async function saveJsonFile(fileName: string, payload: unknown): Promise<
   const text = JSON.stringify(payload, null, 2);
 
   if (!isTouchFirstDevice()) {
-    classicDownload(fileName, text);
+    downloadTextFile(fileName, text);
     return true;
   }
 
@@ -53,6 +54,13 @@ export async function saveJsonFile(fileName: string, payload: unknown): Promise<
         if (err instanceof DOMException && err.name === 'AbortError') return false; // пользователь закрыл меню
       }
     }
+  }
+
+  // Меню «Поделиться» недоступно. В Chrome на Android обычное скачивание работает — используем его; во встроенных
+  // браузерах (Telegram и др.) скачивание не работает, там показываем текст для копирования с кнопкой «Скачать файл».
+  if (/Android/i.test(navigator.userAgent) && !/Telegram|Instagram|FBAN|FBAV|VKAndroid|; wv\)/i.test(navigator.userAgent)) {
+    downloadTextFile(fileName, text);
+    return true;
   }
 
   showFallback(fileName, text);
