@@ -1576,3 +1576,15 @@ input[list]::-webkit-calendar-picker-indicator {
   width: 260px;
   pointer-events: auto;
 }
+
+.class-locked-note {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.class-level-warning {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--warn);
+  font-weight: 600;
+}

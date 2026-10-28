@@ -1,4 +1,5 @@
 import { STARTING_STAT_POINTS } from './statsConfig';
+import { calcLevelPoints } from './progression';
 import type { Character } from '../types';
 
 /**
@@ -6,7 +7,7 @@ import type { Character } from '../types';
  * 1) увеличить число, 2) добавить миграцию из предыдущей версии в MIGRATIONS.
  * Миграции выполняются по цепочке при загрузке из IndexedDB и при импорте файла.
  */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 // Данные из старых версий приходят в произвольной форме, поэтому здесь свободная типизация.
 type RawCharacter = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -33,6 +34,10 @@ const MIGRATIONS: Record<number, (raw: RawCharacter) => RawCharacter> = {
             : undefined,
     };
   },
+  // 1 → 2: очки за уровни считаются по формуле с учётом того, что класс выбирается с 10 уровня, а бонус редкости
+  // действует только на уровни выше уровня получения класса. Если у карточки есть класс, а уровня его получения нет,
+  // временно считаем с 10-го — игрок должен указать точный уровень в шапке карточки.
+  1: (raw) => ({ ...raw, levelPoints: calcLevelPoints({ level: raw.level ?? 1, classRarity: raw.classRarity, classLevel: raw.classLevel, uniqueLevelPoints: raw.uniqueLevelPoints }) }),
 };
 
 /** Приводит данные любой старой версии к текущей схеме (без заполнения недостающих полей — это делает normalizeCharacter). */

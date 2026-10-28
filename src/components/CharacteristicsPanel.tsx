@@ -18,6 +18,7 @@ import {
   derivedBreakdown,
 } from '../data/formulas';
 import { DerivedBreakdownCard, HoverCard } from './HoverCard';
+import { maxBaseStat } from '../data/progression';
 import { NumberField } from './NumberField';
 import type { MilestoneEffect } from '../data/statsConfig';
 import { StatPill } from './StatPill';
@@ -114,6 +115,7 @@ export function CharacteristicsPanel({
         bonus={bonusSum(character, statKey)}
         sources={bonusSources(character, statKey)}
         onChange={(v) => onChangeStat(statKey, v)}
+        maxBase={maxBaseStat(character, statKey)}
         usage={character.usage}
         onUseMilestone={(effect) => onUseMilestone(statKey, effect)}
         onClearUsage={onClearUsage}

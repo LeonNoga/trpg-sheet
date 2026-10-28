@@ -1,6 +1,6 @@
 import { STAT_LABELS, STAT_ORDER, PATH_RESOURCE_LABEL } from '../data/statsConfig';
 import { bonusSum, sumBaseStats } from '../data/formulas';
-import { statPointsBudget } from '../data/progression';
+import { maxBaseStat, statPointsBudget } from '../data/progression';
 import { StatPill } from './StatPill';
 import type { Character, StatKey } from '../types';
 
@@ -43,6 +43,7 @@ export function StatsEditor({ character, onChangeStat }: Props) {
           label={key === 'resource' ? PATH_RESOURCE_LABEL[character.path] : STAT_LABELS[key]}
           base={character.baseStats[key]}
           bonus={bonusSum(character, key)}
+          maxBase={maxBaseStat(character, key)}
           onChange={(v) => onChangeStat(key, v)}
         />
       ))}

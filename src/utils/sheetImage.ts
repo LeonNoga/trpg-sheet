@@ -83,8 +83,10 @@ function drawText(ctx: CanvasRenderingContext2D, value: string | number, x: numb
 
 /** Короткие формулировки фиксированных бонусов класса — на листе всего 4 строки по ~450 px. */
 function shortBonusLines(character: Character): string[] {
-  const [points] = classBonusLines(character.classRarity, character.uniqueLevelPoints);
-  return [points.replace('Бонус очков характеристик', 'Очки характеристик'), 'Откат классовых способностей ↓', 'Стоимость классовых умений −50%'];
+  const from = Math.max(10, character.classLevel ?? 10);
+  const rate = classBonusLines(character.classRarity, character.uniqueLevelPoints, character.classLevel)[0];
+  const points = character.classRarity ? `Очки хар-к: +2 до ${from}-го ур., затем ${rate.split('дальше ')[1] ?? ''}` : 'Очки характеристик: +2 за уровень';
+  return [points, 'Откат классовых способностей ↓', 'Стоимость классовых умений −50%'];
 }
 
 async function startPage(templateUrl: string) {

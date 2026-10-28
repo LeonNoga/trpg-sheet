@@ -138,13 +138,13 @@ export function levelPointsRate(classRarity?: Rarity, uniqueRate?: number): numb
 }
 
 /** Неизменяемые бонусы блока «Видовые/Классовые бонусы»: первая строка зависит от редкости класса. */
-export function classBonusLines(classRarity?: Rarity, uniqueRate?: number): string[] {
+export function classBonusLines(classRarity?: Rarity, uniqueRate?: number, classLevel?: number): string[] {
   const rarity = classRarity ? ` (${CLASS_RARITY_LABELS[classRarity]})` : '';
-  return [
-    `Бонус очков характеристик: +${levelPointsRate(classRarity, uniqueRate)} за уровень${rarity}`,
-    'Откат классовых способностей уменьшается',
-    'Стоимость классовых умений уменьшается на 50%',
-  ];
+  const from = Math.max(10, classLevel ?? 10);
+  const points = classRarity
+    ? `Очки характеристик: +2 за уровень до ${from}-го, дальше +${levelPointsRate(classRarity, uniqueRate)} за уровень${rarity}`
+    : 'Очки характеристик: +2 за уровень. Класс выбирается на 10 уровне — с 11-го появляется бонус редкости';
+  return [points, 'Откат классовых способностей уменьшается', 'Стоимость классовых умений уменьшается на 50%'];
 }
 
 // Пороги дней успешной тренировки и справочные TN для перехода между степенями владения навыком.

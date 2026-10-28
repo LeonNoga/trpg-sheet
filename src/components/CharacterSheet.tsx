@@ -22,9 +22,8 @@ import {
   PATH_SPECIES_FIELD_LABEL,
   PATH_TRAIT_LABELS,
   RARITY_ORDER,
-  levelPointsRate,
 } from '../data/statsConfig';
-import { MAX_LEVEL, levelPointsAfterManualLevel } from '../data/progression';
+import { CLASS_MIN_LEVEL, MAX_LEVEL, calcLevelPoints, effectiveClassLevel, maxBaseStat, nextLevelPoints } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import { HistoryDialog } from './HistoryDialog';
 import { ShortRestDialog } from './ShortRestDialog';
@@ -128,7 +127,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   }
 
   function changeStat(key: StatKey, value: number) {
-    patch((c) => ({ ...c, baseStats: { ...c.baseStats, [key]: value } }));
+    // Жёсткий лимит: повысить можно только на остаток очков (по формулам уровней + награда мастера); понижать — всегда.
+    patch((c) => ({ ...c, baseStats: { ...c.baseStats, [key]: Math.min(value, Math.max(c.baseStats[key], maxBaseStat(c, key))) } }));
   }
 
   function changePool(key: PoolKey, value: number) {
@@ -243,20 +243,20 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       setLevelDraft(character!.level);
       return;
     }
-    const newLevelPoints = levelPointsAfterManualLevel(character!, clamped);
+    const newLevelPoints = calcLevelPoints({ ...character!, level: clamped });
     const diff = newLevelPoints - character!.levelPoints;
     const confirmed = confirm(
       `Установить уровень ${clamped} вручную?
 
 Опыт будет сброшен в 0. Очки характеристик за уровни ` +
-        `изменятся на ${diff >= 0 ? '+' : ''}${diff} (по +${levelPointsRate(character!.classRarity, character!.uniqueLevelPoints)} за уровень для текущей ` +
-        `редкости класса). Награда мастера сохранится.`,
+        `изменятся на ${diff >= 0 ? '+' : ''}${diff} (+2 за каждый уровень до получения класса, бонус редкости — только за уровни выше него). ` +
+        `Награда мастера сохранится.`,
     );
     if (!confirmed) {
       setLevelDraft(character!.level);
       return;
     }
-    patch((c) => ({ ...c, level: clamped, experience: 0, levelPoints: newLevelPoints }));
+    patch((c) => ({ ...c, level: clamped, experience: 0 }));
   }
 
   function handleDelete() {
@@ -293,7 +293,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   }
 
   const traitLabels = PATH_TRAIT_LABELS[character.path];
-  const classBonusLines = getClassBonusLines(character.classRarity, character.uniqueLevelPoints);
+  const classBonusLines = getClassBonusLines(character.classRarity, character.uniqueLevelPoints, character.classLevel);
+  const classAvailable = character.level >= CLASS_MIN_LEVEL;
+  const classLevelNow = effectiveClassLevel(character);
 
   return (
     <div className={`theme-${character.path}`}>
@@ -364,18 +366,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <label>Редкость класса</label>
             <select
               value={character.classRarity ?? ''}
+              disabled={!classAvailable && !character.classRarity}
               onChange={(e) =>
                 patch((c) => {
                   const classRarity = (e.target.value || undefined) as Rarity | undefined;
-                  // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
                   return {
                     ...c,
                     classRarity,
+                    // Класс получен на текущем уровне (не раньше 10-го): бонус редкости пойдёт только за уровни выше него.
+                    classLevel: classRarity ? (c.classRarity ? c.classLevel : Math.max(CLASS_MIN_LEVEL, c.level)) : undefined,
+                    // Для уникального класса ставка задаётся вручную; стартуем с 15, дальше Мастер называет своё число.
                     uniqueLevelPoints: classRarity === 'unique' ? (c.uniqueLevelPoints ?? 15) : c.uniqueLevelPoints,
                   };
                 })
               }
-              title="Определяет, сколько очков характеристик даёт каждый новый уровень"
+              title={classAvailable ? 'Определяет, сколько очков характеристик даёт каждый уровень выше получения класса' : 'Класс выбирается на 10 уровне'}
             >
               <option value="">Класс не выбран</option>
               {RARITY_ORDER.map((r) => (
@@ -384,7 +389,11 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 </option>
               ))}
             </select>
-            <ClassHint lines={classBonusLines} />
+            {!classAvailable && !character.classRarity ? (
+              <div className="muted class-locked-note">Класс выбирается на 10 уровне — достигните его, чтобы выбрать редкость.</div>
+            ) : (
+              <ClassHint lines={classBonusLines} />
+            )}
           </div>
         </div>
 
@@ -422,21 +431,45 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           </div>
           <div className="field">
             <label>Очков за уровень</label>
-            {character.classRarity === 'unique' ? (
+            {character.classRarity === 'unique' && classAvailable ? (
               <NumberField
                 min={0}
                 value={character.uniqueLevelPoints ?? 15}
                 onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
-                title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
+                title="Сколько очков даёт каждый уровень уникального класса выше получения класса — это число называет Мастер."
               />
             ) : (
               <input
                 readOnly
-                value={`+${levelPointsRate(character.classRarity)} за уровень`}
-                title="Зависит от редкости класса и применяется только к новым уровням"
+                value={`+${nextLevelPoints(character)} за уровень`}
+                title="До 10 уровня всегда +2; бонус редкости класса действует только на уровни выше уровня получения класса"
               />
             )}
           </div>
+          {character.classRarity && (
+            <div className="field">
+              <label>Класс получен на уровне</label>
+              <NumberField
+                min={CLASS_MIN_LEVEL}
+                max={Math.max(CLASS_MIN_LEVEL, character.level)}
+                value={classLevelNow ?? CLASS_MIN_LEVEL}
+                onChange={(v) => patch((c) => ({ ...c, classLevel: Math.max(CLASS_MIN_LEVEL, v) }))}
+                title="На каком уровне персонаж получил класс. Бонус редкости считается только за уровни выше этого"
+              />
+              {character.classLevel === undefined && (
+                <div className="class-level-warning">
+                  Не указан — пока считается с 10-го уровня.{' '}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => patch((c) => ({ ...c, classLevel: CLASS_MIN_LEVEL }))}
+                  >
+                    Верно, с 10-го
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -17,30 +17,76 @@ export function statPointsBudget(character: Pick<Character, 'levelPoints' | 'bon
   return STARTING_STAT_POINTS + character.levelPoints + character.bonusStatPoints;
 }
 
+/** Класс можно получить не раньше этого уровня; до него очки за уровень всегда +2. */
+export const CLASS_MIN_LEVEL = 10;
+/** Очки характеристик за уровень без класса (и до получения класса). */
+export const BASE_LEVEL_POINTS = 2;
+
 /**
- * Как изменятся очки за уровни при ручной смене уровня: каждый добавленный/убранный уровень
- * считается по текущей редкости класса (прошлые уровни задним числом не пересчитываются).
+ * Уровень получения класса: null — класса нет. Если класс выбран, а уровень не указан (старые карточки),
+ * временно считаем, что он получен на минимальном (10-м), пока игрок не укажет точный.
  */
-export function levelPointsAfterManualLevel(character: Character, newLevel: number): number {
-  const delta = (newLevel - character.level) * levelPointsRate(character.classRarity, character.uniqueLevelPoints);
-  return Math.max(0, character.levelPoints + delta);
+export function effectiveClassLevel(character: Pick<Character, 'classRarity' | 'classLevel'>): number | null {
+  if (!character.classRarity) return null;
+  return Math.max(CLASS_MIN_LEVEL, character.classLevel ?? CLASS_MIN_LEVEL);
+}
+
+/**
+ * Очки характеристик за все уровни: +2 за каждый уровень до получения класса (включительно) и по ставке редкости
+ * класса за каждый уровень выше него. Считается по формуле, поэтому ручная смена уровня и смена редкости
+ * всегда дают согласованный результат.
+ */
+export function calcLevelPoints(
+  character: Pick<Character, 'level' | 'classRarity' | 'classLevel' | 'uniqueLevelPoints'>,
+): number {
+  const classLevel = effectiveClassLevel(character);
+  if (classLevel === null) return BASE_LEVEL_POINTS * Math.max(0, character.level - 1);
+  const before = Math.max(0, Math.min(character.level, classLevel) - 1);
+  const after = Math.max(0, character.level - classLevel);
+  return BASE_LEVEL_POINTS * before + levelPointsRate(character.classRarity, character.uniqueLevelPoints) * after;
+}
+
+/** Сколько очков даст следующий уровень (для подписи в шапке). */
+export function nextLevelPoints(
+  character: Pick<Character, 'level' | 'classRarity' | 'classLevel' | 'uniqueLevelPoints'>,
+): number {
+  const classLevel = effectiveClassLevel(character);
+  if (classLevel === null || character.level < classLevel) return BASE_LEVEL_POINTS;
+  return levelPointsRate(character.classRarity, character.uniqueLevelPoints);
+}
+
+/** Сколько очков характеристик ещё можно потратить (отрицательное — перебор у старых карточек). */
+export function statPointsRoom(character: Pick<Character, 'levelPoints' | 'bonusStatPoints' | 'baseStats'>): number {
+  const spent = Object.values(character.baseStats).reduce((sum, v) => sum + (v ?? 0), 0);
+  return statPointsBudget(character) - spent;
+}
+
+/**
+ * Жёсткий потолок для базового значения одной характеристики: повысить можно только на остаток очков;
+ * у карточки с перебором (старые данные) повышать нельзя совсем, но понижать можно всегда.
+ */
+export function maxBaseStat(
+  character: Pick<Character, 'levelPoints' | 'bonusStatPoints' | 'baseStats'>,
+  key: keyof Character['baseStats'],
+): number {
+  const current = character.baseStats[key] ?? 0;
+  return current + Math.max(0, statPointsRoom(character));
 }
 
 /** Applies the current experience wallet against the progression table,
- * levelling up as many times as the banked XP allows. */
+ * levelling up as many times as the banked XP allows; очки за уровни пересчитываются по формуле. */
 export function applyExperience(character: Character): Character {
-  let { level, experience, levelPoints } = character;
-  const rate = levelPointsRate(character.classRarity, character.uniqueLevelPoints);
+  let { level, experience } = character;
 
   while (level < MAX_LEVEL) {
     const required = xpRequiredFor(level);
     if (required == null || experience < required) break;
     experience -= required;
     level += 1;
-    levelPoints += rate;
   }
 
-  if (level === character.level && experience === character.experience) {
+  const levelPoints = calcLevelPoints({ ...character, level });
+  if (level === character.level && experience === character.experience && levelPoints === character.levelPoints) {
     return character;
   }
 

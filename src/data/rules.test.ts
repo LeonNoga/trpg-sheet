@@ -8,7 +8,7 @@ import {
   SKILLS,
   statMilestone,
 } from './statsConfig';
-import { applyExperience, statPointsBudget, xpRequiredFor } from './progression';
+import { applyExperience, calcLevelPoints, maxBaseStat, nextLevelPoints, statPointsBudget, statPointsRoom, xpRequiredFor } from './progression';
 import { computeDerivedStats, modifier, bonusSources, derivedBreakdown } from './formulas';
 import { createBlankCharacter, normalizeCharacter } from './defaults';
 import { CURRENT_SCHEMA_VERSION } from './migrations';
@@ -39,18 +39,66 @@ describe('опыт и уровни', () => {
     expect(xpRequiredFor(100)).toBeNull();
   });
 
-  it('очки за новые уровни зависят от редкости класса и не пересчитываются задним числом', () => {
+  it('ставки редкости класса', () => {
     expect(levelPointsRate(undefined)).toBe(2);
     expect(levelPointsRate('rare')).toBe(5);
     expect(levelPointsRate('unique')).toBe(15);
     expect(levelPointsRate('unique', 20)).toBe(20);
+  });
 
+  it('до 10 уровня очки всегда +2, даже если у карточки уже выбрана редкость', () => {
     const base = createBlankCharacter('genetic');
     const rare: Character = { ...base, classRarity: 'rare', experience: 100 };
     const leveled = applyExperience(rare);
     expect(leveled.level).toBe(2);
-    expect(leveled.levelPoints).toBe(5);
-    expect(statPointsBudget(leveled)).toBe(105);
+    expect(leveled.levelPoints).toBe(2);
+    expect(statPointsBudget(leveled)).toBe(102);
+  });
+
+  it('бонус редкости считается только за уровни выше уровня получения класса', () => {
+    const base = createBlankCharacter('genetic');
+    // Класс выбран на 10-м, сейчас 15-й: 9 уровней по +2 и 5 уровней по +10
+    expect(calcLevelPoints({ ...base, level: 15, classRarity: 'epic', classLevel: 10 })).toBe(18 + 50);
+    // Класс получен позже, на 12-м: 11 уровней по +2 и 3 уровня по +10
+    expect(calcLevelPoints({ ...base, level: 15, classRarity: 'epic', classLevel: 12 })).toBe(22 + 30);
+    // Без класса — всегда +2
+    expect(calcLevelPoints({ ...base, level: 15 })).toBe(28);
+    // Выбор эпика на 1-м уровне и ручная смена на 15-й не даёт +10 за все уровни
+    expect(calcLevelPoints({ ...base, level: 15, classRarity: 'epic', classLevel: 1 })).toBe(68);
+    // Старые карточки с классом без указанного уровня получения: временно считается с 10-го
+    expect(calcLevelPoints({ ...base, level: 13, classRarity: 'rare' })).toBe(18 + 15);
+    // Уникальный класс — ставка, названная Мастером
+    expect(calcLevelPoints({ ...base, level: 12, classRarity: 'unique', classLevel: 10, uniqueLevelPoints: 9 })).toBe(18 + 18);
+  });
+
+  it('очки за следующий уровень: +2 до класса, ставка редкости с 10-го уровня', () => {
+    const base = createBlankCharacter('genetic');
+    expect(nextLevelPoints({ ...base, level: 5, classRarity: 'epic', classLevel: 10 })).toBe(2);
+    expect(nextLevelPoints({ ...base, level: 10, classRarity: 'epic', classLevel: 10 })).toBe(10);
+    expect(nextLevelPoints({ ...base, level: 10 })).toBe(2);
+  });
+
+  it('набор опыта пересчитывает очки по формуле при переходе через уровень получения класса', () => {
+    const base = createBlankCharacter('genetic');
+    const c: Character = { ...base, level: 10, classRarity: 'legendary', classLevel: 10, levelPoints: 18, experience: 1360 };
+    const leveled = applyExperience(c); // 10 → 11 стоит 1360 опыта
+    expect(leveled.level).toBe(11);
+    expect(leveled.levelPoints).toBe(18 + 15);
+  });
+
+  it('жёсткий лимит очков характеристик: потолок = текущее значение + остаток бюджета', () => {
+    const base = createBlankCharacter('genetic'); // 10 характеристик по 5 = 50, бюджет 100
+    expect(statPointsRoom(base)).toBe(50);
+    expect(maxBaseStat(base, 'strength')).toBe(55);
+    const full: Character = { ...base, baseStats: { ...base.baseStats, strength: 55 } };
+    expect(statPointsRoom(full)).toBe(0);
+    expect(maxBaseStat(full, 'strength')).toBe(55);
+    expect(maxBaseStat(full, 'agility')).toBe(5);
+    // Награда мастера расширяет лимит, перебор (старые данные) — повышать нельзя, понижать можно
+    expect(maxBaseStat({ ...full, bonusStatPoints: 3 }, 'agility')).toBe(8);
+    const over: Character = { ...full, baseStats: { ...full.baseStats, strength: 60 } };
+    expect(statPointsRoom(over)).toBe(-5);
+    expect(maxBaseStat(over, 'strength')).toBe(60);
   });
 });
 
@@ -124,7 +172,8 @@ describe('слоты умений и навыки', () => {
 
   it('строки бонусов класса показывают очки за уровень', () => {
     expect(classBonusLines('rare')[0]).toContain('+5 за уровень');
-    expect(classBonusLines(undefined)[0]).toContain('+2 за уровень');
+    expect(classBonusLines('rare', undefined, 12)[0]).toContain('до 12-го');
+    expect(classBonusLines(undefined)[0]).toContain('Класс выбирается на 10 уровне');
     expect(classBonusLines('unique', 12)[0]).toContain('+12 за уровень');
   });
 });
@@ -204,5 +253,16 @@ describe('отмена удаления', () => {
   it('уже вернувшаяся запись не дублируется', () => {
     const a = { id: 'a' };
     expect(reinsertRemoved([a], [{ item: a, index: 0 }])).toHaveLength(1);
+  });
+});
+
+describe('миграция очков за уровни (схема 1 → 2)', () => {
+  it('карточка с классом и без уровня получения пересчитывается с 10-го уровня', () => {
+    const base = createBlankCharacter('genetic');
+    const old = { ...base, schemaVersion: 1, level: 13, classRarity: 'rare', levelPoints: 999 } as Character;
+    const migrated = normalizeCharacter(old);
+    expect(migrated.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect(migrated.levelPoints).toBe(18 + 15);
+    expect(migrated.classLevel).toBeUndefined(); // игрок должен подтвердить или указать точный уровень
   });
 });

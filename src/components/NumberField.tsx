@@ -18,7 +18,7 @@ function stripLeadingZeros(raw: string): string {
  * field is cleared and retyped — plain `<input type="number" value={n}>`
  * lags a render behind the DOM's own string value on fast/mobile typing.
  */
-export function NumberField({ value, onChange, onBlur, ...rest }: Props) {
+export function NumberField({ value, onChange, onBlur, max, ...rest }: Props) {
   const [text, setText] = useState(String(value));
   // Значение изменили снаружи (например, кнопкой «+» или сбросом) — обновляем текст прямо во время рендера.
   const [seenValue, setSeenValue] = useState(value);
@@ -31,8 +31,14 @@ export function NumberField({ value, onChange, onBlur, ...rest }: Props) {
     const normalized = stripLeadingZeros(raw);
     setText(normalized);
     if (normalized === '' || normalized === '-') return;
-    const num = Number(normalized);
-    if (!Number.isNaN(num)) onChange(num);
+    let num = Number(normalized);
+    if (Number.isNaN(num)) return;
+    // Жёсткий потолок: больше максимума вписать нельзя — поле сразу показывает допустимое значение.
+    if (max !== undefined && num > Number(max)) {
+      num = Number(max);
+      setText(String(num));
+    }
+    onChange(num);
   }
 
   function handleBlur(e: FocusEvent<HTMLInputElement>) {
@@ -48,6 +54,7 @@ export function NumberField({ value, onChange, onBlur, ...rest }: Props) {
       value={text}
       onChange={(e) => handleChange(e.target.value)}
       onBlur={handleBlur}
+      max={max}
       {...rest}
     />
   );
