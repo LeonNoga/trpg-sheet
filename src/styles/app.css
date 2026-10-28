@@ -1664,3 +1664,12 @@ input[list]::-webkit-calendar-picker-indicator {
   margin-right: 5px;
   flex-shrink: 0;
 }
+
+.item-tag-warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.item-card.foreign {
+  background: color-mix(in srgb, var(--warn) 7%, var(--surface-2));
+}

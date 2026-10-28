@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { bonusLabel, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
+import { bonusLabel, ITEM_PATH_LABELS, PATH_LABELS, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import { PathIcon } from './PathIcon';
 import type { BonusKey, EquipItem, Path } from '../types';
 
@@ -81,9 +81,12 @@ export function ItemCard({
     .filter(Boolean)
     .join(' · ');
   const hasBody = !!(item.flavorText || item.effect || extra);
+  // Предмет или умение другого пути (не того, что у персонажа) — предупреждаем, чтобы случайно не добавить чужое.
+  const foreignPath = !!path && !!item.path && item.path !== 'none' && item.path !== path;
+  const foreignHint = foreignPath ? `Другой путь: ${ITEM_PATH_LABELS[item.path!]}. У персонажа — ${PATH_LABELS[path!]}.` : '';
 
   return (
-    <div className={`item-card ${item.equipped && showEquipToggle ? 'equipped' : ''} ${rarityClass} ${selected ? 'selected' : ''} ${open ? 'open' : ''}`}>
+    <div className={`item-card ${item.equipped && showEquipToggle ? 'equipped' : ''} ${rarityClass} ${selected ? 'selected' : ''} ${open ? 'open' : ''} ${foreignPath ? 'foreign' : ''}`}>
       <div
         className="item-card-head"
         onClick={(e) => {
@@ -102,6 +105,11 @@ export function ItemCard({
             <PathIcon path={item.path} />
             {item.name || 'Без названия'}
             {item.artifact && <span className="item-tag">Артефакт</span>}
+            {foreignPath && (
+              <span className="item-tag item-tag-warn" title={foreignHint}>
+                ⚠ Чужой путь
+              </span>
+            )}
           </h4>
           {sub && <div className="item-meta">{sub}</div>}
 
@@ -131,7 +139,15 @@ export function ItemCard({
         <div className="item-right">
           {showEquipToggle && (
             <label className="toggle">
-              <input type="checkbox" checked={item.equipped} onChange={onToggleEquipped} />
+              <input
+                type="checkbox"
+                checked={item.equipped}
+                onChange={() => {
+                  if (!item.equipped && foreignPath && !confirm(`${foreignHint}
+Всё равно надеть?`)) return;
+                  onToggleEquipped();
+                }}
+              />
               {item.equipped ? 'Надето' : 'Снято'}
             </label>
           )}
