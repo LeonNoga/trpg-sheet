@@ -23,7 +23,7 @@ import {
   PATH_TRAIT_LABELS,
   RARITY_ORDER,
 } from '../data/statsConfig';
-import { CLASS_MIN_LEVEL, MAX_LEVEL, calcLevelPoints, effectiveClassLevel, maxBaseStat, nextLevelPoints } from '../data/progression';
+import { CLASS_MIN_LEVEL, MAX_LEVEL, calcLevelPoints, maxBaseStat, nextLevelPoints } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import { HistoryDialog } from './HistoryDialog';
 import { ShortRestDialog } from './ShortRestDialog';
@@ -295,7 +295,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const traitLabels = PATH_TRAIT_LABELS[character.path];
   const classBonusLines = getClassBonusLines(character.classRarity, character.uniqueLevelPoints, character.classLevel);
   const classAvailable = character.level >= CLASS_MIN_LEVEL;
-  const classLevelNow = effectiveClassLevel(character);
 
   return (
     <div className={`theme-${character.path}`}>
@@ -392,7 +391,14 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             {!classAvailable && !character.classRarity ? (
               <div className="muted class-locked-note">Класс выбирается на 10 уровне — достигните его, чтобы выбрать редкость.</div>
             ) : (
-              <ClassHint lines={classBonusLines} />
+              <ClassHint
+                lines={
+                  character.classRarity
+                    ? [...classBonusLines, 'Уровень получения класса можно поправить на вкладке «Доп. информация».']
+                    : classBonusLines
+                }
+                attention={!!character.classRarity && character.classLevel === undefined}
+              />
             )}
           </div>
         </div>
@@ -446,30 +452,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               />
             )}
           </div>
-          {character.classRarity && (
-            <div className="field">
-              <label>Класс получен на уровне</label>
-              <NumberField
-                min={CLASS_MIN_LEVEL}
-                max={Math.max(CLASS_MIN_LEVEL, character.level)}
-                value={classLevelNow ?? CLASS_MIN_LEVEL}
-                onChange={(v) => patch((c) => ({ ...c, classLevel: Math.max(CLASS_MIN_LEVEL, v) }))}
-                title="На каком уровне персонаж получил класс. Бонус редкости считается только за уровни выше этого"
-              />
-              {character.classLevel === undefined && (
-                <div className="class-level-warning">
-                  Не указан — пока считается с 10-го уровня.{' '}
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => patch((c) => ({ ...c, classLevel: CLASS_MIN_LEVEL }))}
-                  >
-                    Верно, с 10-го
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

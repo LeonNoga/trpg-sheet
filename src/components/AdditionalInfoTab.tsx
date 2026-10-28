@@ -1,5 +1,6 @@
 import { NumberField } from './NumberField';
 import { PortraitCard } from './PortraitCard';
+import { CLASS_MIN_LEVEL, effectiveClassLevel } from '../data/progression';
 import { SpeciesBonusesCard, NotesCard } from './TraitBlocks';
 import type { Character, InfectionStatus, TraitList } from '../types';
 
@@ -40,6 +41,43 @@ export function AdditionalInfoTab({ character, onPatch }: Props) {
   return (
     <div>
       <PortraitCard portrait={character.portrait} onChange={(portrait) => onPatch((c) => ({ ...c, portrait }))} />
+
+      <div className="card">
+        <h3 className="card-title">Класс</h3>
+        {character.classRarity ? (
+          <div className="field" style={{ maxWidth: 320 }}>
+            <label>Класс получен на уровне</label>
+            <NumberField
+              min={CLASS_MIN_LEVEL}
+              max={Math.max(CLASS_MIN_LEVEL, character.level)}
+              value={effectiveClassLevel(character) ?? CLASS_MIN_LEVEL}
+              onChange={(v) => onPatch((c) => ({ ...c, classLevel: Math.max(CLASS_MIN_LEVEL, v) }))}
+              title="Бонус редкости класса считается только за уровни выше этого"
+            />
+            <p className="muted" style={{ marginBottom: 0 }}>
+              +2 очка за каждый уровень до получения класса, бонус редкости — только за уровни выше. Класс выбирается не
+              раньше 10 уровня.
+            </p>
+            {character.classLevel === undefined && (
+              <div className="class-level-warning">
+                Не указан — пока считается с 10-го уровня.{' '}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => onPatch((c) => ({ ...c, classLevel: CLASS_MIN_LEVEL }))}
+                >
+                  Верно, с 10-го
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="muted" style={{ margin: 0 }}>
+            Класс выбирается на 10 уровне (редкость класса — в шапке карточки). После выбора здесь можно будет указать, на
+            каком уровне он получен.
+          </p>
+        )}
+      </div>
 
       <div className="card">
         <div className="field">

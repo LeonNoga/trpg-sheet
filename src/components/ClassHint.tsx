@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 /** Слово «Подсказка» под выбором редкости класса: по нажатию открывается небольшое окошко, как у характеристик. */
-export function ClassHint({ lines }: { lines: string[] }) {
+export function ClassHint({ lines, attention }: { lines: string[]; attention?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -17,7 +17,7 @@ export function ClassHint({ lines }: { lines: string[] }) {
   return (
     <div className="class-hint" ref={ref}>
       <button type="button" className="class-hint-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        Подсказка
+        Подсказка{attention ? ' ⚠' : ''}
       </button>
       {open && (
         <div className="hover-card class-hint-card" role="note">
