@@ -69,7 +69,7 @@ function tabsFor(path: Path): { key: Tab; label: string }[] {
     { key: 'character', label: 'Персонаж' },
     { key: 'equipment', label: 'Снаряжение' },
     { key: 'abilities', label: PATH_ABILITY_LABELS[path].tab },
-    { key: 'training', label: 'Навыки' },
+    { key: 'training', label: 'Прокачка навыков' },
     { key: 'info', label: 'Доп. информация' },
   ];
 }
@@ -458,21 +458,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
           />
 
-          <DnaListsCard
-            titles={[traitLabels.dnaA, traitLabels.dnaB, traitLabels.artifact]}
-            lists={character.dnaLists}
-            level={character.level}
-            abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
-            artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
-            slotUse={slotUse}
-            onUseAbility={(id) => {
-              const item = character.abilities.find((a) => a.id === id);
-              if (item) applyAbility(item);
-            }}
-            onResetCooldown={resetCooldown}
-            onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
-          />
-
           <div className="card">
             <div className="card-title-row">
               <h3 className="card-title">Характеристики и показатели</h3>
@@ -508,6 +493,11 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             />
           </div>
 
+
+          <div className="card">
+            <h3 className="card-title">Навыки</h3>
+            <SkillsEditor character={character} onChangeSkill={changeSkill} />
+          </div>
         </>
       )}
 
@@ -529,6 +519,22 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       )}
 
       {tab === 'abilities' && (
+        <>
+          <DnaListsCard
+            titles={[traitLabels.dnaA, traitLabels.dnaB, traitLabels.artifact]}
+            lists={character.dnaLists}
+            level={character.level}
+            abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
+            artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
+            slotUse={slotUse}
+            onUseAbility={(id) => {
+              const item = character.abilities.find((a) => a.id === id);
+              if (item) applyAbility(item);
+            }}
+            onResetCooldown={resetCooldown}
+            onChange={(dnaLists: TraitList[]) => patch((c) => ({ ...c, dnaLists }))}
+          />
+
         <ItemsBlock
           title={PATH_ABILITY_LABELS[character.path].tab}
           kind="ability"
@@ -540,16 +546,11 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           toolbar={<BulkCardUpload onCard={addCardToCharacter} getExisting={() => [...(characterRef.current?.items ?? []), ...(characterRef.current?.abilities ?? [])]} />}
           onCompanion={addCardToCharacter}
         />
+        </>
       )}
 
       {tab === 'training' && (
-        <>
-          <div className="card">
-            <h3 className="card-title">Навыки</h3>
-            <SkillsEditor character={character} onChangeSkill={changeSkill} />
-          </div>
-          <SkillTrainingScreen character={character} onChangeDays={changeTrainingDays} onLevelUp={levelUpSkill} />
-        </>
+        <SkillTrainingScreen character={character} onChangeDays={changeTrainingDays} onLevelUp={levelUpSkill} />
       )}
 
       {tab === 'info' && <AdditionalInfoTab character={character} onPatch={patch} />}
