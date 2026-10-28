@@ -1549,16 +1549,24 @@ input[list]::-webkit-calendar-picker-indicator {
 }
 
 .class-hint {
+  position: relative;
   margin-top: 4px;
+}
+
+.class-hint-toggle {
+  padding: 0;
+  border: none;
+  background: none;
   font-size: 12px;
-}
-
-.class-hint summary {
-  cursor: pointer;
   color: var(--text-muted);
-  width: fit-content;
+  text-decoration: underline dotted;
+  cursor: pointer;
 }
 
-.class-hint-list {
-  margin-top: 4px;
+.hover-card.class-hint-card {
+  top: calc(100% + 4px);
+  right: 0;
+  left: auto;
+  width: 260px;
+  pointer-events: auto;
 }

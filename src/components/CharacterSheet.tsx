@@ -6,7 +6,8 @@ import { SkillsEditor } from './SkillsEditor';
 import { ItemsBlock } from './ItemsBlock';
 import { BulkCardUpload } from './BulkCardUpload';
 import { NumberField } from './NumberField';
-import { SpeciesBonusesCard, DnaListsCard } from './TraitBlocks';
+import { DnaListsCard } from './TraitBlocks';
+import { ClassHint } from './ClassHint';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
@@ -383,16 +384,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 </option>
               ))}
             </select>
-            <details className="class-hint">
-              <summary>Подсказка</summary>
-              <div className="class-hint-list">
-                {classBonusLines.map((line) => (
-                  <div className="fixed-bonus" key={line}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-            </details>
+            <ClassHint lines={classBonusLines} />
           </div>
         </div>
 
@@ -452,12 +444,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
       {tab === 'character' && (
         <>
-          <SpeciesBonusesCard
-            title={traitLabels.bonuses}
-            list={character.speciesBonuses}
-            onChange={(speciesBonuses) => patch((c) => ({ ...c, speciesBonuses }))}
-          />
-
           <div className="card">
             <div className="card-title-row">
               <h3 className="card-title">Характеристики и показатели</h3>
