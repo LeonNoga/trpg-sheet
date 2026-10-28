@@ -13,6 +13,9 @@ interface Props {
   selected: Set<string>;
   onSelectedChange: (next: Set<string>) => void;
   onChangeAll: (next: EquipItem[]) => void;
+  /** Развернуть / свернуть все записи ленты. */
+  onExpandAll?: () => void;
+  onCollapseAll?: () => void;
 }
 
 interface ReparseState {
@@ -24,7 +27,7 @@ interface ReparseState {
 }
 
 /** Панель массовых действий над выбранными чекбоксами карточками: удалить и перепарсить (повторный OCR по фото). */
-export function SelectionToolbar({ allItems, visibleItems, selected, onSelectedChange, onChangeAll }: Props) {
+export function SelectionToolbar({ allItems, visibleItems, selected, onSelectedChange, onChangeAll, onExpandAll, onCollapseAll }: Props) {
   const [state, setState] = useState<ReparseState | null>(null);
   const cancelRef = useRef(false);
   const { showUndo } = useUndo();
@@ -106,6 +109,16 @@ export function SelectionToolbar({ allItems, visibleItems, selected, onSelectedC
 
   return (
     <div className="selection-toolbar">
+      {onExpandAll && (
+        <button className="btn btn-sm" onClick={onExpandAll}>
+          Развернуть все
+        </button>
+      )}
+      {onCollapseAll && (
+        <button className="btn btn-sm" onClick={onCollapseAll}>
+          Свернуть все
+        </button>
+      )}
       <label className="toggle">
         <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} disabled={running} />
         Выбрать все показанные

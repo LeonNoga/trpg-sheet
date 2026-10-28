@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ItemCard } from './ItemCard';
+import type { ExpandCommand } from './ItemCard';
 import { SelectionToolbar } from './SelectionToolbar';
 import { ItemEditor } from './ItemEditor';
 import { ItemFilterBar } from './ItemFilterBar';
@@ -32,6 +33,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expand, setExpand] = useState<ExpandCommand>({ open: false, version: 0 });
   const { showUndo } = useUndo();
   // Актуальный список для отмены: к моменту нажатия «Отменить» он мог измениться.
   const itemsRef = useRef(items);
@@ -111,6 +113,8 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
         selected={selected}
         onSelectedChange={setSelected}
         onChangeAll={onChange}
+        onExpandAll={() => setExpand((e) => ({ open: true, version: e.version + 1 }))}
+        onCollapseAll={() => setExpand((e) => ({ open: false, version: e.version + 1 }))}
       />
 
       {items.length === 0 && !creating && <p className="muted">{emptyText}</p>}
@@ -135,6 +139,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
             onSelect={(on) => toggleSelected(item.id, on)}
             onToggleEquipped={() => toggleEquipped(item.id)}
             extra={cardExtra?.(item)}
+            expandCommand={expand}
             onDismissReview={() => onChange(items.map((i) => (i.id === item.id ? { ...i, review: undefined } : i)))}
             onEdit={() => setEditingId(item.id)}
             onDelete={() => remove(item.id)}

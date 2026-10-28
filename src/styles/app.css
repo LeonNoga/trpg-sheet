@@ -610,57 +610,64 @@ input, select, textarea {
   color: white;
 }
 
+/* Лента предметов и умений: компактные строки, описание — по раскрытию, фото — по значку. */
 .item-card {
+  --rc: #8a8a8a;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 10px;
+  border-left: 5px solid var(--rc);
+  border-radius: 12px;
+  margin-bottom: 6px;
   background: var(--surface-2);
+  position: relative;
+}
+
+.item-card.rarity-common { --rc: #8a8a8a; }
+.item-card.rarity-uncommon { --rc: #2f8a4e; }
+.item-card.rarity-rare { --rc: #2f6fb5; }
+.item-card.rarity-epic { --rc: #9b3fb5; }
+.item-card.rarity-legendary { --rc: #c9932f; }
+
+.item-card.rarity-unique {
+  --rc: #ff1a3c;
+  box-shadow: 0 0 0 1px rgba(255, 26, 60, 0.45), 0 0 10px rgba(255, 26, 60, 0.3);
 }
 
 .item-card.equipped {
-  border-color: var(--ok);
-}
-
-.item-card.rarity-common {
-  border-color: #8a8a8a;
-}
-
-.item-card.rarity-uncommon {
-  border-color: #2f8a4e;
-  box-shadow: 0 0 0 1px rgba(47, 138, 78, 0.25);
-}
-
-.item-card.rarity-rare {
-  border-color: #2f6fb5;
-  box-shadow: 0 0 0 1px rgba(47, 111, 181, 0.25);
-}
-
-.item-card.rarity-epic {
-  border-color: #9b3fb5;
-  box-shadow: 0 0 0 1px rgba(155, 63, 181, 0.3);
-}
-
-.item-card.rarity-unique {
-  border-color: #ff1a3c;
-  box-shadow: 0 0 0 2px rgba(255, 26, 60, 0.4), 0 0 14px rgba(255, 26, 60, 0.35);
-}
-
-.item-card.rarity-legendary {
-  border-color: #c9932f;
-  box-shadow: 0 0 0 2px rgba(201, 147, 47, 0.35), 0 0 0 3px rgba(181, 47, 47, 0.2);
+  border-top-color: var(--ok);
+  border-right-color: var(--ok);
+  border-bottom-color: var(--ok);
 }
 
 .item-card-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+.item-title {
+  flex: 1;
+  min-width: 0;
 }
 
 .item-card-head h4 {
-  margin: 0 0 2px;
-  font-size: 15px;
+  margin: 0;
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+
+.item-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
 }
 
 .item-meta {
@@ -668,31 +675,94 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
+.item-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.item-arrow {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.item-card.open .item-arrow {
+  transform: rotate(180deg);
+}
+
+.item-thumb {
+  position: relative;
+  display: inline-flex;
+}
+
+.item-thumb-btn {
+  padding: 2px 8px;
+}
+
+.item-thumb-pop {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(280px, 80vw);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+.item-thumb-pop img {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+}
+
+.item-thumb:hover .item-thumb-pop,
+.item-thumb-pop.pinned {
+  display: block;
+}
+
+.item-body {
+  padding: 2px 12px 10px;
+  border-top: 1px dotted var(--border);
+}
+
 .item-flavor {
   font-style: italic;
   color: var(--text-muted);
   font-size: 13px;
-  margin: 8px 0;
+  margin: 8px 0 4px;
 }
 
 .item-effect {
   font-size: 13px;
-  margin: 8px 0;
+  margin: 6px 0;
+  white-space: pre-line;
+  max-height: 260px;
+  overflow: auto;
 }
 
 .item-props {
   display: flex;
-  gap: 10px;
+  gap: 4px 6px;
   flex-wrap: wrap;
-  font-size: 12px;
-  margin-top: 8px;
+  font-size: 11.5px;
+  margin-top: 4px;
 }
 
 .item-props span {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
+  border-radius: 10px;
+  padding: 1px 8px;
 }
 
 .item-bonuses {
@@ -1587,4 +1657,10 @@ input[list]::-webkit-calendar-picker-indicator {
   font-size: 11px;
   color: var(--warn);
   font-weight: 600;
+}
+
+.path-icon {
+  vertical-align: -3px;
+  margin-right: 5px;
+  flex-shrink: 0;
 }

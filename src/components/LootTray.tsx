@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppData } from '../state/useAppData';
 import { ItemCard } from './ItemCard';
+import type { ExpandCommand } from './ItemCard';
 import { ItemEditor } from './ItemEditor';
 import { createBlankEquipItem } from '../data/defaults';
 import { ALL_BONUS_KEYS, ITEM_PATH_LABELS, RARITY_LABELS, RARITY_ORDER, bonusLabel } from '../data/statsConfig';
@@ -30,6 +31,7 @@ export function LootTray() {
   const [bonusFilter, setBonusFilter] = useState<BonusFilter>('all');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expand, setExpand] = useState<ExpandCommand>({ open: false, version: 0 });
   const trayInput = useRef<HTMLInputElement>(null);
   const { showUndo } = useUndo();
   const trayRef = useRef(lootTray);
@@ -214,6 +216,8 @@ export function LootTray() {
         selected={selected}
         onSelectedChange={setSelected}
         onChangeAll={updateLootTray}
+        onExpandAll={() => setExpand((e) => ({ open: true, version: e.version + 1 }))}
+        onCollapseAll={() => setExpand((e) => ({ open: false, version: e.version + 1 }))}
       />
 
       {lootTray.length === 0 && <p className="muted">Трей пуст.</p>}
@@ -232,6 +236,7 @@ export function LootTray() {
             <ItemCard
               item={item}
               showEquipToggle={false}
+              expandCommand={expand}
               onDismissReview={() => updateLootTray(lootTray.map((i) => (i.id === item.id ? { ...i, review: undefined } : i)))}
               selected={selected.has(item.id)}
               onSelect={(on) =>
