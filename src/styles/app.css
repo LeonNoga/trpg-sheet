@@ -707,16 +707,27 @@ input, select, textarea {
 
 .item-thumb-pop {
   display: none;
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 6px);
-  right: 0;
-  width: min(280px, 80vw);
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+/* Превью при наведении — только там, где есть настоящий hover (мышь); на телефоне фото открывается по нажатию. */
+@media (hover: hover) {
+  .item-thumb-pop {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 6px);
+    right: 0;
+    width: min(520px, 60vw);
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+
+  .item-thumb:hover .item-thumb-pop {
+    display: block;
+  }
 }
 
 .item-thumb-pop img {
@@ -725,9 +736,29 @@ input, select, textarea {
   border-radius: 6px;
 }
 
-.item-thumb:hover .item-thumb-pop,
-.item-thumb-pop.pinned {
-  display: block;
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.85);
+  cursor: zoom-out;
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 
 .item-body {
@@ -1672,4 +1703,30 @@ input[list]::-webkit-calendar-picker-indicator {
 
 .item-card.foreign {
   background: color-mix(in srgb, var(--warn) 7%, var(--surface-2));
+}
+
+/* Без синей вспышки при нажатии на строки и кнопки на телефоне. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.item-card-head {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (max-width: 600px) {
+  .item-card-head {
+    flex-wrap: wrap;
+  }
+
+  .item-title {
+    flex: 1 1 calc(100% - 56px);
+  }
+
+  .item-right {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+  }
 }

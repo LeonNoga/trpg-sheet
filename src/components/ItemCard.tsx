@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { bonusLabel, ITEM_PATH_LABELS, PATH_LABELS, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import { PathIcon } from './PathIcon';
@@ -52,16 +52,14 @@ export function ItemCard({
     setOpen(expandCommand.open);
   }
 
-  const [imagePinned, setImagePinned] = useState(false);
-  const thumbRef = useRef<HTMLSpanElement>(null);
+  // Фото карточки: на компьютере превью при наведении, по нажатию — на весь экран (так же на телефоне).
+  const [lightbox, setLightbox] = useState(false);
   useEffect(() => {
-    if (!imagePinned) return;
-    const close = (e: Event) => {
-      if (!thumbRef.current?.contains(e.target as Node)) setImagePinned(false);
-    };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, [imagePinned]);
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setLightbox(false);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [lightbox]);
 
   const bonusEntries = Object.entries(item.statBonuses) as [BonusKey, number][];
   const isAbility = item.kind === 'ability';
@@ -152,17 +150,16 @@ export function ItemCard({
             </label>
           )}
           {item.image && (
-            <span className="item-thumb" ref={thumbRef}>
+            <span className="item-thumb">
               <button
                 type="button"
                 className="btn btn-sm item-thumb-btn"
-                aria-label="Показать фото карточки"
-                aria-expanded={imagePinned}
-                onClick={() => setImagePinned((p) => !p)}
+                aria-label="Открыть фото карточки"
+                onClick={() => setLightbox(true)}
               >
                 🖼
               </button>
-              <span className={`item-thumb-pop ${imagePinned ? 'pinned' : ''}`}>
+              <span className="item-thumb-pop">
                 <img src={item.image} alt={item.name} />
               </span>
             </span>
@@ -187,6 +184,15 @@ export function ItemCard({
               Всё верно
             </button>
           )}
+        </div>
+      )}
+
+      {lightbox && item.image && (
+        <div className="lightbox" role="dialog" aria-modal="true" onClick={() => setLightbox(false)}>
+          <img src={item.image} alt={item.name} />
+          <button type="button" className="btn lightbox-close" aria-label="Закрыть">
+            ✕
+          </button>
         </div>
       )}
 
