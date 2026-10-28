@@ -341,7 +341,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
       <div className="card">
         <span className="pill-badge">{PATH_LABELS[character.path]}</span>
-        <div className="row" style={{ marginTop: 10 }}>
+        <div className="header-fields-grid" style={{ marginTop: 10 }}>
           <div className="field">
             <label>Имя игрока</label>
             <input
@@ -360,7 +360,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <label>{PATH_SPECIES_FIELD_LABEL[character.path]}</label>
             <input value={character.species} onChange={(e) => patch((c) => ({ ...c, species: e.target.value }))} />
           </div>
-          <div className="field" style={{ maxWidth: 220 }}>
+          <div className="field">
             <label>Редкость класса</label>
             <select
               value={character.classRarity ?? ''}
@@ -401,17 +401,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               title="Изменить вручную: опыт обнулится, очки за уровни пересчитаются"
             />
           </div>
-          {character.classRarity === 'unique' && (
-            <div className="field">
-              <label>Очков за уровень</label>
-              <NumberField
-                min={0}
-                value={character.uniqueLevelPoints ?? 15}
-                onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
-                title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
-              />
-            </div>
-          )}
           <div className="field">
             <label>Опыт (кошелёк)</label>
             <NumberField value={character.experience} onChange={(v) => patch((c) => ({ ...c, experience: v }))} />
@@ -430,6 +419,23 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 +
               </button>
             </div>
+          </div>
+          <div className="field">
+            <label>Очков за уровень</label>
+            {character.classRarity === 'unique' ? (
+              <NumberField
+                min={0}
+                value={character.uniqueLevelPoints ?? 15}
+                onChange={(v) => patch((c) => ({ ...c, uniqueLevelPoints: Math.max(0, v) }))}
+                title="Сколько очков даёт каждый новый уровень уникального класса — это число называет Мастер. Меняет только будущие уровни."
+              />
+            ) : (
+              <input
+                readOnly
+                value={`+${levelPointsRate(character.classRarity)} за уровень`}
+                title="Зависит от редкости класса и применяется только к новым уровням"
+              />
+            )}
           </div>
         </div>
       </div>
