@@ -1,3 +1,5 @@
+import { GroupFields } from './GroupFields';
+import { updateGroupRow } from '../data/groupRows';
 import { NumberField } from './NumberField';
 import { PortraitCard } from './PortraitCard';
 import { CLASS_MIN_LEVEL, effectiveClassLevel } from '../data/progression';
@@ -80,14 +82,18 @@ export function AdditionalInfoTab({ character, onPatch }: Props) {
       </div>
 
       <div className="card">
-        <div className="field">
-          <label>Группа</label>
-          <textarea
-            value={character.group}
-            onChange={(e) => onPatch((c) => ({ ...c, group: e.target.value }))}
-            placeholder="Напарники по отряду..."
+        <label className="field">
+          <span>Название группы</span>
+          <input
+            value={character.groupName ?? ''}
+            placeholder="Название отряда"
+            onChange={(event) => onPatch((c) => ({ ...c, groupName: event.target.value }))}
           />
-        </div>
+        </label>
+        <GroupFields
+          value={character.group}
+          onChange={(index, text) => onPatch((c) => ({ ...c, group: updateGroupRow(c.group, index, text) }))}
+        />
         <div className="row">
           <div className="field" style={{ maxWidth: 200 }}>
             <label>Очки</label>
