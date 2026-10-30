@@ -5,6 +5,7 @@ import page2Template from '../assets/templates/page2.png';
 import page3Template from '../assets/templates/page3.png';
 import { classBonusLines, SKILLS } from '../data/statsConfig';
 import { statPointsBudget } from '../data/progression';
+import { groupRows } from '../data/groupRows';
 import { bonusSum, computeDerivedStats, modifier, sumBaseStats, totalStat } from '../data/formulas';
 import type { Character, Path, StatKey } from '../types';
 
@@ -173,6 +174,7 @@ async function renderMainPage(character: Character): Promise<Blob> {
 const LINE_PITCH = 47.6;
 const range = (start: number, count: number) => Array.from({ length: count }, (_, i) => Math.round(start + i * LINE_PITCH));
 
+const GROUP_LINES = [132, 180, 227, 275, 322]; // линии участников 1–5 в блоке «Группа»
 const WEAPON_LINES = range(759, 14); // «Системное оружие»
 const GEAR_LINES = range(137, 27); // «Системное снаряжение»
 const NOTES_LINES = range(567, 18); // «Заметки»
@@ -209,7 +211,8 @@ async function renderExtraPage(character: Character): Promise<Blob> {
   const { canvas, ctx } = await startPage(page2Template);
 
   // Группа, очки
-  drawText(ctx, character.group, 208, 70, { size: 34, maxWidth: 270 });
+  drawText(ctx, character.groupName ?? '', 208, 68, { size: 34, maxWidth: 270 });
+  groupRows(character.group).forEach((member, i) => drawText(ctx, member, 92, GROUP_LINES[i] - 17, { size: 32, maxWidth: 385 }));
   drawText(ctx, `${sumBaseStats(character)}/${statPointsBudget(character)}`, 92, 410, { size: 32, align: 'center', maxWidth: 120 });
   drawText(ctx, character.points, 92, 507, { size: 38, align: 'center', maxWidth: 120 });
   drawText(ctx, character.developmentPoints, 92, 587, { size: 38, align: 'center', maxWidth: 120 });
