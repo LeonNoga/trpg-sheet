@@ -1881,3 +1881,30 @@ input[list]::-webkit-calendar-picker-indicator {
   .header-static-stat { height: 72px; border-radius: 9px; }
   .header-static-stat dd { font-size: 24px; line-height: 30px; }
 }
+/* Нативная кнопка покрывает всю карточку, сохраняя подпись и значение в dl. */
+.header-current-resource { position: relative; }
+
+.resource-card-action {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.resource-card-action:hover {
+  background: color-mix(in srgb, var(--resource-color) 10%, transparent);
+}
+
+.resource-card-action:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -3px;
+}
+
+.resource-card-action:active {
+  background: color-mix(in srgb, var(--resource-color) 20%, transparent);
+}

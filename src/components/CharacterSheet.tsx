@@ -43,6 +43,7 @@ import {
   shortRest,
   milestoneUsageKey,
   startNewDay,
+  spendCombatStamina,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
 import { useUndo } from '../state/useUndo';
@@ -457,7 +458,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </div>
 
-      <CurrentResources character={character} />
+      <CurrentResources character={character} onSpendCombatStamina={() => patch(spendCombatStamina)} />
       <StaticStats character={character} />
 
       <div className="sheet-tabs">

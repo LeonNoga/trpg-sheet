@@ -242,3 +242,11 @@ export function applyMilestoneRestore(character: Character, restore?: MilestoneR
   }
   return { ...character, pools };
 }
+
+/** Одно нажатие на карточку выносливости: расход за бой, без изменения откатов. */
+export function spendCombatStamina(character: Character): Character {
+  return {
+    ...character,
+    pools: { ...character.pools, staminaPoints: character.pools.staminaPoints - 2 },
+  };
+}

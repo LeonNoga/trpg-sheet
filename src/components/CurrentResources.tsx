@@ -3,7 +3,12 @@ import { computeDerivedStats } from '../data/formulas';
 import { PATH_RESOURCE_LABEL } from '../data/statsConfig';
 import type { Character } from '../types';
 
-export function CurrentResources({ character }: { character: Character }) {
+interface Props {
+  character: Character;
+  onSpendCombatStamina?: () => void;
+}
+
+export function CurrentResources({ character, onSpendCombatStamina }: Props) {
   const maximum = computeDerivedStats(character);
   const resources = [
     { key: 'hp', label: 'Здоровье', color: 'health' },
@@ -23,7 +28,18 @@ export function CurrentResources({ character }: { character: Character }) {
             style={{ '--resource-fill': `${fill}%` } as CSSProperties}
             title={`${label}: ${value} / ${max} (${percent}%)`}>
             <dt>{label}<span className="resource-percent">{percent}%</span></dt>
-            <dd>{value}</dd>
+            <dd>
+              {value}
+              {key === 'staminaPoints' && onSpendCombatStamina && (
+                <button
+                  type="button"
+                  className="resource-card-action"
+                  aria-label={`Выносливость: ${value}. Потратить 2 единицы за бой`}
+                  title="Потратить 2 единицы выносливости за бой"
+                  onClick={onSpendCombatStamina}
+                />
+              )}
+            </dd>
           </div>
         );
       })}

@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CurrentResources } from './CurrentResources';
 import { createBlankCharacter } from '../data/defaults';
 import { applyUse, longRest, shortRest, startNewDay } from '../data/abilityUse';
@@ -86,4 +86,13 @@ describe('карточки текущих ресурсов', () => {
     expect(long.map((card) => card.value)).toEqual([25, 30, 30]);
     expect(long.every((card) => !card.classes.some((name) => name.startsWith('is-')))).toBe(true);
   });
+});
+
+it('добавляет только одну нативную кнопку: списание выносливости за бой', () => {
+  const onSpend = vi.fn();
+  const html = renderToStaticMarkup(<CurrentResources character={make()} onSpendCombatStamina={onSpend} />);
+  expect(html.match(/<button /g)).toHaveLength(1);
+  expect(html).toContain('type="button"');
+  expect(html).toContain('aria-label="Выносливость: 4. Потратить 2 единицы за бой"');
+  expect(onSpend).not.toHaveBeenCalled();
 });
