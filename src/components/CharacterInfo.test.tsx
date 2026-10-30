@@ -25,3 +25,13 @@ describe('сворачиваемая информация персонажа', (
     expect(html).toContain('<strong>—</strong>');
   });
 });
+
+it('показывает заданный портрет в заголовке и убирает миниатюру после удаления портрета', () => {
+  const character = createBlankCharacter('tech');
+  character.portrait = 'data:image/png;base64,cG9ydHJhaXQ=';
+  const render = () => renderToStaticMarkup(<CharacterInfo character={character}>Поля</CharacterInfo>);
+  expect(render().split('</summary>')[0]).toContain(`src="${character.portrait}"`);
+  expect(render()).toContain('class="character-info-portrait"');
+  delete character.portrait;
+  expect(render()).not.toContain('<img');
+});

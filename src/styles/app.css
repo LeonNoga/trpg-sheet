@@ -1989,3 +1989,16 @@ input[list]::-webkit-calendar-picker-indicator {
   .character-info-summary small { font-size: 10px; }
   .character-info-summary strong { font-size: 14px; }
 }
+
+.character-info-portrait {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.character-info[open] .character-info-portrait { display: none; }
+@media (max-width: 480px) {
+  .character-info-toggle { gap: 8px; }
+  .character-info-portrait { width: 36px; height: 36px; flex-basis: 36px; }
+}

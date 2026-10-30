@@ -16,6 +16,9 @@ export function CharacterInfo({ character, children }: { character: Character; c
       }}
     >
       <summary className="character-info-toggle" aria-label="Раскрыть или свернуть информацию о персонаже">
+        {character.portrait && (
+          <img className="character-info-portrait" src={character.portrait} alt="Портрет персонажа" draggable={false} />
+        )}
         <span className="character-info-summary">
           <span><small>Имя персонажа</small><strong>{character.characterName || '—'}</strong></span>
           <span><small>{PATH_SPECIES_FIELD_LABEL[character.path]}</small><strong>{character.species || '—'}</strong></span>
