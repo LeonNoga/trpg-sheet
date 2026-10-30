@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { computeDerivedStats } from '../data/formulas';
+import { CurrentResources } from './CurrentResources';
 import { useAppData } from '../state/useAppData';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
@@ -295,8 +295,6 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
   const traitLabels = PATH_TRAIT_LABELS[character.path];
   const classBonusLines = getClassBonusLines(character.classRarity, character.uniqueLevelPoints, character.classLevel);
-  const maxHp = computeDerivedStats(character).hp;
-  const healthState = character.pools.hp <= 0 ? ' is-depleted' : character.pools.hp < maxHp * 0.1 ? ' is-low' : '';
   const classAvailable = character.level >= CLASS_MIN_LEVEL;
 
   return (
@@ -458,20 +456,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </div>
 
-      <dl className="header-current-resources" aria-label="Текущие показатели персонажа">
-        <div className={`header-current-resource resource-health${healthState}`}>
-          <dt>Здоровье</dt>
-          <dd>{character.pools.hp}</dd>
-        </div>
-        <div className={`header-current-resource resource-stamina${character.pools.staminaPoints <= 0 ? ' is-depleted' : ''}`}>
-          <dt>Выносливость</dt>
-          <dd>{character.pools.staminaPoints}</dd>
-        </div>
-        <div className={`header-current-resource resource-energy${character.pools.resourcePoints <= 0 ? ' is-depleted' : ''}`}>
-          <dt>{PATH_RESOURCE_LABEL[character.path]}</dt>
-          <dd>{character.pools.resourcePoints}</dd>
-        </div>
-      </dl>
+      <CurrentResources character={character} />
 
       <div className="sheet-tabs">
         {tabsFor(character.path).map((t) => (
