@@ -17,7 +17,7 @@ function make(path: Path = 'tech'): Character {
 
 function cards(c: Character) {
   const html = renderToStaticMarkup(<CurrentResources character={c} />);
-  return [...html.matchAll(/<div class="([^"]+)"><dt>([^<]+)<\/dt><dd>([^<]+)<\/dd><\/div>/g)].map(
+  return [...html.matchAll(/<div class="([^"]+)"[^>]*><dt>([^<]+)<span class="resource-percent">[^<]+<\/span><\/dt><dd>([^<]+)<\/dd><\/div>/g)].map(
     ([, classes, label, value]) => ({ classes: classes.split(' '), label, value: Number(value) }),
   );
 }
