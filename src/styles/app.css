@@ -709,14 +709,16 @@ input, select, textarea {
   display: none;
 }
 
-/* Превью при наведении — только там, где есть настоящий hover (мышь); на телефоне фото открывается по нажатию. */
+/* Превью при наведении — только там, где есть настоящий hover (мышь); на телефоне фото открывается по нажатию.
+   Положение (сверху/снизу от значка, в пределах окна) выставляет ThumbPreview в ItemCard.tsx. */
 @media (hover: hover) {
   .item-thumb-pop {
-    position: absolute;
+    display: block;
+    position: fixed;
     z-index: 40;
-    top: calc(100% + 6px);
-    right: 0;
-    width: min(520px, 60vw);
+    top: 0;
+    left: 0;
+    visibility: hidden;
     padding: 6px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -724,15 +726,13 @@ input, select, textarea {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
     pointer-events: none;
   }
-
-  .item-thumb:hover .item-thumb-pop {
-    display: block;
-  }
 }
 
 .item-thumb-pop img {
   display: block;
-  width: 100%;
+  width: min(520px, 60vw);
+  max-height: calc(100vh - 32px);
+  object-fit: contain;
   border-radius: 6px;
 }
 

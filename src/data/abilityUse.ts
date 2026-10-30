@@ -193,10 +193,15 @@ export interface AbilityCostResult {
 /**
  * Стоимость применения способности: из текста активации, затем −50% для классовых умений (округление вниз, минимум 1)
  * и скидка Интеллекта на траты ресурса (она считается от уже сниженной цены).
+ * Артефактные умения (в том числе посохи и прочее) не получают ни одной скидки — тратят ровно то, что написано на карточке.
  */
-export function computeAbilityCost(character: Character, item: Pick<EquipItem, 'name' | 'activation'>): AbilityCostResult {
+export function computeAbilityCost(character: Character, item: Pick<EquipItem, 'name' | 'activation' | 'artifact'>): AbilityCostResult {
   const base = parseActivationCost(item.activation);
   const notes: string[] = [];
+  if (item.artifact) {
+    if (base.resource > 0 || base.stamina > 0) notes.push('артефакт: без скидок');
+    return { cost: base, base, notes };
+  }
   let { resource, stamina } = base;
   if ((resource > 0 || stamina > 0) && isClassAbility(character, item.name)) {
     resource = halveDown(resource);

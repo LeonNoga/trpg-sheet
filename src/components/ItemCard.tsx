@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { bonusLabel, ITEM_PATH_LABELS, PATH_LABELS, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import { PathIcon } from './PathIcon';
 import type { BonusKey, EquipItem, Path } from '../types';
@@ -25,6 +25,54 @@ interface Props {
   expandCommand?: ExpandCommand;
   onEdit: () => void;
   onDelete: () => void;
+}
+
+/**
+ * Превью фото при наведении: окно привязано к значку, но выводится сверху или снизу — туда, где хватает места,
+ * и не выходит за границы окна. Позиция выставляется напрямую в style (пересчёт при загрузке картинки и прокрутке).
+ */
+function ThumbPreview({ anchorRef, src, alt }: { anchorRef: RefObject<HTMLElement | null>; src: string; alt: string }) {
+  const popRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const pop = popRef.current;
+    const anchor = anchorRef.current;
+    if (!pop || !anchor) return;
+    const place = () => {
+      const a = anchor.getBoundingClientRect();
+      const w = pop.offsetWidth;
+      const h = pop.offsetHeight;
+      const gap = 6;
+      const margin = 8;
+      const below = window.innerHeight - a.bottom - gap - margin;
+      const above = a.top - gap - margin;
+      let top: number;
+      if (h <= below) top = a.bottom + gap;
+      else if (h <= above) top = a.top - gap - h;
+      else top = below >= above ? a.bottom + gap : a.top - gap - h; // не влезает никуда — к стороне, где больше места, ниже прижмём
+      top = Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - h - margin));
+      const left = Math.min(Math.max(a.right - w, margin), Math.max(margin, window.innerWidth - w - margin));
+      pop.style.top = `${top}px`;
+      pop.style.left = `${left}px`;
+      pop.style.visibility = 'visible';
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(pop);
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [anchorRef]);
+
+  return (
+    <span className="item-thumb-pop" ref={popRef}>
+      <img src={src} alt={alt} />
+    </span>
+  );
 }
 
 /**
@@ -54,6 +102,8 @@ export function ItemCard({
 
   // Фото карточки: на компьютере превью при наведении, по нажатию — на весь экран (так же на телефоне).
   const [lightbox, setLightbox] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const thumbRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!lightbox) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setLightbox(false);
@@ -150,7 +200,12 @@ export function ItemCard({
             </label>
           )}
           {item.image && (
-            <span className="item-thumb">
+            <span
+              className="item-thumb"
+              ref={thumbRef}
+              onMouseEnter={() => setHovering(true)}
+              onMouseLeave={() => setHovering(false)}
+            >
               <button
                 type="button"
                 className="btn btn-sm item-thumb-btn"
@@ -159,9 +214,7 @@ export function ItemCard({
               >
                 🖼
               </button>
-              <span className="item-thumb-pop">
-                <img src={item.image} alt={item.name} />
-              </span>
+              {hovering && <ThumbPreview anchorRef={thumbRef} src={item.image} alt={item.name} />}
             </span>
           )}
           <button

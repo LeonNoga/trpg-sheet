@@ -79,4 +79,17 @@ describe('классовые умения: −50% к стоимости', () => 
     // 20 → 10 (класс) → 5 (Интеллект 100)
     expect(computeAbilityCost(c, { name: 'Огненный шар', activation: 'Потребляет 20 единиц Духа.' }).cost.resource).toBe(5);
   });
+
+  it('артефактные умения не получают ни скидку Интеллекта, ни −50% класса', () => {
+    const base = createBlankCharacter('magic');
+    const c = {
+      ...base,
+      baseStats: { ...base.baseStats, intellect: 100 },
+      dnaLists: [{ ...base.dnaLists[0], slots: ['Посох бури', '', '', '', ''] }, base.dnaLists[1], base.dnaLists[2]],
+    };
+    const activation = 'Потребляет 20 единиц Духа и 6 единиц Выносливости.';
+    expect(computeAbilityCost(c, { name: 'Посох бури', activation, artifact: true }).cost).toEqual({ resource: 20, stamina: 6 });
+    // то же умение без флага артефакта — со скидками
+    expect(computeAbilityCost(c, { name: 'Посох бури', activation }).cost.resource).toBe(5);
+  });
 });
