@@ -1,3 +1,4 @@
+import { CharacterInfo } from './CharacterInfo';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { CurrentResources } from './CurrentResources';
 import { StaticStats } from './StaticStats';
@@ -343,7 +344,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       )}
       {historyOpen && <HistoryDialog character={character} onClose={() => setHistoryOpen(false)} />}
 
-      <div className="card">
+      <CharacterInfo key={character.id} character={character}>
         <span className="pill-badge">{PATH_LABELS[character.path]}</span>
         <div className="header-fields-grid" style={{ marginTop: 10 }}>
           <div className="field">
@@ -456,7 +457,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             )}
           </div>
         </div>
-      </div>
+      </CharacterInfo>
 
       <CurrentResources character={character} onSpendCombatStamina={() => patch(spendCombatStamina)} />
       <StaticStats character={character} />
