@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { CurrentResources } from './CurrentResources';
 import { useAppData } from '../state/useAppData';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
@@ -454,6 +455,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           </div>
         </div>
       </div>
+
+      <CurrentResources character={character} />
 
       <div className="sheet-tabs">
         {tabsFor(character.path).map((t) => (
