@@ -3,7 +3,7 @@ import type { ItemPath } from '../types';
 
 /**
  * Значок пути предмета/умения вместо слов: генетический — зелёный шприц, магический — синяя книжка,
- * технологический — белый шарик. Для общих предметов («без пути») значка нет.
+ * технологический — стальной синий шарик. Для общих предметов («без пути») значка нет.
  */
 export function PathIcon({ path }: { path?: ItemPath }) {
   if (!path || path === 'none') return null;
@@ -31,8 +31,8 @@ export function PathIcon({ path }: { path?: ItemPath }) {
       )}
       {path === 'tech' && (
         <g>
-          <circle cx="10" cy="10" r="6.5" fill="#ffffff" stroke="#8d96a3" strokeWidth="1.4" />
-          <circle cx="7.8" cy="7.8" r="1.8" fill="#e9edf2" />
+          <circle cx="10" cy="10" r="6.5" fill="#426b91" stroke="#8fb6d9" strokeWidth="1.4" />
+          <circle cx="7.8" cy="7.8" r="1.8" fill="#e0eaf3" />
         </g>
       )}
     </svg>
