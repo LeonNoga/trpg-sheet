@@ -1,5 +1,7 @@
+import { CharacterInfo } from './CharacterInfo';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { CurrentResources } from './CurrentResources';
+import { StaticStats } from './StaticStats';
 import { useAppData } from '../state/useAppData';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
@@ -42,6 +44,7 @@ import {
   shortRest,
   milestoneUsageKey,
   startNewDay,
+  spendCombatStamina,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
 import { useUndo } from '../state/useUndo';
@@ -341,7 +344,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       )}
       {historyOpen && <HistoryDialog character={character} onClose={() => setHistoryOpen(false)} />}
 
-      <div className="card">
+      <CharacterInfo key={character.id} character={character}>
         <span className="pill-badge">{PATH_LABELS[character.path]}</span>
         <div className="header-fields-grid" style={{ marginTop: 10 }}>
           <div className="field">
@@ -454,9 +457,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             )}
           </div>
         </div>
-      </div>
+      </CharacterInfo>
 
-      <CurrentResources character={character} />
+      <CurrentResources character={character} onSpendCombatStamina={() => patch(spendCombatStamina)} />
+      <StaticStats character={character} />
 
       <div className="sheet-tabs">
         {tabsFor(character.path).map((t) => (
@@ -472,6 +476,14 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <div className="card-title-row">
               <h3 className="card-title">Характеристики и показатели</h3>
               <div className="rest-buttons">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => patch(spendCombatStamina)}
+                  title="Потратить 2 единицы выносливости за тик боя"
+                >
+                  ⚔ Тик боя
+                </button>
                 <button className="btn btn-sm" onClick={() => setShortRestOpen(true)} title="За каждые 10 минут — модификатор Выносливости и ресурса">
                   ⏱ Короткий отдых
                 </button>

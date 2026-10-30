@@ -133,6 +133,7 @@ export interface Character {
   equippedSlots: Record<string, string[]>; // slotKey -> equipItem id[], только для силуэта экипировки
   speciesBonuses: TraitList; // свободный список строк, для генетического — "Видовые бонусы"
   dnaLists: TraitList[]; // фиксированные списки по 5 слотов, для генетического — "Видовые ДНК" и "ДНК"
+  groupName?: string;
   group: string;
   points: number;
   developmentPoints: number;
