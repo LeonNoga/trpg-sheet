@@ -475,6 +475,14 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <div className="card-title-row">
               <h3 className="card-title">Характеристики и показатели</h3>
               <div className="rest-buttons">
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => patch(spendCombatStamina)}
+                  title="Потратить 2 единицы выносливости за тик боя"
+                >
+                  ⚔ Тик боя
+                </button>
                 <button className="btn btn-sm" onClick={() => setShortRestOpen(true)} title="За каждые 10 минут — модификатор Выносливости и ресурса">
                   ⏱ Короткий отдых
                 </button>
