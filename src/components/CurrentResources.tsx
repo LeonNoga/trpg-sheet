@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
-import { computeDerivedStats } from '../data/formulas';
+import { DerivedBreakdownCard } from './HoverCard';
+import { useIndicatorDetails } from './useIndicatorDetails';
+import { computeDerivedStats, derivedBreakdown } from '../data/formulas';
 import { PATH_RESOURCE_LABEL } from '../data/statsConfig';
 import type { Character } from '../types';
 
@@ -15,7 +17,11 @@ export function CurrentResources({ character, onSpendCombatStamina }: Props) {
     { key: 'staminaPoints', label: 'Выносливость', color: 'stamina' },
     { key: 'resourcePoints', label: PATH_RESOURCE_LABEL[character.path], color: 'energy' },
   ] as const;
+  const details = useIndicatorDetails<(typeof resources)[number]['key']>(true);
+  const { open, root, panelId } = details;
+  const selected = resources.find(({ key }) => key === open);
   return (
+    <div className="resource-details-wrap" ref={root} onPointerLeave={details.leave}>
     <dl className="header-current-resources" aria-label="Текущие показатели персонажа">
       {resources.map(({ key, label, color }) => {
         const value = character.pools[key];
@@ -26,7 +32,7 @@ export function CurrentResources({ character, onSpendCombatStamina }: Props) {
         return (
           <div key={key} className={`header-current-resource resource-${color}${state}`}
             style={{ '--resource-fill': `${fill}%` } as CSSProperties}
-            title={`${label}: ${value} / ${max} (${percent}%)`}>
+            {...details.handlers(key)}>
             <dt>{label}<span className="resource-percent">{percent}%</span></dt>
             <dd>
               {value}
@@ -35,7 +41,6 @@ export function CurrentResources({ character, onSpendCombatStamina }: Props) {
                   type="button"
                   className="resource-card-action"
                   aria-label={`Выносливость: ${value}. Потратить 2 единицы за бой`}
-                  title="Потратить 2 единицы выносливости за бой"
                   onClick={onSpendCombatStamina}
                 />
               )}
@@ -44,5 +49,12 @@ export function CurrentResources({ character, onSpendCombatStamina }: Props) {
         );
       })}
     </dl>
+    {selected && (
+      <div id={panelId} className="hover-card resource-breakdown" role="region" aria-label={`Состав: ${selected.label}`}>
+        <DerivedBreakdownCard label={selected.label} breakdown={derivedBreakdown(character, selected.key)} />
+        <div className="hover-card-line">Текущее: <b>{character.pools[selected.key]}</b> / {maximum[selected.key]}</div>
+      </div>
+    )}
+    </div>
   );
 }

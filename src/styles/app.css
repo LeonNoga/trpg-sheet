@@ -1908,3 +1908,52 @@ input[list]::-webkit-calendar-picker-indicator {
 .resource-card-action:active {
   background: color-mix(in srgb, var(--resource-color) 20%, transparent);
 }
+
+.static-stats-wrap { position: relative; }
+.header-static-stat { position: relative; }
+.static-stat-action {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  touch-action: manipulation;
+}
+.static-stat-action:hover,
+.static-stat-action[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.static-stat-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.hover-card.static-stat-breakdown {
+  pointer-events: auto;
+  top: calc(100% + 4px);
+  left: 0;
+  right: auto;
+  width: min(280px, 100%);
+  min-width: 0;
+  max-height: 50vh;
+  overflow: auto;
+  text-align: left;
+}
+
+.resource-details-wrap { position: relative; }
+.hover-card.resource-breakdown {
+  pointer-events: auto;
+  top: auto;
+  bottom: calc(100% + 4px);
+  left: 0;
+  width: min(280px, 100%);
+  min-width: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.resource-details-wrap .header-current-resource {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
