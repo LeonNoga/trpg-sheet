@@ -1823,3 +1823,65 @@ input[list]::-webkit-calendar-picker-indicator {
     border-radius: 9px;
   }
 }
+
+/* Постоянные показатели под ресурсами, общие для всех вкладок листа. */
+.header-static-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.header-static-stat {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.header-static-stat dt {
+  font-size: clamp(11px, 9cqi, 13px);
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.header-static-stat dd {
+  order: -1;
+  margin: 0 0 6px;
+  font-size: clamp(24px, 26cqi, 36px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.static-stat-short { display: none; }
+
+@container (max-width: 110px) {
+  .static-stat-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .static-stat-short { display: inline; }
+}
+
+@media (max-width: 480px) {
+  .header-static-stats { gap: 5px; }
+  .header-static-stat { padding: 5px; border-radius: 9px; }
+  .header-static-stat dd { font-size: clamp(18px, 45cqi, 24px); margin-bottom: 4px; }
+}
