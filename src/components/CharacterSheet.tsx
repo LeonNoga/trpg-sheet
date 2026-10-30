@@ -455,6 +455,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </div>
 
+      <dl className="header-current-resources" aria-label="Текущие показатели персонажа">
+        <div className={`header-current-resource${character.pools.hp < 10 ? ' is-low' : ''}`}>
+          <dt>Здоровье</dt>
+          <dd><span className="health-status-dot" aria-hidden="true" />{character.pools.hp}</dd>
+        </div>
+        <div className="header-current-resource">
+          <dt>Выносливость</dt>
+          <dd>{character.pools.staminaPoints}</dd>
+        </div>
+        <div className="header-current-resource">
+          <dt>{PATH_RESOURCE_LABEL[character.path]}</dt>
+          <dd>{character.pools.resourcePoints}</dd>
+        </div>
+      </dl>
+
       <div className="sheet-tabs">
         {tabsFor(character.path).map((t) => (
           <button key={t.key} className={`nav-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>

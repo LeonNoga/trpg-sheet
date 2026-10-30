@@ -1736,3 +1736,49 @@ input[list]::-webkit-calendar-picker-indicator {
     gap: 10px;
   }
 }
+
+/* Текущие игровые ресурсы всегда видны над вкладками листа. */
+.header-current-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 32px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.header-current-resource {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.header-current-resource dt {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.header-current-resource dd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.health-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.header-current-resource.is-low,
+.header-current-resource.is-low dt {
+  color: var(--danger);
+}
