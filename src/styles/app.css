@@ -1737,48 +1737,89 @@ input[list]::-webkit-calendar-picker-indicator {
   }
 }
 
-/* Текущие игровые ресурсы всегда видны над вкладками листа. */
+/* Три равные карточки в одну строку на любой ширине листа. */
 .header-current-resources {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 32px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
   margin: 0 0 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
 }
 
 .header-current-resource {
+  container-type: inline-size;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
   color: var(--text);
 }
 
 .header-current-resource dt {
-  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 4px;
+  font-size: clamp(8px, 8cqi, 13px);
+  white-space: nowrap;
   color: var(--text-muted);
 }
 
 .header-current-resource dd {
   display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
   margin: 0;
-  font-size: 18px;
+  padding: 8px clamp(4px, 4cqi, 16px);
+  border-left: 1px solid var(--border);
+  font-size: clamp(12px, 12cqi, 20px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.health-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+.resource-health.is-low dd {
+  color: var(--danger);
 }
 
-.header-current-resource.is-low,
-.header-current-resource.is-low dt {
-  color: var(--danger);
+.resource-health.is-depleted dd {
+  background: #c62828;
+  color: #fff;
+  border-left-color: #c62828;
+}
+
+.resource-stamina.is-depleted {
+  background: color-mix(in srgb, #f5d35c 22%, var(--surface));
+}
+
+.resource-energy {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  color: var(--accent);
+}
+
+.resource-energy dt {
+  color: inherit;
+}
+
+.resource-energy dd {
+  border-left-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.resource-energy.is-depleted {
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 15%, var(--border));
+}
+
+@media (max-width: 480px) {
+  .header-current-resources {
+    gap: 5px;
+  }
+
+  .header-current-resource {
+    border-radius: 9px;
+  }
 }
