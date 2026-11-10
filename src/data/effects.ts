@@ -153,9 +153,6 @@ export function formatClock(seconds: number): string {
   return `${m}:${two(sec)}`;
 }
 
-/** Номер тика боя (раунда) от начала отсчёта часов. */
-export const tickOf = (seconds: number): number => Math.floor(seconds / ROUND_SECONDS);
-
 const STAT_WORDS: [RegExp, BonusKey][] = [
   [/^сил/, 'strength'],
   [/^ловк/, 'agility'],

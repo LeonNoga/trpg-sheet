@@ -19,6 +19,7 @@ import type { AppMeta, Snapshot, TrashEntry } from '../storage/db';
 import { createBlankCharacter, pruneEquippedSlots } from '../data/defaults';
 import { applyExperience } from '../data/progression';
 import { appendLog, appendNote, diffCharacter } from '../data/changeLog';
+import { followMaxChange } from '../data/gameClock';
 import { AppDataContext } from './useAppData';
 import type { AppDataContextValue } from './useAppData';
 import type { Character, EquipItem, Path, Roster } from '../types';
@@ -122,9 +123,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const updateCharacter = useCallback(
     (character: Character) => {
-      const leveled = pruneEquippedSlots(applyExperience(character));
+      const levelled = pruneEquippedSlots(applyExperience(character));
       // Журнал берём из сохранённого состояния, а не из переданного объекта: тот может нести устаревшую копию журнала.
-      const prev = charactersRef.current.find((c) => c.id === leveled.id);
+      const prev = charactersRef.current.find((c) => c.id === levelled.id);
+      // Повысили уровень или характеристику — вместе с максимумом растут и текущие здоровье, выносливость, ресурс.
+      const leveled = prev ? followMaxChange(prev, levelled) : levelled;
       const changeLog = prev ? appendLog(prev.changeLog, diffCharacter(prev, leveled), leveled.level) : leveled.changeLog;
       const next: Character = { ...leveled, changeLog, updatedAt: Date.now() };
       setAll(charactersRef.current.map((c) => (c.id === next.id ? next : c)));

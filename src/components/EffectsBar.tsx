@@ -2,14 +2,12 @@ import { useState } from 'react';
 import { BonusEditor } from './BonusEditor';
 import { bonusLabel } from '../data/statsConfig';
 import {
-  ROUND_SECONDS,
   activeEffects,
   bonusSummary,
   effectRemaining,
   formatClock,
   formatRemaining,
   gameClock,
-  tickOf,
 } from '../data/effects';
 import type { ActiveEffect, BonusKey, Character } from '../types';
 
@@ -47,15 +45,16 @@ function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 
       <div className="modal-box">
         <h3 className="card-title">Игровое время</h3>
         <p>
-          Сейчас: <b>{formatClock(clock)}</b> · тик боя № {tickOf(clock)}
+          Сейчас: <b>{formatClock(clock)}</b>
         </p>
         <p className="muted">
-          Время идёт только по кнопкам: «Тик боя» (15 с, списывает 2 выносливости), отдых, новый день — и здесь. По нему
-          заканчиваются эффекты и откаты. Эта кнопка двигает время без расхода выносливости.
+          Здесь время просто двигается — выносливость не тратится. По нему заканчиваются эффекты и откаты. Время также
+          идёт само: «Тик боя» (15 секунд, −2 выносливости), отдых и новый день.
         </p>
         <div className="quick-amounts">
           {[
-            ['+15 с (тик)', ROUND_SECONDS],
+            ['+10 с', 10],
+            ['+30 с', 30],
             ['+1 мин', 60],
             ['+5 мин', 300],
             ['+10 мин', 600],
@@ -116,7 +115,7 @@ function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 
   );
 }
 
-type Until = 'seconds' | 'minutes' | 'hours' | 'ticks' | 'combat' | 'manual';
+type Until = 'seconds' | 'minutes' | 'hours' | 'combat' | 'manual';
 
 function EffectDialog({ character, onAdd, onClose }: { character: Character; onAdd: (effect: ActiveEffect) => void; onClose: () => void }) {
   const [name, setName] = useState('');
@@ -124,8 +123,8 @@ function EffectDialog({ character, onAdd, onClose }: { character: Character; onA
   const [until, setUntil] = useState<Until>('minutes');
   const [amount, setAmount] = useState('1');
   const clock = gameClock(character);
-  const timed = until === 'seconds' || until === 'minutes' || until === 'hours' || until === 'ticks';
-  const per = { seconds: 1, minutes: 60, hours: 3600, ticks: ROUND_SECONDS }[until as 'seconds'] ?? 0;
+  const timed = until === 'seconds' || until === 'minutes' || until === 'hours';
+  const per = { seconds: 1, minutes: 60, hours: 3600 }[until as 'seconds'] ?? 0;
   const length = Math.round(Number(amount.replace(',', '.')) * per);
   const valid = name.trim() !== '' && (!timed || (Number.isFinite(length) && length > 0));
 
@@ -171,7 +170,6 @@ function EffectDialog({ character, onAdd, onClose }: { character: Character; onA
               <option value="seconds">секунд</option>
               <option value="minutes">минут</option>
               <option value="hours">часов</option>
-              <option value="ticks">тиков боя (по 15 с)</option>
               <option value="combat">до конца боя</option>
               <option value="manual">пока не сниму</option>
             </select>

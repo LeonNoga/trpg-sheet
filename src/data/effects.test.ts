@@ -10,7 +10,7 @@ import {
   parseSpan,
   suggestActiveBonuses,
 } from './effects';
-import { advanceClock, clampPools, endCombat, removeEffect } from './gameClock';
+import { advanceClock, clampPools, endCombat, followMaxChange, removeEffect } from './gameClock';
 import { applyAbilityUse, isCooling, longRest, shortRest, spendCombatStamina, startNewDay } from './abilityUse';
 import { bonusSources, computeDerivedStats, totalStat } from './formulas';
 import { createBlankCharacter } from './defaults';
@@ -199,5 +199,58 @@ describe('вывод времени', () => {
     expect(formatRemaining(45)).toBe('45 с');
     expect(formatRemaining(150)).toBe('2 мин 30 с');
     expect(formatRemaining(3900)).toBe('1 ч 05 мин');
+  });
+});
+
+describe('рост максимума двигает и текущие значения', () => {
+  const full = (c: Character): Character => {
+    const max = computeDerivedStats(c);
+    return { ...c, pools: { hp: max.hp, staminaPoints: max.staminaPoints, resourcePoints: max.resourcePoints } };
+  };
+
+  it('повышение выносливости поднимает и максимум, и текущую выносливость на одну величину', () => {
+    const before = full(make());
+    const next = { ...before, baseStats: { ...before.baseStats, endurance: before.baseStats.endurance + 10 } };
+    const grown = followMaxChange(before, next);
+    const grownMax = computeDerivedStats(grown);
+    expect(grownMax.staminaPoints).toBeGreaterThan(computeDerivedStats(before).staminaPoints);
+    expect(grown.pools.staminaPoints).toBe(grownMax.staminaPoints);
+    expect(grown.pools.hp).toBe(before.pools.hp);
+    expect(grown.pools.resourcePoints).toBe(before.pools.resourcePoints);
+  });
+
+  it('новый уровень прибавляет здоровье и к текущему; недолеченное здоровье остаётся недолеченным', () => {
+    const before = { ...full(make({ level: 5 })), pools: { hp: 10, staminaPoints: 1, resourcePoints: 2 } };
+    const grown = followMaxChange(before, { ...before, level: 6 });
+    const dHp = computeDerivedStats({ ...before, level: 6 }).hp - computeDerivedStats(before).hp;
+    expect(dHp).toBeGreaterThan(0);
+    expect(grown.pools.hp).toBe(10 + dHp);
+  });
+
+  it('предметы и эффекты текущее значение не двигают', () => {
+    const before = full(make());
+    const gear = { ...before, items: [{ id: 'a', kind: 'item' as const, name: 'Амулет', equipped: true, statBonuses: { hp: 10 } }] };
+    expect(followMaxChange(before, gear)).toBe(gear);
+    const buffed = applyAbilityUse(before, ability({ activeBonuses: { staminaPoints: 10 } }), { resource: 0, stamina: 0 });
+    expect(followMaxChange(before, buffed)).toBe(buffed);
+  });
+
+  it('при вводе числа по цифрам («36» → «3» → «36») итог не накапливается', () => {
+    const start = full(make());
+    const set = (c: Character, v: number): Character => ({ ...c, baseStats: { ...c.baseStats, endurance: v } });
+    const step1 = followMaxChange(start, set(start, 3));
+    const step2 = followMaxChange(step1, set(step1, 36));
+    const direct = followMaxChange(start, set(start, 36));
+    expect(step2.pools.staminaPoints).toBe(direct.pools.staminaPoints);
+    expect(step2.pools.staminaPoints).toBe(computeDerivedStats(step2).staminaPoints);
+  });
+
+  it('бонусы снаряжения не искажают расчёт роста от характеристики', () => {
+    const base = full(make());
+    const geared = { ...base, items: [{ id: 'a', kind: 'item' as const, name: 'Амулет', equipped: true, statBonuses: { endurance: 5 } }] };
+    const before = full(geared);
+    const next = { ...before, baseStats: { ...before.baseStats, endurance: before.baseStats.endurance + 10 } };
+    const grown = followMaxChange(before, next);
+    expect(grown.pools.staminaPoints).toBe(computeDerivedStats(grown).staminaPoints);
   });
 });
