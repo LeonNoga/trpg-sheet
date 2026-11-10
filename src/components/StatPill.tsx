@@ -18,6 +18,8 @@ interface Props {
   base: number;
   /** Бонус от снаряжения/умений. */
   bonus: number;
+  /** Сколько из бонуса даёт временный эффект (подсветка плашки, пока он действует). */
+  tempBonus?: number;
   /** Какие именно предметы дают этот бонус — для всплывающей карточки. */
   sources?: BonusSource[];
   onChange: (value: number) => void;
@@ -100,7 +102,7 @@ function MilestoneNotes({ statKey, effects, usage, onUse, onClearUsage }: NotesP
  * (показывается всегда) и модификатор. Подсвечивается на порогах 50 и 100; при наведении — расклад
  * «база + предметы = итого», открытые бонусы порогов пишутся под блоком.
  */
-export function StatPill({ statKey, path, label, base, bonus, sources = [], onChange, maxBase, usage, onUseMilestone, onClearUsage }: Props) {
+export function StatPill({ statKey, path, label, base, bonus, tempBonus = 0, sources = [], onChange, maxBase, usage, onUseMilestone, onClearUsage }: Props) {
   const total = base + bonus;
   const mod = modifier(total);
   const milestone = statMilestone(total);
@@ -109,7 +111,7 @@ export function StatPill({ statKey, path, label, base, bonus, sources = [], onCh
   return (
     <div className="stat-pill-wrap">
       <HoverCard card={<StatBreakdownCard label={label} base={base} sources={sources} />}>
-        <div className={`stat-pill ${milestone ? `milestone-${milestone}` : ''}`}>
+        <div className={`stat-pill ${milestone ? `milestone-${milestone}` : ''} ${tempBonus > 0 ? 'effect-up' : tempBonus < 0 ? 'effect-down' : ''}`}>
           <span className="stat-pill-name">{label}</span>
           <NumberField min={STAT_MIN} max={maxBase} value={base} onChange={onChange} aria-label={`${label}: базовое значение`} />
           <span className={`stat-pill-total ${milestone ? 'stat-value-milestone' : ''}`} title="Итог с предметами">

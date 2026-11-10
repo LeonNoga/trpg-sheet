@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { bonusLabel, ITEM_PATH_LABELS, PATH_LABELS, RARITY_LABELS, SLOT_TYPE_LABELS } from '../data/statsConfig';
 import { PathIcon } from './PathIcon';
+import { bonusSummary } from '../data/effects';
 import type { BonusKey, EquipItem, Path } from '../types';
 
 /** Команда «развернуть/свернуть все»: у каждой строки своё состояние, но по новой версии команды оно перезаписывается. */
@@ -131,7 +132,8 @@ export function ItemCard({
   ]
     .filter(Boolean)
     .join(' · ');
-  const hasBody = !!(item.flavorText || item.effect || extra);
+  const activeSummary = bonusSummary(item.activeBonuses ?? {}, (k) => bonusLabel(k, path));
+  const hasBody = !!(item.flavorText || item.effect || extra || activeSummary);
   // Предмет или умение другого пути (не того, что у персонажа) — предупреждаем, чтобы случайно не добавить чужое.
   const foreignPath = !!path && !!item.path && item.path !== 'none' && item.path !== path;
   const foreignHint = foreignPath ? `Другой путь: ${ITEM_PATH_LABELS[item.path!]}. У персонажа — ${PATH_LABELS[path!]}.` : '';
@@ -262,6 +264,11 @@ export function ItemCard({
         <div className="item-body">
           {item.flavorText && <p className="item-flavor">«{item.flavorText}»</p>}
           {item.effect && <p className="item-effect">{item.effect}</p>}
+          {isAbility && activeSummary && (
+            <p className="item-effect">
+              <b>При активации:</b> {activeSummary}
+            </p>
+          )}
           {!hasBody && <p className="muted item-effect">Описания нет.</p>}
           {extra}
           <div className="item-actions">

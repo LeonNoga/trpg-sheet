@@ -1,11 +1,32 @@
 import { computeDerivedStats, modifier, totalStat } from './formulas';
+import { DAY_SECONDS, buildEffect, formatRemaining, gameClock, parseCooldown, ROUND_SECONDS } from './effects';
+import { addEffect, advanceClock } from './gameClock';
 import type { MilestoneRestore } from './milestones';
 import type { Character, EquipItem } from '../types';
 
 /** Ячейка учёта применения способности: идёт ли откат и израсходован ли дневной лимит. */
 export interface UsageState {
+  /** Откат без известной длительности — снимается вручную, отдыхом или новым днём. */
   cooldown?: boolean;
   daily?: boolean;
+  /** Игровое время (секунды), когда откат закончится. */
+  readyAt?: number;
+  /** Откат «раз в бой» — до кнопки «Конец боя». */
+  combat?: boolean;
+}
+
+/** Идёт ли откат: по часам, по ручной отметке или до конца боя. */
+export function isCooling(usage: UsageState | undefined, clock: number): boolean {
+  return !!usage && (!!usage.cooldown || !!usage.combat || (usage.readyAt ?? 0) > clock);
+}
+
+/** Почему способность недоступна: «Откат: осталось 8 мин», «Откат до конца боя»… */
+export function cooldownReason(usage: UsageState | undefined, clock: number, text?: string): string | null {
+  if (!usage) return null;
+  if ((usage.readyAt ?? 0) > clock) return `Откат: осталось ${formatRemaining((usage.readyAt ?? 0) - clock)}`;
+  if (usage.combat) return 'Откат до конца боя';
+  if (usage.cooldown) return `Откат: ${text?.trim() || 'идёт'}`;
+  return null;
 }
 
 export interface AbilityCost {
@@ -75,11 +96,18 @@ export function applyUse(
   character: Character,
   key: string,
   cost: AbilityCost,
-  flags: { cooldown?: boolean; daily?: boolean },
+  flags: { cooldown?: boolean; cooldownSeconds?: number; cooldownCombat?: boolean; daily?: boolean },
 ): Character {
   const usage = { ...(character.usage ?? {}) };
-  if (flags.cooldown || flags.daily) {
-    usage[key] = { ...usage[key], ...(flags.cooldown ? { cooldown: true } : {}), ...(flags.daily ? { daily: true } : {}) };
+  if (flags.cooldown || flags.cooldownSeconds || flags.cooldownCombat || flags.daily) {
+    usage[key] = {
+      ...usage[key],
+      ...(flags.cooldown ? { cooldown: true } : {}),
+      // Откат считается с момента применения.
+      ...(flags.cooldownSeconds ? { readyAt: gameClock(character) + flags.cooldownSeconds } : {}),
+      ...(flags.cooldownCombat ? { combat: true } : {}),
+      ...(flags.daily ? { daily: true } : {}),
+    };
   }
   return {
     ...character,
@@ -95,15 +123,38 @@ export function applyUse(
 export function clearUsage(character: Character, key: string, which: 'cooldown' | 'daily'): Character {
   const usage = { ...(character.usage ?? {}) };
   const entry = { ...usage[key] };
-  delete entry[which];
-  if (!entry.cooldown && !entry.daily) delete usage[key];
+  if (which === 'cooldown') {
+    delete entry.cooldown;
+    delete entry.readyAt;
+    delete entry.combat;
+  } else {
+    delete entry.daily;
+  }
+  if (!entry.cooldown && !entry.daily && !entry.combat && entry.readyAt === undefined) delete usage[key];
   else usage[key] = entry;
   return { ...character, usage };
 }
 
-/** «Новый день» (сутки): снимает откаты и дневные ограничения; пулы не трогает. */
+/**
+ * Применение умения: списывает стоимость, ставит откат (по длительности из текста карточки) и дневной лимит,
+ * запускает временный эффект с бонусами. Повторное применение обновляет эффект, а не складывает бонусы.
+ */
+export function applyAbilityUse(character: Character, item: EquipItem, cost: AbilityCost): Character {
+  const cooldown = parseCooldown(item.cooldown);
+  const used = applyUse(character, item.id, cost, {
+    cooldown: cooldown.kind === 'unknown',
+    cooldownSeconds: cooldown.kind === 'seconds' ? cooldown.seconds : undefined,
+    cooldownCombat: cooldown.kind === 'combat',
+    daily: isDailyLimited(item),
+  });
+  const effect = buildEffect(item, gameClock(character));
+  return effect ? addEffect(used, effect) : used;
+}
+
+/** «Новый день» (сутки): проходит 24 часа, все эффекты заканчиваются, откаты и дневные ограничения снимаются; пулы не трогает. */
 export function startNewDay(character: Character): Character {
-  return { ...character, usage: {} };
+  const next = advanceClock({ ...character, effects: [] }, DAY_SECONDS, { endCombat: true });
+  return { ...next, usage: {} };
 }
 
 /** Сколько здоровья даёт длительный отдых: модификатор Живучести (с предметами), но не меньше 1. */
@@ -116,12 +167,14 @@ export function longRestHealing(character: Character): number {
  * здоровье восстанавливается на модификатор Живучести (но не выше максимума).
  */
 export function longRest(character: Character): Character {
-  const max = computeDerivedStats(character);
+  // Длительный отдых — 24 часа: эффекты и откаты кончаются, а максимум считается уже без них.
+  const rested = advanceClock(character, DAY_SECONDS, { endCombat: true });
+  const max = computeDerivedStats(rested);
   return {
-    ...character,
+    ...rested,
     usage: {},
     pools: {
-      hp: Math.max(character.pools.hp, Math.min(max.hp, character.pools.hp + longRestHealing(character))),
+      hp: Math.max(rested.pools.hp, Math.min(max.hp, rested.pools.hp + longRestHealing(rested))),
       staminaPoints: max.staminaPoints,
       resourcePoints: max.resourcePoints,
     },
@@ -162,7 +215,7 @@ export function shortRestGains(character: Character, minutes: number): ShortRest
 
 export function shortRest(character: Character, minutes: number): Character {
   const gains = shortRestGains(character, minutes);
-  return {
+  const restored: Character = {
     ...character,
     pools: {
       ...character.pools,
@@ -170,6 +223,8 @@ export function shortRest(character: Character, minutes: number): Character {
       resourcePoints: character.pools.resourcePoints + gains.resource,
     },
   };
+  // Отдых идёт реальные минуты: эффекты и откаты истекают по часам, бой заканчивается.
+  return advanceClock(restored, Math.max(0, minutes) * 60, { endCombat: true });
 }
 
 /** Название способности из слота «классовых» списков (Видовые ДНК / Классовые умения / Технологии Модели) — для скидки −50% на стоимость. */
@@ -245,8 +300,9 @@ export function applyMilestoneRestore(character: Character, restore?: MilestoneR
 
 /** Одно нажатие на карточку выносливости: расход за бой, без изменения откатов. */
 export function spendCombatStamina(character: Character): Character {
-  return {
-    ...character,
-    pools: { ...character.pools, staminaPoints: character.pools.staminaPoints - 2 },
-  };
+  // Тик боя — 15 секунд: часы идут, эффекты и откаты истекают.
+  return advanceClock(
+    { ...character, pools: { ...character.pools, staminaPoints: character.pools.staminaPoints - 2 } },
+    ROUND_SECONDS,
+  );
 }

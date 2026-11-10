@@ -1,4 +1,5 @@
 import { PATH_RESOURCE_LABEL, RESISTANCE_ALLOWED_STATS, STAT_ORDER } from './statsConfig';
+import { activeEffects, effectBonus } from './effects';
 import type { BonusKey, Character, DerivedKey, EquipItem, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
 export function modifier(total: number): number {
@@ -10,9 +11,10 @@ function equippedBonusSources(character: Character): EquipItem[] {
 }
 
 export function bonusSum(character: Character, key: BonusKey): number {
-  return equippedBonusSources(character).reduce(
-    (sum, it) => sum + (it.statBonuses[key] ?? 0),
-    0,
+  return (
+    equippedBonusSources(character).reduce((sum, it) => sum + (it.statBonuses[key] ?? 0), 0) +
+    // Временные эффекты умений (пока не истекли) считаются так же, как бонусы надетого.
+    effectBonus(character, key)
   );
 }
 
@@ -90,9 +92,13 @@ export interface BonusSource {
 
 /** Какие надетые предметы/умения и сколько именно дают к характеристике или показателю (в т.ч. штрафы). */
 export function bonusSources(character: Character, key: BonusKey): BonusSource[] {
-  return equippedBonusSources(character)
+  const gear = equippedBonusSources(character)
     .filter((it) => (it.statBonuses[key] ?? 0) !== 0)
     .map((it) => ({ name: it.name || 'Без названия', value: it.statBonuses[key] ?? 0 }));
+  const temporary = activeEffects(character)
+    .filter((e) => (e.bonuses[key] ?? 0) !== 0)
+    .map((e) => ({ name: `${e.name} (эффект)`, value: e.bonuses[key] ?? 0 }));
+  return [...gear, ...temporary];
 }
 
 export interface DerivedPart {

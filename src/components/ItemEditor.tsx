@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import {
-  ALL_BONUS_KEYS,
   bonusLabel,
   ITEM_PATH_LABELS,
   RARITY_LABELS,
@@ -9,8 +8,9 @@ import {
 } from '../data/statsConfig';
 import { fileToImageDataUrl } from '../utils/file';
 import { fieldsForKind, itemsFromCard, parseCardFields, recognizeOnce } from '../utils/ocrCards';
-import { NumberField } from './NumberField';
-import type { BonusKey, EquipItem, ItemPath, Path, SlotType } from '../types';
+import { BonusEditor } from './BonusEditor';
+import { bonusSummary, suggestActiveBonuses } from '../data/effects';
+import type { EquipItem, ItemPath, Path, SlotType } from '../types';
 
 const ITEM_PATH_ORDER: ItemPath[] = ['none', 'genetic', 'magic', 'tech'];
 
@@ -31,35 +31,10 @@ export function ItemEditor({ item, path, onSave, onCancel, onCompanion }: Props)
   // Вторая запись артефакта (умение для предмета и наоборот): создаётся вместе с этой при сохранении.
   const [companion, setCompanion] = useState<EquipItem | null>(null);
   const [createCompanion, setCreateCompanion] = useState(true);
-
-  const bonusEntries = Object.entries(draft.statBonuses) as [BonusKey, number][];
+  const suggested = draft.kind === 'ability' ? suggestActiveBonuses(draft.effect) : {};
 
   function updateField<K extends keyof EquipItem>(key: K, value: EquipItem[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
-  }
-
-  function addBonusRow() {
-    const used = new Set(bonusEntries.map(([k]) => k));
-    const next = ALL_BONUS_KEYS.find((k) => !used.has(k)) ?? ALL_BONUS_KEYS[0];
-    setDraft((d) => ({ ...d, statBonuses: { ...d.statBonuses, [next]: 1 } }));
-  }
-
-  function changeBonusKey(oldKey: BonusKey, newKey: BonusKey) {
-    setDraft((d) => {
-      const { [oldKey]: value, ...rest } = d.statBonuses;
-      return { ...d, statBonuses: { ...rest, [newKey]: value ?? 0 } };
-    });
-  }
-
-  function changeBonusValue(key: BonusKey, value: number) {
-    setDraft((d) => ({ ...d, statBonuses: { ...d.statBonuses, [key]: value } }));
-  }
-
-  function removeBonusRow(key: BonusKey) {
-    setDraft((d) => {
-      const { [key]: _removed, ...rest } = d.statBonuses;
-      return { ...d, statBonuses: rest };
-    });
   }
 
   async function handleImage(file: File | undefined) {
@@ -256,25 +231,28 @@ ${addition}` : addition,
 
       <div className="field">
         <label>Бонусы к характеристикам/показателям</label>
-        {bonusEntries.map(([key, value]) => (
-          <div className="row" key={key} style={{ marginBottom: 4 }}>
-            <select value={key} onChange={(e) => changeBonusKey(key, e.target.value as BonusKey)}>
-              {ALL_BONUS_KEYS.map((k) => (
-                <option key={k} value={k}>
-                  {bonusLabel(k, path)}
-                </option>
-              ))}
-            </select>
-            <NumberField style={{ maxWidth: 90 }} value={value} onChange={(v) => changeBonusValue(key, v)} />
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeBonusRow(key)}>
-              Убрать
-            </button>
-          </div>
-        ))}
-        <button type="button" className="btn btn-sm" onClick={addBonusRow}>
-          + бонус
-        </button>
+        <BonusEditor value={draft.statBonuses} onChange={(statBonuses) => updateField('statBonuses', statBonuses)} path={path} />
       </div>
+
+      {draft.kind === 'ability' && (
+        <div className="field">
+          <label>Бонус при активации (временный эффект)</label>
+          <p className="muted" style={{ margin: '0 0 6px' }}>
+            Действует после применения умения и сам исчезает по длительности из карточки. Штраф — со знаком «−».
+          </p>
+          <BonusEditor
+            value={draft.activeBonuses ?? {}}
+            onChange={(activeBonuses) => updateField('activeBonuses', activeBonuses)}
+            path={path}
+            addLabel="+ бонус при активации"
+          />
+          {Object.keys(suggested).length > 0 && Object.keys(draft.activeBonuses ?? {}).length === 0 && (
+            <button type="button" className="btn btn-sm btn-ghost" style={{ marginTop: 6 }} onClick={() => updateField('activeBonuses', suggested)}>
+              Подставить из описания: {bonusSummary(suggested, (k) => bonusLabel(k, path))}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="item-actions">
         <button

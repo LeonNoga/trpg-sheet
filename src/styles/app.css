@@ -2241,3 +2241,64 @@ input[list]::-webkit-calendar-picker-indicator {
   padding-left: 18px;
   font-size: 13px;
 }
+
+/* ---------- Игровое время и временные эффекты ---------- */
+
+.effects-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+
+.clock-chip {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.effect-chip {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 6px 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text, var(--accent));
+  font-size: 12px;
+}
+
+.effect-chip.neg {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  color: var(--warn);
+}
+
+.effect-chip .effect-name {
+  font-weight: 700;
+}
+
+.effect-chip .effect-left {
+  opacity: 0.8;
+}
+
+.effect-chip button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.stat-pill.effect-up {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.stat-pill.effect-down {
+  box-shadow: 0 0 0 2px var(--warn);
+}

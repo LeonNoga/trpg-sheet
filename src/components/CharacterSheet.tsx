@@ -3,6 +3,7 @@ import { useContext, useLayoutEffect, useRef, useState, useSyncExternalStore } f
 import { createPortal } from 'react-dom';
 import { CurrentResources } from './CurrentResources';
 import { StaticStats } from './StaticStats';
+import { EffectsBar } from './EffectsBar';
 import { useAppData } from '../state/useAppData';
 import { StatBudgetBar } from './StatsEditor';
 import { CharacteristicsPanel } from './CharacteristicsPanel';
@@ -28,6 +29,7 @@ import {
   PATH_LABELS,
   PATH_RESOURCE_LABEL,
   PATH_SPECIES_FIELD_LABEL,
+  bonusLabel,
   PATH_TRAIT_LABELS,
   RARITY_ORDER,
 } from '../data/statsConfig';
@@ -39,12 +41,15 @@ import { revertEntry } from '../data/changeLog';
 import { ShortRestDialog } from './ShortRestDialog';
 import type { SlotUseInfo } from './SlotUseButton';
 import {
+  applyAbilityUse,
   applyMilestoneRestore,
   applyUse,
   computeAbilityCost,
   checkShortage,
   clearUsage,
+  cooldownReason,
   hasCooldown,
+  isCooling,
   isDailyLimited,
   longRest,
   longRestHealing,
@@ -54,6 +59,8 @@ import {
   spendCombatStamina,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
+import { advanceClock, addEffect, endCombat, removeEffect } from '../data/gameClock';
+import { bonusSummary, buildEffect, formatRemaining, gameClock } from '../data/effects';
 import { useUndo } from '../state/useUndo';
 import type {
   Character,
@@ -198,7 +205,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     const { cost } = computeAbilityCost(c, item);
     const lacks = checkShortage(c, cost);
     if (lacks.length > 0 && !confirm(`Не хватает: ${lacks.join('; ')}. Применить всё равно?`)) return;
-    patch((cc) => applyUse(cc, item.id, cost, { cooldown: hasCooldown(item), daily: isDailyLimited(item) }));
+    patch((cc) => applyAbilityUse(cc, item, cost));
   }
 
   function applyMilestone(stat: StatKey, effect: MilestoneEffect) {
@@ -214,7 +221,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   }
 
   function handleNewDay() {
-    if (confirm('Новый день: снять все откаты и дневные ограничения способностей. Здоровье, выносливость и ресурс не меняются.')) {
+    if (confirm('Новый день: проходят сутки (24 часа). Все эффекты заканчиваются, откаты и дневные ограничения снимаются. Здоровье, выносливость и ресурс не меняются.')) {
       patch(startNewDay);
     }
   }
@@ -222,7 +229,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   function handleLongRest() {
     if (
       confirm(
-        `Длительный отдых: выносливость и ресурс восстановятся до максимума, здоровье — на ${longRestHealing(character!)} (модификатор Живучести), откаты и дневные ограничения снимутся.`,
+        `Длительный отдых (24 часа): выносливость и ресурс восстановятся до максимума, здоровье — на ${longRestHealing(character!)} (модификатор Живучести), эффекты закончатся, откаты и дневные ограничения снимутся.`,
       )
     ) {
       patch(longRest);
@@ -238,7 +245,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     const { cost, base, notes } = computeAbilityCost(c, item);
     const daily = isDailyLimited(item);
     const cooldown = hasCooldown(item);
-    if (base.resource === 0 && base.stamina === 0 && !daily && !cooldown) return null;
+    const clock = gameClock(c);
+    const effect = buildEffect(item, clock, 'preview');
+    if (base.resource === 0 && base.stamina === 0 && !daily && !cooldown && !effect) return null;
 
     const costParts = [
       cost.resource ? `−${cost.resource} ${PATH_RESOURCE_LABEL[c.path]}` : '',
@@ -246,15 +255,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     ].filter(Boolean);
     const usage = c.usage?.[item.id];
     const reasons: string[] = [];
-    if (usage?.cooldown) reasons.push(`Откат: ${item.cooldown?.trim() || 'идёт'}`);
+    const cooling = cooldownReason(usage, clock, item.cooldown);
+    if (cooling) reasons.push(cooling);
     if (usage?.daily) reasons.push('Уже использовано сегодня (раз в день)');
     const wasParts = [base.resource ? `${base.resource}` : '', base.stamina ? `${base.stamina} Вын.` : ''].filter(Boolean);
     const note = notes.length > 0 ? ` (${notes.join(', ')}; по карточке было ${wasParts.join(' + ')})` : '';
+    const effectNote = effect
+      ? `. Эффект: ${bonusSummary(effect.bonuses, (k) => bonusLabel(k, c.path)) || 'без бонусов'}, ${
+          effect.until === 'time' ? `на ${formatRemaining((effect.endsAt ?? 0) - clock)}` : effect.until === 'combat' ? 'до конца боя' : 'до снятия'
+        }`
+      : '';
     return {
       id: item.id,
       costText: costParts.join(', '),
-      tooltip: `Применить «${item.name}»${costParts.length ? `: ${costParts.join(', ')}` : ''}${note}`,
-      cooling: reasons.length > 0,
+      tooltip: `Применить «${item.name}»${costParts.length ? `: ${costParts.join(', ')}` : ''}${note}${effectNote}`,
+      cooling: reasons.length > 0 && (isCooling(usage, clock) || !!usage?.daily),
       reasons,
     };
   }
@@ -578,6 +593,13 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
       <CurrentResources character={character} />
       <StaticStats character={character} />
+      <EffectsBar
+        character={character}
+        onAdvance={(seconds) => patch((c) => advanceClock(c, seconds))}
+        onEndCombat={() => patch(endCombat)}
+        onAddEffect={(effect) => patch((c) => addEffect(c, effect))}
+        onRemoveEffect={(id) => patch((c) => removeEffect(c, id))}
+      />
 
       <div className="sheet-tabs">
         {tabsFor(character.path).map((t) => (
@@ -597,14 +619,14 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                   type="button"
                   className="btn btn-sm"
                   onClick={() => patch(spendCombatStamina)}
-                  title="Потратить 2 единицы выносливости за тик боя"
+                  title="Тик боя (15 секунд): −2 выносливости, время идёт — эффекты и откаты истекают"
                 >
                   ⚔ Тик боя
                 </button>
                 <button className="btn btn-sm" onClick={() => setShortRestOpen(true)} title="За каждые 10 минут — модификатор Выносливости и ресурса">
                   ⏱ Короткий отдых
                 </button>
-                <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: снять откаты и дневные ограничения">
+                <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: эффекты заканчиваются, откаты и дневные ограничения снимаются">
                   ☀ Новый день
                 </button>
                 {isPhone && (
@@ -613,7 +635,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                     Полный вид
                   </label>
                 )}
-                <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон: здоровье +мод. Живучести, выносливость и ресурс до максимума, откаты снимаются">
+                <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон (24 часа): здоровье +мод. Живучести, выносливость и ресурс до максимума, эффекты и откаты кончаются">
                   🌙 Длительный отдых
                 </button>
               </div>

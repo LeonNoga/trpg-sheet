@@ -95,6 +95,11 @@ export function diffCharacter(prev: Character, next: Character): ChangeDraft[] {
   }
   for (const [id, d] of prevDust) if (!nextDust.has(id)) out.push({ kind: 'dustRemoved', from: d.volume });
 
+  const prevEffects = new Map((prev.effects ?? []).map((e) => [e.id, e]));
+  const nextEffects = new Map((next.effects ?? []).map((e) => [e.id, e]));
+  for (const [id, e] of nextEffects) if (!prevEffects.has(id)) out.push({ kind: 'effectStart', key: id, label: e.name });
+  for (const [id, e] of prevEffects) if (!nextEffects.has(id)) out.push({ kind: 'effectEnd', key: id, label: e.name });
+
   return mergePearlTransfer(out);
 }
 
@@ -185,6 +190,10 @@ export function describeEntry(e: ChangeEntry): string {
       return 'Добавлена пыль развития';
     case 'dustRemoved':
       return 'Удалена пыль развития';
+    case 'effectStart':
+      return `Эффект запущен: «${e.label}»`;
+    case 'effectEnd':
+      return `Эффект закончился или снят: «${e.label}»`;
     case 'note':
       return e.label ?? '';
     default:

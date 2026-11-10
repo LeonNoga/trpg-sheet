@@ -18,6 +18,7 @@ import {
   derivedBreakdown,
 } from '../data/formulas';
 import { DerivedBreakdownCard, HoverCard } from './HoverCard';
+import { effectBonus } from '../data/effects';
 import { maxBaseStat } from '../data/progression';
 import { NumberField } from './NumberField';
 import type { MilestoneEffect } from '../data/statsConfig';
@@ -90,6 +91,8 @@ function PoolAdjust({ current, max, onChange }: { current: number; max: number; 
 
 const PAIRED_STATS = STAT_ORDER.filter((key) => STAT_TO_DERIVED[key]);
 const STANDALONE_STATS = STAT_ORDER.filter((key) => !STAT_TO_DERIVED[key]);
+// Компактный список: парные характеристики по порядку, а Мудрость и Харизма всегда последние.
+const COMPACT_ORDER: StatKey[] = [...PAIRED_STATS, ...STANDALONE_STATS];
 
 export function CharacteristicsPanel({
   full = true,
@@ -116,6 +119,7 @@ export function CharacteristicsPanel({
         label={statLabelFor(statKey)}
         base={character.baseStats[statKey]}
         bonus={bonusSum(character, statKey)}
+        tempBonus={effectBonus(character, statKey)}
         sources={bonusSources(character, statKey)}
         onChange={(v) => onChangeStat(statKey, v)}
         maxBase={maxBaseStat(character, statKey)}
@@ -157,7 +161,7 @@ export function CharacteristicsPanel({
           ))}
         </div>
         <div className="char-list">
-          {STAT_ORDER.map((statKey) => (
+          {COMPACT_ORDER.map((statKey) => (
             <div key={statKey}>{statPill(statKey)}</div>
           ))}
         </div>

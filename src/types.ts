@@ -74,12 +74,28 @@ export interface EquipItem {
   cast?: string;
   duration?: string;
   statBonuses: Partial<Record<BonusKey, number>>;
+  /** Для умений: бонусы (и штрафы), которые действуют только пока активно умение (временный эффект после применения). */
+  activeBonuses?: Partial<Record<BonusKey, number>>;
   equipped: boolean;
   /** Запись создана из карточки артефакта: либо сам предмет, либо вложенная в него способность. */
   artifact?: boolean;
   /** Что распознано неуверенно или не найдено — показывается значком «Проверьте», пока игрок не подтвердит. */
   review?: string[];
   image?: string; // base64 data URL
+}
+
+/** Временный эффект от умения (или добавленный вручную): бонусы действуют, пока не наступит конец. */
+export interface ActiveEffect {
+  id: string;
+  name: string;
+  /** Умение, которое его запустило (повторное применение обновляет эффект, а не складывает). */
+  sourceId?: string;
+  bonuses: Partial<Record<BonusKey, number>>;
+  /** Игровое время (секунды) начала и конца. */
+  startedAt: number;
+  endsAt?: number;
+  /** time — до endsAt; combat — до конца боя; rest — до отдыха; manual — пока не снимут вручную. */
+  until: 'time' | 'combat' | 'rest' | 'manual';
 }
 
 export type Roster = 'personal' | 'gm-player' | 'gm-master';
@@ -135,6 +151,8 @@ export interface ChangeEntry {
     | 'dust'
     | 'dustAdded'
     | 'dustRemoved'
+    | 'effectStart'
+    | 'effectEnd'
     | 'note';
   /** Что именно изменено (ключ характеристики, название навыка, id жемчужины…) — по нему сливаются правки и отменяется запись. */
   key?: string;
@@ -202,7 +220,11 @@ export interface Character {
   infectionStatus: InfectionStatus;
   notes: string;
   /** Учёт применения способностей: откаты и дневные лимиты (ключ — id записи или «m:стат:порог»). */
-  usage?: Record<string, { cooldown?: boolean; daily?: boolean }>;
+  usage?: Record<string, { cooldown?: boolean; daily?: boolean; readyAt?: number; combat?: boolean }>;
+  /** Игровое время в секундах: двигается «Тиком боя» (15 с), отдыхами и кнопкой «+ время»; по нему истекают эффекты и откаты. */
+  clock?: number;
+  /** Действующие временные эффекты. */
+  effects?: ActiveEffect[];
   createdAt: number;
   updatedAt: number;
 }

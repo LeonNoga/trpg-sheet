@@ -10,7 +10,7 @@ describe('расход выносливости за бой', () => {
       character.usage = { ability: { cooldown: true, daily: true } };
       const original = structuredClone(character);
       const result = spendCombatStamina(character);
-      expect(result).toEqual({ ...original, pools: { ...original.pools, staminaPoints: after } });
+      expect(result).toEqual({ ...original, pools: { ...original.pools, staminaPoints: after }, clock: 15, effects: [] });
       expect(character).toEqual(original);
     },
   );
