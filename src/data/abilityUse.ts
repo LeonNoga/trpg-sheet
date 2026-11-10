@@ -1,6 +1,6 @@
 import { computeDerivedStats, modifier, totalStat } from './formulas';
 import { DAY_SECONDS, buildEffect, formatRemaining, gameClock, parseCooldown, ROUND_SECONDS } from './effects';
-import { addEffect, advanceClock } from './gameClock';
+import { addEffect, advanceClock, keepPermanent } from './gameClock';
 import type { MilestoneRestore } from './milestones';
 import type { Character, EquipItem } from '../types';
 
@@ -153,7 +153,7 @@ export function applyAbilityUse(character: Character, item: EquipItem, cost: Abi
 
 /** «Новый день» (сутки): проходит 24 часа, все эффекты заканчиваются, откаты и дневные ограничения снимаются; пулы не трогает. */
 export function startNewDay(character: Character): Character {
-  const next = advanceClock({ ...character, effects: [] }, DAY_SECONDS, { endCombat: true });
+  const next = advanceClock({ ...character, effects: keepPermanent(character.effects) }, DAY_SECONDS, { endCombat: true, endRest: true });
   return { ...next, usage: {} };
 }
 
@@ -168,7 +168,7 @@ export function longRestHealing(character: Character): number {
  */
 export function longRest(character: Character): Character {
   // Длительный отдых — 24 часа: эффекты и откаты кончаются, а максимум считается уже без них.
-  const rested = advanceClock(character, DAY_SECONDS, { endCombat: true });
+  const rested = advanceClock(character, DAY_SECONDS, { endCombat: true, endRest: true });
   const max = computeDerivedStats(rested);
   return {
     ...rested,

@@ -296,3 +296,47 @@ describe('конец боя и сброс таймера — разные кно
     expect(spendCombatStamina(advanceClock(make(), 45)).clock).toBe(60);
   });
 });
+
+describe('постоянные бонусы-напоминания', () => {
+  const permanent = {
+    id: 'p1',
+    name: 'Ночное зрение',
+    bonuses: { defense: 2 } as Partial<Record<import('../types').BonusKey, number>>,
+    startedAt: 0,
+    until: 'permanent' as const,
+  };
+  const timed = { id: 't1', name: 'Бег', bonuses: { strength: 5 }, startedAt: 0, until: 'manual' as const };
+  const withBoth = (): Character => ({ ...make(), effects: [permanent, timed] });
+
+  it('считаются в показателях, как обычные бонусы', () => {
+    const base = computeDerivedStats(make()).defense;
+    expect(computeDerivedStats(withBoth()).defense).toBe(base + 2);
+    expect(bonusSources(withBoth(), 'defense')).toEqual([{ name: 'Ночное зрение (эффект)', value: 2 }]);
+  });
+
+  it('сброс таймера снимает остальные эффекты, а постоянные остаются', () => {
+    expect(resetTimer(withBoth()).effects!.map((e) => e.name)).toEqual(['Ночное зрение']);
+  });
+
+  it('новый день, длительный отдых, конец боя и время их не снимают', () => {
+    expect(startNewDay(withBoth()).effects!.map((e) => e.name)).toEqual(['Ночное зрение']);
+    expect(longRest(withBoth()).effects!.map((e) => e.name)).toEqual(['Ночное зрение', 'Бег']);
+    expect(endCombat(withBoth()).effects).toHaveLength(2);
+    expect(advanceClock(withBoth(), 10 ** 7).effects).toHaveLength(2);
+  });
+
+  it('эффект «до длительного отдыха» кончается длительным отдыхом и новым днём, но не коротким', () => {
+    const rest = buildEffect(ability({ duration: 'до следующего длительного отдыха', activeBonuses: { strength: 3 } }), 0, 'r')!;
+    const c: Character = { ...make(), effects: [rest] };
+    expect(shortRest(c, 30).effects).toHaveLength(1);
+    expect(longRest(c).effects).toEqual([]);
+    expect(startNewDay(c).effects).toEqual([]);
+  });
+
+  it('напоминание без бонусов тоже допустимо', () => {
+    const note = { ...permanent, bonuses: {} };
+    const c: Character = { ...make(), effects: [note] };
+    expect(computeDerivedStats(c)).toEqual(computeDerivedStats(make()));
+    expect(resetTimer(c).effects).toHaveLength(1);
+  });
+});

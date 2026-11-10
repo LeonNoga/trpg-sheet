@@ -94,8 +94,11 @@ export interface ActiveEffect {
   /** Игровое время (секунды) начала и конца. */
   startedAt: number;
   endsAt?: number;
-  /** time — до endsAt; combat — до конца боя; rest — до отдыха; manual — пока не снимут вручную. */
-  until: 'time' | 'combat' | 'rest' | 'manual';
+  /**
+   * time — до endsAt; combat — до конца боя; rest — до длительного отдыха; manual — пока не снимут вручную (кончается
+   * сбросом таймера и новым днём); permanent — постоянный бонус-напоминание, его не сбрасывает ни таймер, ни отдых.
+   */
+  until: 'time' | 'combat' | 'rest' | 'manual' | 'permanent';
 }
 
 export type Roster = 'personal' | 'gm-player' | 'gm-master';

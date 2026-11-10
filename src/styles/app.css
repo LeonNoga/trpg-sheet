@@ -2302,3 +2302,6 @@ input[list]::-webkit-calendar-picker-indicator {
 .stat-pill.effect-down {
   box-shadow: 0 0 0 2px var(--warn);
 }
+.effect-chip.permanent {
+  border: 1px dashed currentColor;
+}

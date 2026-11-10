@@ -59,7 +59,7 @@ import {
   spendCombatStamina,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
-import { advanceClock, addEffect, endCombat, removeEffect, resetTimer } from '../data/gameClock';
+import { advanceClock, addEffect, endCombat, keepPermanent, removeEffect, resetTimer } from '../data/gameClock';
 import { activeEffects, bonusSummary, buildEffect, formatClock, formatRemaining, gameClock } from '../data/effects';
 import { useUndo } from '../state/useUndo';
 import type {
@@ -231,10 +231,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     showUndo(parts.length > 0 ? `Бой окончен: ${parts.join(', ')}` : 'Бой окончен: эффектов и откатов «до конца боя» не было', () => patch(() => before));
   }
 
-  /** «Сбросить таймер»: новый цикл отсчёта — таймер в 0:00, все эффекты сняты, откаты идут дальше. */
+  /** «Сбросить таймер»: новый цикл отсчёта — таймер в 0:00, эффекты сняты (кроме постоянных), откаты идут дальше. */
   function handleResetTimer() {
     const before = characterRef.current!;
-    const removed = activeEffects(before).length;
+    const removed = activeEffects(before).filter((e) => e.until !== 'permanent').length;
     patch(resetTimer);
     showUndo(
       `Таймер сброшен: ${formatClock(gameClock(before))} → 0:00${removed > 0 ? `, снято эффектов: ${removed}` : ''}`,
@@ -391,8 +391,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   async function handleSaveImage() {
     setImageBusy(true);
     try {
-      // Бумажный лист — обычные значения: временные эффекты (баффы и штрафы на время) в картинку не попадают.
-      const blobs = await renderSheetPages({ ...character!, effects: [] });
+      // Бумажный лист — обычные значения: временные эффекты (баффы и штрафы на время) в картинку не попадают, постоянные бонусы — да.
+      const blobs = await renderSheetPages({ ...character!, effects: keepPermanent(character!.effects) });
       const name = (character!.characterName.trim() || 'character').replace(/[\\/:*?"<>|]+/g, '_');
       await saveImageFiles(blobs.map((blob, i) => ({ fileName: `${name}-лист${i + 1}.png`, blob })));
     } catch (err) {

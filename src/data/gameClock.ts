@@ -2,6 +2,9 @@ import { computeDerivedStats } from './formulas';
 import { activeEffects, gameClock } from './effects';
 import type { ActiveEffect, Character } from '../types';
 
+/** Постоянные бонусы-напоминания переживают сброс таймера, новый день и отдых. */
+export const keepPermanent = (effects: ActiveEffect[] = []): ActiveEffect[] => effects.filter((e) => e.until === 'permanent');
+
 /** Текущие значения здоровья, выносливости и ресурса не могут быть выше расчётного максимума (пониженного после окончания эффекта). */
 export function clampPools(character: Character): Character {
   const max = computeDerivedStats(character);
@@ -18,7 +21,7 @@ export function clampPools(character: Character): Character {
 }
 
 /**
- * «Сбросить таймер»: новый цикл отсчёта. Таймер становится 0:00, все эффекты снимаются, а откаты способностей идут дальше —
+ * «Сбросить таймер»: новый цикл отсчёта. Таймер становится 0:00, все эффекты снимаются (кроме постоянных бонусов), а откаты способностей идут дальше —
  * у них сохраняется прежнее оставшееся время (отметки времени сдвигаются на текущее значение часов).
  */
 export function resetTimer(character: Character): Character {
@@ -26,18 +29,24 @@ export function resetTimer(character: Character): Character {
   const usage = Object.fromEntries(
     Object.entries(character.usage ?? {}).map(([key, u]) => [key, u.readyAt !== undefined ? { ...u, readyAt: u.readyAt - shift } : u]),
   );
-  return clampPools({ ...character, clock: 0, effects: [], usage });
+  return clampPools({ ...character, clock: 0, effects: keepPermanent(character.effects), usage });
 }
 
 /**
  * Двигает игровые часы: убирает истёкшие эффекты и откаты. С endCombat (конец боя, любой отдых) заканчиваются эффекты
  * «до конца боя» и откаты «раз в бой». После окончания эффектов пулы подрезаются до нового максимума. Таймер не сбрасывается.
  */
-export function advanceClock(character: Character, seconds: number, options: { endCombat?: boolean } = {}): Character {
+export function advanceClock(
+  character: Character,
+  seconds: number,
+  options: { endCombat?: boolean; endRest?: boolean } = {},
+): Character {
   const clock = gameClock(character) + Math.max(0, seconds);
   const before = character.effects ?? [];
   const stepped: Character = { ...character, clock };
-  const effects = activeEffects(stepped).filter((e) => !(options.endCombat && e.until === 'combat'));
+  const effects = activeEffects(stepped).filter(
+    (e) => !(options.endCombat && e.until === 'combat') && !(options.endRest && e.until === 'rest'),
+  );
 
   const usage = { ...(character.usage ?? {}) };
   for (const [key, entry] of Object.entries(usage)) {

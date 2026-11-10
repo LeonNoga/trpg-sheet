@@ -29,7 +29,9 @@ function untilText(effect: ActiveEffect, clock: number): string {
     case 'combat':
       return 'до конца боя';
     case 'rest':
-      return 'до отдыха';
+      return 'до длит. отдыха';
+    case 'permanent':
+      return 'постоянно';
     default:
       return 'до снятия';
   }
@@ -117,7 +119,7 @@ function TimeDialog({ character, onAdvance, onEndCombat, onResetTimer, onClose }
               onResetTimer();
               onClose();
             }}
-            title="Новый цикл отсчёта: таймер в 0:00, все эффекты сняты; откаты способностей идут дальше"
+            title="Новый цикл отсчёта: таймер в 0:00, эффекты сняты (кроме постоянных бонусов); откаты способностей идут дальше"
           >
             ↺ Сбросить таймер
           </button>
@@ -130,7 +132,7 @@ function TimeDialog({ character, onAdvance, onEndCombat, onResetTimer, onClose }
   );
 }
 
-type Until = 'seconds' | 'minutes' | 'hours' | 'combat' | 'manual';
+type Until = 'seconds' | 'minutes' | 'hours' | 'combat' | 'manual' | 'permanent';
 
 function EffectDialog({ character, onAdd, onClose }: { character: Character; onAdd: (effect: ActiveEffect) => void; onClose: () => void }) {
   const [name, setName] = useState('');
@@ -150,7 +152,7 @@ function EffectDialog({ character, onAdd, onClose }: { character: Character; onA
       name: name.trim(),
       bonuses: Object.fromEntries(Object.entries(bonuses).filter(([, v]) => v)),
       startedAt: clock,
-      ...(timed ? { until: 'time' as const, endsAt: clock + length } : { until: until === 'combat' ? ('combat' as const) : ('manual' as const) }),
+      ...(timed ? { until: 'time' as const, endsAt: clock + length } : { until: until === 'combat' ? ('combat' as const) : until === 'permanent' ? ('permanent' as const) : ('manual' as const) }),
     });
     onClose();
   }
@@ -158,14 +160,17 @@ function EffectDialog({ character, onAdd, onClose }: { character: Character; onA
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-box">
-        <h3 className="card-title">Добавить эффект вручную</h3>
-        <p className="muted">Например, бонус от союзника или благословение мастера. Штраф вписывается со знаком «−».</p>
+        <h3 className="card-title">Добавить эффект или постоянный бонус</h3>
+        <p className="muted">
+          Бонус от союзника, благословение мастера или пассивка, о которой легко забыть («постоянно» — висит перед глазами,
+          его не сбрасывают ни таймер, ни отдых). Бонусы можно не указывать — тогда это просто напоминание. Штраф — со знаком «−».
+        </p>
         <div className="field">
           <label>Название</label>
-          <input value={name} autoFocus placeholder="Благословение" onChange={(e) => setName(e.target.value)} />
+          <input value={name} autoFocus placeholder="Благословение, Ночное зрение…" onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="field">
-          <label>Бонусы и штрафы</label>
+          <label>Бонусы и штрафы (необязательно)</label>
           <BonusEditor value={bonuses} onChange={setBonuses} path={character.path} />
         </div>
         <div className="field">
@@ -186,7 +191,8 @@ function EffectDialog({ character, onAdd, onClose }: { character: Character; onA
               <option value="minutes">минут</option>
               <option value="hours">часов</option>
               <option value="combat">до конца боя</option>
-              <option value="manual">пока не сниму</option>
+              <option value="manual">пока не сниму (до сброса таймера)</option>
+              <option value="permanent">постоянно (не сбрасывается)</option>
             </select>
           </div>
         </div>
@@ -208,7 +214,8 @@ export function EffectsBar({ character, onAdvance, onEndCombat, onResetTimer, on
   const [timeOpen, setTimeOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const clock = gameClock(character);
-  const effects = activeEffects(character);
+  // Постоянные бонусы — первыми, чтобы всегда были перед глазами.
+  const effects = [...activeEffects(character)].sort((a, b) => Number(b.until === 'permanent') - Number(a.until === 'permanent'));
 
   return (
     <div className="effects-bar">
@@ -222,13 +229,22 @@ export function EffectsBar({ character, onAdvance, onEndCombat, onResetTimer, on
         return (
           <span
             key={effect.id}
-            className={`effect-chip ${negative ? 'neg' : ''}`}
+            className={`effect-chip ${negative ? 'neg' : ''} ${effect.until === 'permanent' ? 'permanent' : ''}`}
             title={`${effect.name}${summary ? `: ${summary}` : ''} — ${untilText(effect, clock)}`}
           >
-            <span className="effect-name">{effect.name}</span>
+            <span className="effect-name">
+              {effect.until === 'permanent' ? '📌 ' : ''}
+              {effect.name}
+            </span>
             {summary && <span className="effect-bonus">{summary}</span>}
             <span className="effect-left">{untilText(effect, clock)}</span>
-            <button type="button" aria-label={`Снять эффект «${effect.name}»`} onClick={() => onRemoveEffect(effect.id)}>
+            <button
+              type="button"
+              aria-label={`Снять эффект «${effect.name}»`}
+              onClick={() => {
+                if (effect.until !== 'permanent' || confirm(`Удалить постоянный бонус «${effect.name}»?`)) onRemoveEffect(effect.id);
+              }}
+            >
               ✕
             </button>
           </span>
