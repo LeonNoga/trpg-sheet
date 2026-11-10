@@ -45,11 +45,12 @@ function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 
       <div className="modal-box">
         <h3 className="card-title">Игровое время</h3>
         <p>
-          Сейчас: <b>{formatClock(clock)}</b>
+          Таймер: <b>{formatClock(clock)}</b>
         </p>
         <p className="muted">
-          Здесь время просто двигается — выносливость не тратится. По нему заканчиваются эффекты и откаты. Время также
-          идёт само: «Тик боя» (15 секунд, −2 выносливости), отдых и новый день.
+          Таймер показывает время с начала боя (или с последнего отдыха). Он идёт по «Тику боя» (15 секунд, −2
+          выносливости) и по кнопкам ниже, где выносливость не тратится. «Конец боя» и любой отдых сбрасывают его в 0:00 —
+          у эффектов и откатов остаётся прежнее оставшееся время.
         </p>
         <div className="quick-amounts">
           {[
@@ -101,10 +102,13 @@ function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 
         <div className="item-actions">
           <button
             className="btn"
-            onClick={onEndCombat}
-            title="Заканчиваются эффекты «до конца боя» и откаты «раз в бой»; время не идёт"
+            onClick={() => {
+              onEndCombat();
+              onClose();
+            }}
+            title="Сбросить таймер, закончить эффекты «до конца боя» и откаты «раз в бой»"
           >
-            🏁 Конец боя
+            🏁 Конец боя (сбросить таймер)
           </button>
           <button className="btn btn-ghost" onClick={onClose}>
             Закрыть
@@ -197,8 +201,11 @@ export function EffectsBar({ character, onAdvance, onEndCombat, onAddEffect, onR
 
   return (
     <div className="effects-bar">
-      <button type="button" className="clock-chip" onClick={() => setTimeOpen(true)} title="Игровое время: нажмите, чтобы подвинуть или закончить бой">
+      <button type="button" className="clock-chip" onClick={() => setTimeOpen(true)} title="Время с начала боя или последнего отдыха: нажмите, чтобы подвинуть">
         ⏱ {formatClock(clock)}
+      </button>
+      <button type="button" className="btn btn-sm btn-ghost" onClick={onEndCombat} title="Сбросить таймер, закончить эффекты «до конца боя» и откаты «раз в бой»">
+        🏁 Конец боя
       </button>
       {effects.map((effect) => {
         const summary = bonusSummary(effect.bonuses, (k) => bonusLabel(k, character.path));

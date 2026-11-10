@@ -18,8 +18,26 @@ export function clampPools(character: Character): Character {
 }
 
 /**
- * Двигает игровые часы: убирает истёкшие эффекты и откаты. Эффекты «до конца боя» и откаты «раз в бой» заканчиваются,
- * если время прошло в отдыхе (endCombat). После окончания эффектов пулы подрезаются до нового максимума.
+ * Сбрасывает таймер в 0:00, не меняя того, сколько осталось у эффектов и откатов: все отметки времени сдвигаются на
+ * текущее значение часов. Так таймер показывает время «с начала боя / последнего отдыха», а не растёт бесконечно.
+ */
+export function rebaseClock(character: Character): Character {
+  const shift = gameClock(character);
+  if (shift === 0) return character;
+  const effects = (character.effects ?? []).map((e) => ({
+    ...e,
+    startedAt: e.startedAt - shift,
+    ...(e.endsAt !== undefined ? { endsAt: e.endsAt - shift } : {}),
+  }));
+  const usage = Object.fromEntries(
+    Object.entries(character.usage ?? {}).map(([key, u]) => [key, u.readyAt !== undefined ? { ...u, readyAt: u.readyAt - shift } : u]),
+  );
+  return { ...character, clock: 0, effects, usage };
+}
+
+/**
+ * Двигает игровые часы: убирает истёкшие эффекты и откаты. С endCombat (конец боя, любой отдых) заканчиваются эффекты
+ * «до конца боя» и откаты «раз в бой», а таймер сбрасывается в 0:00. После окончания эффектов пулы подрезаются до нового максимума.
  */
 export function advanceClock(character: Character, seconds: number, options: { endCombat?: boolean } = {}): Character {
   const clock = gameClock(character) + Math.max(0, seconds);
@@ -37,10 +55,11 @@ export function advanceClock(character: Character, seconds: number, options: { e
   }
 
   const moved: Character = { ...stepped, effects, usage };
-  return effects.length !== before.length ? clampPools(moved) : moved;
+  const settled = effects.length !== before.length ? clampPools(moved) : moved;
+  return options.endCombat ? rebaseClock(settled) : settled;
 }
 
-/** «Конец боя»: заканчиваются эффекты «до конца боя» и откаты «раз в бой»; время не идёт. */
+/** «Конец боя»: заканчиваются эффекты «до конца боя» и откаты «раз в бой», таймер сбрасывается в 0:00 (остальные эффекты и откаты идут дальше). */
 export function endCombat(character: Character): Character {
   return advanceClock(character, 0, { endCombat: true });
 }

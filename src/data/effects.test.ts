@@ -151,7 +151,7 @@ describe('отдых, новый день и пулы', () => {
   it('длительный отдых — 24 часа: эффекты кончаются, пулы до нового максимума, откаты сняты', () => {
     let c = applyAbilityUse(make({ pools: { hp: 5, staminaPoints: 1, resourcePoints: 1 } }), ability(), cost);
     c = longRest(c);
-    expect(c.clock).toBe(86400);
+    expect(c.clock).toBe(0); // таймер после отдыха сброшен
     expect(c.effects).toEqual([]);
     expect(c.usage).toEqual({});
     expect(c.pools.staminaPoints).toBe(computeDerivedStats(c).staminaPoints);
@@ -163,7 +163,7 @@ describe('отдых, новый день и пулы', () => {
     c = { ...c, effects: [manual] };
     const next = startNewDay(c);
     expect(next.effects).toEqual([]);
-    expect(next.clock).toBe(86400);
+    expect(next.clock).toBe(0);
     expect(next.pools).toEqual({ hp: 5, staminaPoints: 3, resourcePoints: 2 });
   });
 
@@ -252,5 +252,33 @@ describe('рост максимума двигает и текущие знач�
     const next = { ...before, baseStats: { ...before.baseStats, endurance: before.baseStats.endurance + 10 } };
     const grown = followMaxChange(before, next);
     expect(grown.pools.staminaPoints).toBe(computeDerivedStats(grown).staminaPoints);
+  });
+});
+
+describe('сброс таймера', () => {
+  it('конец боя сбрасывает таймер в 0:00, а остаток времени у эффектов и откатов сохраняется', () => {
+    let c = applyAbilityUse(make(), ability({ duration: '5 минут', cooldown: '1 час', activeBonuses: { strength: 20 } }), cost);
+    c = advanceClock(c, 90); // 1:30 с начала боя
+    expect(c.clock).toBe(90);
+    const after = endCombat(c);
+    expect(after.clock).toBe(0);
+    expect(after.effects![0].endsAt).toBe(300 - 90); // осталось 3:30
+    expect(after.usage!.rush.readyAt).toBe(3600 - 90);
+    expect(totalStat(after, 'strength')).toBe(40); // бонус ещё действует
+    // и дальше истекает в то же самое время
+    expect(totalStat(advanceClock(after, 209), 'strength')).toBe(40);
+    expect(totalStat(advanceClock(after, 210), 'strength')).toBe(20);
+  });
+
+  it('короткий отдых тоже сбрасывает таймер, длинный откат не теряется', () => {
+    const c = applyAbilityUse(make(), ability({ cooldown: '1 час', activeBonuses: undefined }), cost);
+    const rested = shortRest(advanceClock(c, 30), 15);
+    expect(rested.clock).toBe(0);
+    expect(isCooling(rested.usage!.rush, 0)).toBe(true);
+    expect(rested.usage!.rush.readyAt).toBe(3600 - 30 - 15 * 60);
+  });
+
+  it('тик боя и «+ время» таймер не сбрасывают', () => {
+    expect(spendCombatStamina(advanceClock(make(), 45)).clock).toBe(60);
   });
 });

@@ -60,7 +60,7 @@ import {
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
 import { advanceClock, addEffect, endCombat, removeEffect } from '../data/gameClock';
-import { bonusSummary, buildEffect, formatRemaining, gameClock } from '../data/effects';
+import { activeEffects, bonusSummary, buildEffect, formatClock, formatRemaining, gameClock } from '../data/effects';
 import { useUndo } from '../state/useUndo';
 import type {
   Character,
@@ -218,6 +218,22 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
   function clearUsageFlag(key: string, which: 'cooldown' | 'daily') {
     patch((c) => clearUsage(c, key, which));
+  }
+
+  /** «Конец боя»: заканчивает эффекты «до конца боя» и откаты «раз в бой», сбрасывает таймер; результат показывается сообщением с отменой. */
+  function handleEndCombat() {
+    const before = characterRef.current!;
+    const after = endCombat(before);
+    const effects = activeEffects(before).length - activeEffects(after).length;
+    const cooldowns = Object.values(before.usage ?? {}).filter((u) => u.combat).length;
+    const parts = [
+      `таймер ${formatClock(gameClock(before))} → 0:00`,
+      effects > 0 ? `закончились эффекты: ${effects}` : '',
+      cooldowns > 0 ? `сняты откаты: ${cooldowns}` : '',
+    ].filter(Boolean);
+    const nothingToEnd = gameClock(before) === 0 && effects === 0 && cooldowns === 0;
+    patch(() => after);
+    showUndo(nothingToEnd ? 'Бой окончен: эффектов и откатов «до конца боя» не было' : `Бой окончен: ${parts.join(', ')}`, () => patch(() => before));
   }
 
   function handleNewDay() {
@@ -597,7 +613,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
       <EffectsBar
         character={character}
         onAdvance={(seconds) => patch((c) => advanceClock(c, seconds))}
-        onEndCombat={() => patch(endCombat)}
+        onEndCombat={handleEndCombat}
         onAddEffect={(effect) => patch((c) => addEffect(c, effect))}
         onRemoveEffect={(id) => patch((c) => removeEffect(c, id))}
       />
