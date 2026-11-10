@@ -215,9 +215,6 @@ export function EffectsBar({ character, onAdvance, onEndCombat, onResetTimer, on
       <button type="button" className="clock-chip" onClick={() => setTimeOpen(true)} title="Игровой таймер: нажмите, чтобы подвинуть время или сбросить таймер">
         ⏱ {formatClock(clock)}
       </button>
-      <button type="button" className="btn btn-sm btn-ghost" onClick={onEndCombat} title="Закончить эффекты «до конца боя» и откаты «раз в бой»; таймер не меняется">
-        🏁 Конец боя
-      </button>
       {effects.map((effect) => {
         const summary = bonusSummary(effect.bonuses, (k) => bonusLabel(k, character.path));
         const values = Object.values(effect.bonuses);
