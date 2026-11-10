@@ -61,7 +61,7 @@ export const DERIVED_LABELS: Record<DerivedKey, string> = {
 export const PATH_LABELS: Record<Path, string> = {
   genetic: 'Генетический',
   magic: 'Магический',
-  tech: 'Технический',
+  tech: 'Технологический',
 };
 
 export const ITEM_PATH_LABELS: Record<ItemPath, string> = {

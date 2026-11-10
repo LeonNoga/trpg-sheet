@@ -25,6 +25,8 @@ import { StatPill } from './StatPill';
 import type { Character, DerivedKey, InitiativeSource, ResistanceSource, StatKey } from '../types';
 
 interface Props {
+  /** Полный вид: у каждой характеристики рядом свой показатель (как на бумажной карточке). Иначе — расходуемое блоком и список характеристик. */
+  full?: boolean;
   character: Character;
   onChangeStat: (key: StatKey, value: number) => void;
   onChangePool: (key: 'hp' | 'staminaPoints' | 'resourcePoints', value: number) => void;
@@ -90,6 +92,7 @@ const PAIRED_STATS = STAT_ORDER.filter((key) => STAT_TO_DERIVED[key]);
 const STANDALONE_STATS = STAT_ORDER.filter((key) => !STAT_TO_DERIVED[key]);
 
 export function CharacteristicsPanel({
+  full = true,
   character,
   onChangeStat,
   onChangePool,
@@ -123,6 +126,80 @@ export function CharacteristicsPanel({
     );
   }
 
+  function poolTile(derivedKey: DerivedKey, poolKey: 'hp' | 'staminaPoints' | 'resourcePoints') {
+    return (
+      <HoverCard
+        className="pool-tile"
+        card={<DerivedBreakdownCard label={`${derivedLabel(derivedKey, character)} (максимум)`} breakdown={derivedBreakdown(character, derivedKey)} />}
+      >
+        <div className="pool-tile-values">
+          <NumberField value={character.pools[poolKey]} onChange={(v) => onChangePool(poolKey, v)} />
+          <span className="pool-tile-max">/ {derived[poolKey]}</span>
+        </div>
+        <PoolAdjust current={character.pools[poolKey]} max={derived[poolKey]} onChange={(v) => onChangePool(poolKey, v)} />
+        <div className="label">{derivedLabel(derivedKey, character)}</div>
+      </HoverCard>
+    );
+  }
+
+  if (!full) {
+    // Компактный вид: расходуемые пулы одним блоком, дальше просто характеристики. Остальные показатели видны над вкладками.
+    const pools = PAIRED_STATS.flatMap((statKey) => {
+      const derivedKey = STAT_TO_DERIVED[statKey]!;
+      const poolKey = poolKeyFor(derivedKey);
+      return poolKey ? [{ derivedKey, poolKey }] : [];
+    });
+    return (
+      <div>
+        <div className="pools-block">
+          {pools.map(({ derivedKey, poolKey }) => (
+            <div key={poolKey}>{poolTile(derivedKey, poolKey)}</div>
+          ))}
+        </div>
+        <div className="char-list">
+          {STAT_ORDER.map((statKey) => (
+            <div key={statKey}>{statPill(statKey)}</div>
+          ))}
+        </div>
+        <div className="calc-sources">
+          <label>
+            <span className="muted">Инициатива считается по</span>
+            <select
+              className="initiative-source-select"
+              value={character.initiativeSource}
+              onChange={(e) => onChangeInitiativeSource(e.target.value as InitiativeSource)}
+            >
+              {INITIATIVE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.value === 'auto' ? `Авто (сейчас: ${STAT_LABELS[currentInitiativeStat(character)]})` : opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="muted">Сложность сопротивления считается по</span>
+            {resistanceAllowed.length > 1 ? (
+              <select
+                className="initiative-source-select"
+                value={character.resistanceSource}
+                onChange={(e) => onChangeResistanceSource(e.target.value as ResistanceSource)}
+              >
+                <option value="auto">Авто (сейчас: {STAT_LABELS[currentResistanceStat(character)]})</option>
+                {resistanceAllowed.map((stat) => (
+                  <option key={stat} value={stat}>
+                    {STAT_LABELS[stat]}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div>{STAT_DATIVE[currentResistanceStat(character)]}</div>
+            )}
+          </label>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="char-rows">
@@ -134,21 +211,7 @@ export function CharacteristicsPanel({
             <div className="char-row" key={statKey}>
               {statPill(statKey)}
               {poolKey ? (
-                <HoverCard
-                  className="pool-tile"
-                  card={<DerivedBreakdownCard label={`${derivedLabel(derivedKey, character)} (максимум)`} breakdown={derivedBreakdown(character, derivedKey)} />}
-                >
-                  <div className="pool-tile-values">
-                    <NumberField value={character.pools[poolKey]} onChange={(v) => onChangePool(poolKey, v)} />
-                    <span className="pool-tile-max">/ {derived[poolKey]}</span>
-                  </div>
-                  <PoolAdjust
-                    current={character.pools[poolKey]}
-                    max={derived[poolKey]}
-                    onChange={(v) => onChangePool(poolKey, v)}
-                  />
-                  <div className="label">{derivedLabel(derivedKey, character)}</div>
-                </HoverCard>
+                poolTile(derivedKey, poolKey)
               ) : (
                 <HoverCard
                   className="derived-tile"

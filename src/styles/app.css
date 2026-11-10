@@ -1884,31 +1884,6 @@ input[list]::-webkit-calendar-picker-indicator {
 /* Нативная кнопка покрывает всю карточку, сохраняя подпись и значение в dl. */
 .header-current-resource { position: relative; }
 
-.resource-card-action {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  border-radius: inherit;
-  background: transparent;
-  touch-action: manipulation;
-}
-
-.resource-card-action:hover {
-  background: color-mix(in srgb, var(--resource-color) 10%, transparent);
-}
-
-.resource-card-action:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: -3px;
-}
-
-.resource-card-action:active {
-  background: color-mix(in srgb, var(--resource-color) 20%, transparent);
-}
-
 .static-stats-wrap { position: relative; }
 .header-static-stat { position: relative; }
 .static-stat-action {
@@ -2008,3 +1983,210 @@ input[list]::-webkit-calendar-picker-indicator {
 .group-member { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .group-member > span { width: 16px; flex-shrink: 0; color: var(--text-muted); font-size: 12px; }
 .group-member input { flex: 1; min-width: 0; min-height: 40px; }
+
+/* ---------- Правки: впитывание, прыжки, лут, компактные характеристики, шапка на телефоне ---------- */
+
+.phone-only {
+  display: none;
+}
+
+.menu-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.menu-slot:empty {
+  display: none;
+}
+
+.app-menu .more-menu-list {
+  left: auto;
+  right: 0;
+}
+
+@media (max-width: 600px) {
+  /* Шапка на телефоне: одна компактная строка, не липнет к верху и не закрывает экран при прокрутке. */
+  .app-header {
+    position: static;
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .app-header h1 {
+    width: auto;
+    margin: 0 auto 0 0;
+    font-size: 16px;
+  }
+
+  .app-header .nav-tabs,
+  .app-header .theme-toggle,
+  .hide-on-phone,
+  .sheet-actions {
+    display: none;
+  }
+
+  .app-header .phone-only {
+    display: inline-flex;
+  }
+
+  .app-header .app-menu.phone-only {
+    display: block;
+    margin-left: auto;
+  }
+}
+
+.absorb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.absorb-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.jump-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jump-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+}
+
+.jump-row.open {
+  border-color: var(--accent);
+}
+
+.jump-value {
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.jump-working {
+  margin: 4px 2px 6px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.loot-row {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.loot-name {
+  flex: 1 1 180px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  font-weight: 600;
+}
+
+.loot-name.static {
+  display: flex;
+  align-items: center;
+}
+
+.loot-value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.loot-value input {
+  width: 130px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.quick-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.full-stats-toggle {
+  align-self: center;
+}
+
+.pools-block {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pools-block .pool-tile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  text-align: left;
+}
+
+.pools-block .pool-tile .label {
+  order: -1;
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+}
+
+.char-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.calc-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  font-size: 13px;
+}
+
+.calc-sources label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 220px;
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { abilitySlotLimit } from '../data/statsConfig';
+import { NumberField } from './NumberField';
 import { SlotUseButton } from './SlotUseButton';
 import type { SlotUseInfo } from './SlotUseButton';
 import type { TraitList } from '../types';
@@ -96,6 +97,9 @@ interface DnaListsProps {
   slotUse?: (name: string) => SlotUseInfo | null;
   onUseAbility?: (id: string) => void;
   onResetCooldown?: (id: string) => void;
+  /** «Очки умений» — число вверху блока; игроки пока заполняют вручную. */
+  points?: number;
+  onChangePoints?: (points: number) => void;
   onChange: (lists: TraitList[]) => void;
 }
 
@@ -111,6 +115,8 @@ export function DnaListsCard({
   slotUse,
   onUseAbility,
   onResetCooldown,
+  points,
+  onChangePoints,
   onChange,
 }: DnaListsProps) {
   const limit = abilitySlotLimit(level);
@@ -133,6 +139,12 @@ export function DnaListsCard({
 
   return (
     <div className="card">
+      {onChangePoints && (
+        <div className="field" style={{ maxWidth: 200 }}>
+          <label>Очки умений</label>
+          <NumberField value={points ?? 0} onChange={onChangePoints} aria-label="Очки умений" />
+        </div>
+      )}
       {abilityNames.length > 0 && (
         <datalist id={datalistId}>
           {[...new Set(abilityNames)].map((name) => (

@@ -18,6 +18,8 @@ interface Props {
   selected?: boolean;
   onSelect?: (selected: boolean) => void;
   onToggleEquipped: () => void;
+  /** Для умений: переключатель «Впитано» вместо «Надето» (впитанное умение вписано в один из списков слотов). */
+  absorb?: { absorbed: boolean; onToggle: () => void };
   /** Дополнительный блок в раскрытой части (например, кнопка «Применить» у способностей). */
   extra?: ReactNode;
   /** Подтвердить, что распознанные данные проверены — убирает значок «Проверьте». */
@@ -90,6 +92,7 @@ export function ItemCard({
   onDismissReview,
   expandCommand,
   onToggleEquipped,
+  absorb,
   onEdit,
   onDelete,
 }: Props) {
@@ -134,7 +137,7 @@ export function ItemCard({
   const foreignHint = foreignPath ? `Другой путь: ${ITEM_PATH_LABELS[item.path!]}. У персонажа — ${PATH_LABELS[path!]}.` : '';
 
   return (
-    <div className={`item-card ${item.equipped && showEquipToggle ? 'equipped' : ''} ${rarityClass} ${selected ? 'selected' : ''} ${open ? 'open' : ''} ${foreignPath ? 'foreign' : ''}`}>
+    <div className={`item-card ${(item.equipped && showEquipToggle) || absorb?.absorbed ? 'equipped' : ''} ${rarityClass} ${selected ? 'selected' : ''} ${open ? 'open' : ''} ${foreignPath ? 'foreign' : ''}`}>
       <div
         className="item-card-head"
         onClick={(e) => {
@@ -197,6 +200,12 @@ export function ItemCard({
                 }}
               />
               {item.equipped ? 'Надето' : 'Снято'}
+            </label>
+          )}
+          {absorb && (
+            <label className="toggle" title="Впитанное умение вписано в список слотов и доступно для применения">
+              <input type="checkbox" checked={absorb.absorbed} disabled={!item.name.trim()} onChange={absorb.onToggle} />
+              {absorb.absorbed ? 'Впитано' : 'Впитать'}
             </label>
           )}
           {item.image && (

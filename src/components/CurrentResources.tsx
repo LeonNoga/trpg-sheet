@@ -7,10 +7,9 @@ import type { Character } from '../types';
 
 interface Props {
   character: Character;
-  onSpendCombatStamina?: () => void;
 }
 
-export function CurrentResources({ character, onSpendCombatStamina }: Props) {
+export function CurrentResources({ character }: Props) {
   const maximum = computeDerivedStats(character);
   const resources = [
     { key: 'hp', label: 'Здоровье', color: 'health' },
@@ -36,14 +35,6 @@ export function CurrentResources({ character, onSpendCombatStamina }: Props) {
             <dt>{label}<span className="resource-percent">{percent}%</span></dt>
             <dd>
               {value}
-              {key === 'staminaPoints' && onSpendCombatStamina && (
-                <button
-                  type="button"
-                  className="resource-card-action"
-                  aria-label={`Выносливость: ${value}. Потратить 2 единицы за бой`}
-                  onClick={onSpendCombatStamina}
-                />
-              )}
             </dd>
           </div>
         );

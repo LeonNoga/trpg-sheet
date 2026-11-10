@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppDataProvider } from './state/AppDataContext';
 import { CharacterList } from './components/CharacterList';
 import { CreationWizard } from './components/CreationWizard';
@@ -9,6 +9,7 @@ import { BackupPanel } from './components/BackupPanel';
 import { ExportFallbackDialog, ImageFallbackDialog } from './components/FileDialogs';
 import { NoticeBar } from './components/NoticeBar';
 import { UndoProvider } from './state/UndoContext';
+import { HeaderSlotContext } from './state/HeaderSlot';
 import { applyTheme, loadTheme, nextTheme, THEME_LABELS } from './theme';
 import type { Theme } from './theme';
 import type { Roster } from './types';
@@ -23,6 +24,26 @@ type View =
 function Shell() {
   const [view, setView] = useState<View>({ screen: 'list' });
   const [theme, setTheme] = useState<Theme>(loadTheme);
+  // Меню «⋯» на телефоне: навигация, тема и (на экране персонажа) его действия, которые он выносит в menuSlot.
+  const [menuSlot, setMenuSlot] = useState<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    // Нативный слушатель: кнопки из портала экрана персонажа не проходят через React-родителей меню.
+    const closeOnPress = (e: Event) => {
+      if ((e.target as HTMLElement).closest('button')) menu.open = false;
+    };
+    menu.addEventListener('click', closeOnPress);
+    return () => menu.removeEventListener('click', closeOnPress);
+  }, []);
+
+  function switchTheme() {
+    const next = nextTheme(theme);
+    applyTheme(next);
+    setTheme(next);
+  }
 
   const topTab: 'list' | 'gm' | 'reference' =
     view.screen === 'gm' ? 'gm' : view.screen === 'reference' ? 'reference' : 'list';
@@ -30,7 +51,12 @@ function Shell() {
   return (
     <>
       <header className="app-header">
-        <h1>Карточка персонажа</h1>
+        {view.screen === 'sheet' && (
+          <button className="btn btn-sm phone-only" onClick={() => setView({ screen: view.returnTo })}>
+            ← К списку
+          </button>
+        )}
+        <h1 className={view.screen === 'sheet' ? 'hide-on-phone' : ''}>Карточка персонажа</h1>
         <nav className="nav-tabs">
           <button className={`nav-tab ${topTab === 'list' ? 'active' : ''}`} onClick={() => setView({ screen: 'list' })}>
             Персонажи
@@ -45,23 +71,36 @@ function Shell() {
             Памятка и прогрессия
           </button>
         </nav>
-        <button
-          className="btn btn-sm theme-toggle"
-          title="Тема оформления: нажмите, чтобы переключить"
-          onClick={() => {
-            const next = nextTheme(theme);
-            applyTheme(next);
-            setTheme(next);
-          }}
-        >
+        <button className="btn btn-sm theme-toggle" title="Тема оформления: нажмите, чтобы переключить" onClick={switchTheme}>
           ◐ {THEME_LABELS[theme]}
         </button>
+        <details className="more-menu app-menu phone-only" ref={menuRef}>
+          <summary className="btn btn-sm" aria-label="Меню">
+            ⋯
+          </summary>
+          <div className="more-menu-list">
+            <button className="btn btn-ghost" onClick={() => setView({ screen: 'list' })}>
+              Персонажи
+            </button>
+            <button className="btn btn-ghost" onClick={() => setView({ screen: 'gm' })}>
+              Мастер-вид
+            </button>
+            <button className="btn btn-ghost" onClick={() => setView({ screen: 'reference' })}>
+              Памятка и прогрессия
+            </button>
+            <button className="btn btn-ghost" onClick={switchTheme}>
+              ◐ Тема: {THEME_LABELS[theme]}
+            </button>
+            <div className="menu-slot" ref={setMenuSlot} />
+          </div>
+        </details>
       </header>
 
       <ExportFallbackDialog />
       <ImageFallbackDialog />
       <NoticeBar />
 
+      <HeaderSlotContext.Provider value={menuSlot}>
       <main className="app-main">
         {view.screen === 'list' && (
           <>
@@ -98,6 +137,7 @@ function Shell() {
           />
         )}
       </main>
+      </HeaderSlotContext.Provider>
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { CharacterInfo } from './CharacterInfo';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useContext, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CurrentResources } from './CurrentResources';
 import { StaticStats } from './StaticStats';
 import { useAppData } from '../state/useAppData';
@@ -14,6 +15,10 @@ import { ClassHint } from './ClassHint';
 import { EquipmentSilhouette } from './EquipmentSilhouette';
 import { SkillTrainingScreen } from './SkillTrainingScreen';
 import { AdditionalInfoTab } from './AdditionalInfoTab';
+import { LootTab } from './LootTab';
+import { AbsorbDialog } from './AbsorbDialog';
+import { absorbAbility, isAbsorbed, releaseAbility } from '../data/absorb';
+import { HeaderSlotContext } from '../state/HeaderSlot';
 import { renderSheetPages } from '../utils/sheetImage';
 import { saveImageFiles } from '../storage/saveFile';
 import {
@@ -66,16 +71,32 @@ interface Props {
   onBack: () => void;
 }
 
-type Tab = 'character' | 'equipment' | 'abilities' | 'training' | 'info';
+type Tab = 'character' | 'equipment' | 'abilities' | 'loot' | 'info' | 'training';
 
 function tabsFor(path: Path): { key: Tab; label: string }[] {
   return [
     { key: 'character', label: 'Персонаж' },
     { key: 'equipment', label: 'Снаряжение' },
     { key: 'abilities', label: PATH_ABILITY_LABELS[path].tab },
-    { key: 'training', label: 'Прокачка навыков' },
+    { key: 'loot', label: 'Лут' },
     { key: 'info', label: 'Доп. информация' },
+    // Редкая вкладка — в самом конце.
+    { key: 'training', label: 'Прокачка навыков' },
   ];
+}
+
+const FULL_STATS_KEY = 'trpg-full-stats';
+
+/** «Полный вид» характеристик: на телефоне по умолчанию выключен (компактный список), на компьютере — включён. */
+function loadFullStats(): boolean {
+  try {
+    const saved = localStorage.getItem(FULL_STATS_KEY);
+    if (saved === '1') return true;
+    if (saved === '0') return false;
+  } catch {
+    /* хранилище недоступно */
+  }
+  return !(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 600px)').matches);
 }
 
 export function CharacterSheet({ characterId, onBack }: Props) {
@@ -84,6 +105,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [shortRestOpen, setShortRestOpen] = useState(false);
+  const [absorbing, setAbsorbing] = useState<EquipItem | null>(null);
+  const [fullStats, setFullStats] = useState(loadFullStats);
+  const headerSlot = useContext(HeaderSlotContext);
   const character = characters.find((c) => c.id === characterId);
   const [tab, setTab] = useState<Tab>('character');
   const [xpToAdd, setXpToAdd] = useState('');
@@ -218,6 +242,38 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     patch((c) => clearUsage(clearUsage(c, id, 'cooldown'), id, 'daily'));
   }
 
+  /** «Впитать»: артефактное умение сразу идёт в список артефактных, обычное — после вопроса, в какой список. Снятие освобождает слоты. */
+  function toggleAbsorb(item: EquipItem) {
+    const c = characterRef.current!;
+    if (isAbsorbed(c, item)) {
+      patch((cc) => releaseAbility(cc, item));
+      return;
+    }
+    if (!item.name.trim()) return;
+    if (item.artifact) {
+      const next = absorbAbility(c, item, 2);
+      if (next) patch(() => next);
+      return;
+    }
+    setAbsorbing(item);
+  }
+
+  function absorbInto(item: EquipItem, target: 0 | 1) {
+    const next = absorbAbility(characterRef.current!, item, target);
+    if (next) patch(() => next);
+    else alert('В этом списке нет свободных слотов.');
+    setAbsorbing(null);
+  }
+
+  function changeFullStats(on: boolean) {
+    setFullStats(on);
+    try {
+      localStorage.setItem(FULL_STATS_KEY, on ? '1' : '0');
+    } catch {
+      /* не страшно: вид просто не запомнится */
+    }
+  }
+
   function changeSkill(skill: string, level: SkillLevel) {
     patch((c) => ({ ...c, skills: { ...c.skills, [skill]: level } }));
   }
@@ -302,7 +358,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
 
   return (
     <div className={`theme-${character.path}`}>
-      <div className="top-actions">
+      <div className="top-actions sheet-actions">
         <button className="btn" onClick={onBack}>
           ← К списку
         </button>
@@ -332,6 +388,33 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           </div>
         </details>
       </div>
+      {headerSlot &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={async () => {
+                if (await exportCharacter(character)) updateMeta({ lastBackupAt: Date.now() });
+              }}
+            >
+              Экспорт в JSON
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => void handleSaveImage()} disabled={imageBusy}>
+              {imageBusy ? 'Рисуем…' : 'Сохранить картинкой'}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setHistoryOpen(true)}>
+              История версий
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={handleClone}>
+              Клонировать
+            </button>
+            <button type="button" className="btn btn-ghost btn-danger" onClick={handleDelete}>
+              Удалить персонажа
+            </button>
+          </>,
+          headerSlot,
+        )}
       {shortRestOpen && (
         <ShortRestDialog
           character={character}
@@ -459,7 +542,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         </div>
       </CharacterInfo>
 
-      <CurrentResources character={character} onSpendCombatStamina={() => patch(spendCombatStamina)} />
+      <CurrentResources character={character} />
       <StaticStats character={character} />
 
       <div className="sheet-tabs">
@@ -490,6 +573,10 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: снять откаты и дневные ограничения">
                   ☀ Новый день
                 </button>
+                <label className="toggle full-stats-toggle" title="Показать характеристики вместе с показателями, как на бумажной карточке">
+                  <input type="checkbox" checked={fullStats} onChange={(e) => changeFullStats(e.target.checked)} />
+                  Полный вид
+                </label>
                 <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон: здоровье +мод. Живучести, выносливость и ресурс до максимума, откаты снимаются">
                   🌙 Длительный отдых
                 </button>
@@ -505,6 +592,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               />
             </div>
             <CharacteristicsPanel
+              full={fullStats}
               character={character}
               onChangeStat={changeStat}
               onChangePool={changePool}
@@ -549,6 +637,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             abilityNames={character.abilities.map((a) => a.name).filter(Boolean)}
             artifactAbilityNames={character.abilities.filter((a) => a.artifact).map((a) => a.name).filter(Boolean)}
             slotUse={slotUse}
+            points={character.points}
+            onChangePoints={(points) => patch((c) => ({ ...c, points }))}
             onUseAbility={(id) => {
               const item = character.abilities.find((a) => a.id === id);
               if (item) applyAbility(item);
@@ -567,9 +657,21 @@ export function CharacterSheet({ characterId, onBack }: Props) {
           emptyText={PATH_ABILITY_LABELS[character.path].empty}
           toolbar={<BulkCardUpload onCard={addCardToCharacter} getExisting={() => [...(characterRef.current?.items ?? []), ...(characterRef.current?.abilities ?? [])]} />}
           onCompanion={addCardToCharacter}
+          absorb={{ isAbsorbed: (item) => isAbsorbed(character, item), onToggle: toggleAbsorb }}
         />
+        {absorbing && (
+          <AbsorbDialog
+            character={character}
+            item={absorbing}
+            titles={[traitLabels.dnaA, traitLabels.dnaB]}
+            onChoose={(target) => absorbInto(absorbing, target)}
+            onCancel={() => setAbsorbing(null)}
+          />
+        )}
         </>
       )}
+
+      {tab === 'loot' && <LootTab character={character} onPatch={patch} />}
 
       {tab === 'training' && (
         <SkillTrainingScreen character={character} onChangeDays={changeTrainingDays} onLevelUp={levelUpSkill} />

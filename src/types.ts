@@ -91,6 +91,18 @@ export interface TraitList {
   slots: string[];
 }
 
+/** Жемчужина развития: накопитель очков развития, из которого их можно «всосать» (и обратно). */
+export interface DevelopmentPearl {
+  id: string;
+  points: number;
+}
+
+/** Пыль развития: запас с дробным объёмом. */
+export interface DevelopmentDust {
+  id: string;
+  volume: number;
+}
+
 export interface InfectionStatus {
   success: [boolean, boolean, boolean];
   fail: [boolean, boolean, boolean];
@@ -111,6 +123,8 @@ export interface Character {
   uniqueLevelPoints?: number;
   /** Уровень, на котором получен класс (не меньше 10). Бонус редкости применяется только к уровням выше него. */
   classLevel?: number;
+  /** Свободное описание класса (вкладка «Доп. информация»). */
+  classDescription?: string;
   /** Портрет персонажа (data URL, уменьшенный) — показывается в списке и на вкладке «Персонаж». */
   portrait?: string;
   path: Path;
@@ -135,8 +149,11 @@ export interface Character {
   dnaLists: TraitList[]; // фиксированные списки по 5 слотов, для генетического — "Видовые ДНК" и "ДНК"
   groupName?: string;
   group: string;
+  /** «Очки умений» (вверху вкладки умений); игроки заполняют вручную. */
   points: number;
   developmentPoints: number;
+  pearls?: DevelopmentPearl[];
+  dust?: DevelopmentDust[];
   systemWeapons: TraitList;
   systemGear: TraitList;
   inspirationPoints: boolean[];

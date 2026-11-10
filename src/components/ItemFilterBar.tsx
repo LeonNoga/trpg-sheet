@@ -12,9 +12,11 @@ interface Props {
   path?: Path;
   /** Какие фильтры показывать: для снаряжения — все, для умений — только общие. */
   gear?: boolean;
+  /** Подписи фильтра «надето/впитано»; у умений — про впитанные. */
+  stateLabels?: [string, string, string];
 }
 
-export function ItemFilterBar({ items, state, onChange, shownCount, path, gear }: Props) {
+export function ItemFilterBar({ items, state, onChange, shownCount, path, gear, stateLabels }: Props) {
   const levels = useMemo(
     () => Array.from(new Set(items.map((i) => i.level).filter((l): l is number => l != null))).sort((a, b) => a - b),
     [items],
@@ -72,13 +74,15 @@ export function ItemFilterBar({ items, state, onChange, shownCount, path, gear }
             ))}
           </select>
         )}
+        {(gear || stateLabels) && (
+          <select value={state.equipped} onChange={(e) => set('equipped', e.target.value as ItemFilterState['equipped'])}>
+            <option value="all">{stateLabels?.[0] ?? 'Надетые и нет'}</option>
+            <option value="on">{stateLabels?.[1] ?? 'Только надетые'}</option>
+            <option value="off">{stateLabels?.[2] ?? 'Только не надетые'}</option>
+          </select>
+        )}
         {gear && (
           <>
-            <select value={state.equipped} onChange={(e) => set('equipped', e.target.value as ItemFilterState['equipped'])}>
-              <option value="all">Надетые и нет</option>
-              <option value="on">Только надетые</option>
-              <option value="off">Только не надетые</option>
-            </select>
             <select value={String(state.slot)} onChange={(e) => set('slot', e.target.value as ItemFilterState['slot'])}>
               <option value="all">Любой слот</option>
               {SLOT_TYPES.map((t) => (

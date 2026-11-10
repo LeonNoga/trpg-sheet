@@ -26,9 +26,11 @@ interface Props {
   onCompanion?: (item: EquipItem) => void;
   /** Дополнительный блок под каждой карточкой. */
   cardExtra?: (item: EquipItem) => ReactNode;
+  /** Для умений: «впитано» считается по спискам слотов; переключатель заменяет «Надето». */
+  absorb?: { isAbsorbed: (item: EquipItem) => boolean; onToggle: (item: EquipItem) => void };
 }
 
-export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar, onCompanion, cardExtra }: Props) {
+export function ItemsBlock({ title, kind, items, path, onChange, addLabel, emptyText, toolbar, onCompanion, cardExtra, absorb }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(EMPTY_ITEM_FILTERS);
@@ -43,7 +45,8 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
     onChangeRef.current = onChange;
   });
 
-  const visible = useMemo(() => applyItemFilters(items, filters), [items, filters]);
+  const isAbsorbed = absorb?.isAbsorbed;
+  const visible = useMemo(() => applyItemFilters(items, filters, isAbsorbed), [items, filters, isAbsorbed]);
   const editingItem = editingId ? items.find((i) => i.id === editingId) ?? null : null;
 
   function saveEdited(item: EquipItem) {
@@ -105,6 +108,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
         shownCount={visible.length}
         path={path}
         gear={kind === 'item'}
+        stateLabels={absorb ? ['Впитанные и нет', 'Только впитанные', 'Только не впитанные'] : undefined}
       />
 
       <SelectionToolbar
@@ -138,6 +142,7 @@ export function ItemsBlock({ title, kind, items, path, onChange, addLabel, empty
             selected={selected.has(item.id)}
             onSelect={(on) => toggleSelected(item.id, on)}
             onToggleEquipped={() => toggleEquipped(item.id)}
+            absorb={absorb ? { absorbed: absorb.isAbsorbed(item), onToggle: () => absorb.onToggle(item) } : undefined}
             extra={cardExtra?.(item)}
             expandCommand={expand}
             onDismissReview={() => onChange(items.map((i) => (i.id === item.id ? { ...i, review: undefined } : i)))}
