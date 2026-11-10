@@ -369,7 +369,8 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   async function handleSaveImage() {
     setImageBusy(true);
     try {
-      const blobs = await renderSheetPages(character!);
+      // Бумажный лист — обычные значения: временные эффекты (баффы и штрафы на время) в картинку не попадают.
+      const blobs = await renderSheetPages({ ...character!, effects: [] });
       const name = (character!.characterName.trim() || 'character').replace(/[\\/:*?"<>|]+/g, '_');
       await saveImageFiles(blobs.map((blob, i) => ({ fileName: `${name}-лист${i + 1}.png`, blob })));
     } catch (err) {
