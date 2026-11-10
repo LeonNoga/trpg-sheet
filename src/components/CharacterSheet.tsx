@@ -59,7 +59,7 @@ import {
   spendCombatStamina,
 } from '../data/abilityUse';
 import type { MilestoneEffect } from '../data/statsConfig';
-import { advanceClock, addEffect, endCombat, removeEffect } from '../data/gameClock';
+import { advanceClock, addEffect, endCombat, removeEffect, resetTimer } from '../data/gameClock';
 import { activeEffects, bonusSummary, buildEffect, formatClock, formatRemaining, gameClock } from '../data/effects';
 import { useUndo } from '../state/useUndo';
 import type {
@@ -220,20 +220,26 @@ export function CharacterSheet({ characterId, onBack }: Props) {
     patch((c) => clearUsage(c, key, which));
   }
 
-  /** «Конец боя»: заканчивает эффекты «до конца боя» и откаты «раз в бой», сбрасывает таймер; результат показывается сообщением с отменой. */
+  /** «Конец боя»: заканчивает эффекты «до конца боя» и откаты «раз в бой»; таймер не трогает. Результат — сообщением с отменой. */
   function handleEndCombat() {
     const before = characterRef.current!;
     const after = endCombat(before);
     const effects = activeEffects(before).length - activeEffects(after).length;
     const cooldowns = Object.values(before.usage ?? {}).filter((u) => u.combat).length;
-    const parts = [
-      `таймер ${formatClock(gameClock(before))} → 0:00`,
-      effects > 0 ? `закончились эффекты: ${effects}` : '',
-      cooldowns > 0 ? `сняты откаты: ${cooldowns}` : '',
-    ].filter(Boolean);
-    const nothingToEnd = gameClock(before) === 0 && effects === 0 && cooldowns === 0;
+    const parts = [effects > 0 ? `закончились эффекты: ${effects}` : '', cooldowns > 0 ? `сняты откаты: ${cooldowns}` : ''].filter(Boolean);
     patch(() => after);
-    showUndo(nothingToEnd ? 'Бой окончен: эффектов и откатов «до конца боя» не было' : `Бой окончен: ${parts.join(', ')}`, () => patch(() => before));
+    showUndo(parts.length > 0 ? `Бой окончен: ${parts.join(', ')}` : 'Бой окончен: эффектов и откатов «до конца боя» не было', () => patch(() => before));
+  }
+
+  /** «Сбросить таймер»: новый цикл отсчёта — таймер в 0:00, все эффекты сняты, откаты идут дальше. */
+  function handleResetTimer() {
+    const before = characterRef.current!;
+    const removed = activeEffects(before).length;
+    patch(resetTimer);
+    showUndo(
+      `Таймер сброшен: ${formatClock(gameClock(before))} → 0:00${removed > 0 ? `, снято эффектов: ${removed}` : ''}`,
+      () => patch(() => before),
+    );
   }
 
   function handleNewDay() {
@@ -614,6 +620,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         character={character}
         onAdvance={(seconds) => patch((c) => advanceClock(c, seconds))}
         onEndCombat={handleEndCombat}
+        onResetTimer={handleResetTimer}
         onAddEffect={(effect) => patch((c) => addEffect(c, effect))}
         onRemoveEffect={(id) => patch((c) => removeEffect(c, id))}
       />

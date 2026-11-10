@@ -16,6 +16,8 @@ interface Props {
   /** Время идёт (секунды), без расхода выносливости. */
   onAdvance: (seconds: number) => void;
   onEndCombat: () => void;
+  /** Новый цикл отсчёта: таймер в 0:00, все эффекты сняты. */
+  onResetTimer: () => void;
   onAddEffect: (effect: ActiveEffect) => void;
   onRemoveEffect: (id: string) => void;
 }
@@ -33,7 +35,7 @@ function untilText(effect: ActiveEffect, clock: number): string {
   }
 }
 
-function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 'character' | 'onAdvance' | 'onEndCombat'> & { onClose: () => void }) {
+function TimeDialog({ character, onAdvance, onEndCombat, onResetTimer, onClose }: Pick<Props, 'character' | 'onAdvance' | 'onEndCombat' | 'onResetTimer'> & { onClose: () => void }) {
   const [amount, setAmount] = useState('');
   const [unit, setUnit] = useState<'1' | '60' | '3600'>('60');
   const seconds = Math.round(Number(amount.replace(',', '.')) * Number(unit));
@@ -48,9 +50,8 @@ function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 
           Таймер: <b>{formatClock(clock)}</b>
         </p>
         <p className="muted">
-          Таймер показывает время с начала боя (или с последнего отдыха). Он идёт по «Тику боя» (15 секунд, −2
-          выносливости) и по кнопкам ниже, где выносливость не тратится. «Конец боя» и любой отдых сбрасывают его в 0:00 —
-          у эффектов и откатов остаётся прежнее оставшееся время.
+          Таймер идёт по «Тику боя» (15 секунд, −2 выносливости), отдыхам и кнопкам ниже, где выносливость не тратится.
+          По нему заканчиваются эффекты и откаты. Сам он не сбрасывается — только кнопкой «Сбросить таймер».
         </p>
         <div className="quick-amounts">
           {[
@@ -106,9 +107,19 @@ function TimeDialog({ character, onAdvance, onEndCombat, onClose }: Pick<Props, 
               onEndCombat();
               onClose();
             }}
-            title="Сбросить таймер, закончить эффекты «до конца боя» и откаты «раз в бой»"
+            title="Заканчиваются эффекты «до конца боя» и откаты «раз в бой»; таймер не меняется"
           >
-            🏁 Конец боя (сбросить таймер)
+            🏁 Конец боя
+          </button>
+          <button
+            className="btn"
+            onClick={() => {
+              onResetTimer();
+              onClose();
+            }}
+            title="Новый цикл отсчёта: таймер в 0:00, все эффекты сняты; откаты способностей идут дальше"
+          >
+            ↺ Сбросить таймер
           </button>
           <button className="btn btn-ghost" onClick={onClose}>
             Закрыть
@@ -193,7 +204,7 @@ function EffectDialog({ character, onAdd, onClose }: { character: Character; onA
 }
 
 /** Строка под ресурсами: игровое время и действующие временные эффекты (бонусы и штрафы, оставшееся время). */
-export function EffectsBar({ character, onAdvance, onEndCombat, onAddEffect, onRemoveEffect }: Props) {
+export function EffectsBar({ character, onAdvance, onEndCombat, onResetTimer, onAddEffect, onRemoveEffect }: Props) {
   const [timeOpen, setTimeOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const clock = gameClock(character);
@@ -201,10 +212,10 @@ export function EffectsBar({ character, onAdvance, onEndCombat, onAddEffect, onR
 
   return (
     <div className="effects-bar">
-      <button type="button" className="clock-chip" onClick={() => setTimeOpen(true)} title="Время с начала боя или последнего отдыха: нажмите, чтобы подвинуть">
+      <button type="button" className="clock-chip" onClick={() => setTimeOpen(true)} title="Игровой таймер: нажмите, чтобы подвинуть время или сбросить таймер">
         ⏱ {formatClock(clock)}
       </button>
-      <button type="button" className="btn btn-sm btn-ghost" onClick={onEndCombat} title="Сбросить таймер, закончить эффекты «до конца боя» и откаты «раз в бой»">
+      <button type="button" className="btn btn-sm btn-ghost" onClick={onEndCombat} title="Закончить эффекты «до конца боя» и откаты «раз в бой»; таймер не меняется">
         🏁 Конец боя
       </button>
       {effects.map((effect) => {
@@ -229,7 +240,7 @@ export function EffectsBar({ character, onAdvance, onEndCombat, onAddEffect, onR
       <button type="button" className="btn btn-sm btn-ghost" onClick={() => setAddOpen(true)}>
         + эффект
       </button>
-      {timeOpen && <TimeDialog character={character} onAdvance={onAdvance} onEndCombat={onEndCombat} onClose={() => setTimeOpen(false)} />}
+      {timeOpen && <TimeDialog character={character} onAdvance={onAdvance} onEndCombat={onEndCombat} onResetTimer={onResetTimer} onClose={() => setTimeOpen(false)} />}
       {addOpen && <EffectDialog character={character} onAdd={onAddEffect} onClose={() => setAddOpen(false)} />}
     </div>
   );
