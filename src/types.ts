@@ -103,6 +103,46 @@ export interface DevelopmentDust {
   volume: number;
 }
 
+/** Запись журнала изменений карточки (см. data/changeLog.ts): хранится структура, текст собирается при показе. */
+export interface ChangeEntry {
+  id: string;
+  /** Время последней правки (для слитых записей — последней из них). */
+  at: number;
+  /** Уровень персонажа в этот момент. */
+  lv: number;
+  kind:
+    | 'level'
+    | 'experience'
+    | 'levelPoints'
+    | 'bonusStatPoints'
+    | 'stat'
+    | 'skill'
+    | 'classRarity'
+    | 'classLevel'
+    | 'itemAdded'
+    | 'itemRemoved'
+    | 'abilityAdded'
+    | 'abilityRemoved'
+    | 'equipped'
+    | 'slot'
+    | 'developmentPoints'
+    | 'points'
+    | 'pearl'
+    | 'pearlAdded'
+    | 'pearlRemoved'
+    | 'pearlAbsorb'
+    | 'pearlFill'
+    | 'dust'
+    | 'dustAdded'
+    | 'dustRemoved'
+    | 'note';
+  /** Что именно изменено (ключ характеристики, название навыка, id жемчужины…) — по нему сливаются правки и отменяется запись. */
+  key?: string;
+  label?: string;
+  from?: number | string | boolean;
+  to?: number | string | boolean;
+}
+
 export interface InfectionStatus {
   success: [boolean, boolean, boolean];
   fail: [boolean, boolean, boolean];
@@ -154,6 +194,8 @@ export interface Character {
   developmentPoints: number;
   pearls?: DevelopmentPearl[];
   dust?: DevelopmentDust[];
+  /** Журнал изменений карточки (до 300 последних записей); едет вместе с файлом экспорта. */
+  changeLog?: ChangeEntry[];
   systemWeapons: TraitList;
   systemGear: TraitList;
   inspirationPoints: boolean[];

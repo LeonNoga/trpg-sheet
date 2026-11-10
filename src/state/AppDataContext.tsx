@@ -18,9 +18,13 @@ import {
 import type { AppMeta, Snapshot, TrashEntry } from '../storage/db';
 import { createBlankCharacter, pruneEquippedSlots } from '../data/defaults';
 import { applyExperience } from '../data/progression';
+import { appendLog, appendNote, diffCharacter } from '../data/changeLog';
 import { AppDataContext } from './useAppData';
 import type { AppDataContextValue } from './useAppData';
 import type { Character, EquipItem, Path, Roster } from '../types';
+
+const formatStamp = (ms: number) =>
+  new Date(ms).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 const SAVE_DELAY_MS = 600;
 const SNAPSHOT_EVERY_MS = 15 * 60 * 1000;
@@ -119,7 +123,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const updateCharacter = useCallback(
     (character: Character) => {
       const leveled = pruneEquippedSlots(applyExperience(character));
-      const next: Character = { ...leveled, updatedAt: Date.now() };
+      // Журнал берём из сохранённого состояния, а не из переданного объекта: тот может нести устаревшую копию журнала.
+      const prev = charactersRef.current.find((c) => c.id === leveled.id);
+      const changeLog = prev ? appendLog(prev.changeLog, diffCharacter(prev, leveled), leveled.level) : leveled.changeLog;
+      const next: Character = { ...leveled, changeLog, updatedAt: Date.now() };
       setAll(charactersRef.current.map((c) => (c.id === next.id ? next : c)));
       scheduleSave(next);
     },
@@ -183,8 +190,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const importCharacter = useCallback(
     (character: Character, roster?: Roster) => {
-      const next: Character = { ...character, roster: roster ?? character.roster ?? 'personal', updatedAt: Date.now() };
-      const existing = charactersRef.current.find((c) => c.id === next.id);
+      const existing = charactersRef.current.find((c) => c.id === character.id);
+      const note = existing
+        ? `Импорт из файла: заменена версия от ${formatStamp(existing.updatedAt)}`
+        : 'Импортировано из файла';
+      const next: Character = {
+        ...character,
+        roster: roster ?? character.roster ?? 'personal',
+        changeLog: appendNote(character.changeLog, note, character.level),
+        updatedAt: Date.now(),
+      };
       if (existing) void pushSnapshot(existing); // перезапись при повторном импорте — можно откатить
       setAll(existing ? charactersRef.current.map((c) => (c.id === next.id ? next : c)) : [next, ...charactersRef.current]);
       persistedRef.current.set(next.id, next);
@@ -216,8 +231,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const existing = charactersRef.current.find((c) => c.id === incoming.id);
         if (existing) void pushSnapshot(existing);
       }
-      setAll(mergeById(charactersRef.current, backupCharacters));
-      backupCharacters.forEach((c) => {
+      const incomingWithNotes = backupCharacters.map((c) => {
+        const existing = charactersRef.current.find((x) => x.id === c.id);
+        const note = existing ? `Восстановлено из копии: заменена версия от ${formatStamp(existing.updatedAt)}` : 'Восстановлено из копии';
+        return { ...c, changeLog: appendNote(c.changeLog, note, c.level) };
+      });
+      setAll(mergeById(charactersRef.current, incomingWithNotes));
+      incomingWithNotes.forEach((c) => {
         persistedRef.current.set(c.id, c);
         void saveCharacter(c);
       });
@@ -265,6 +285,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         portrait: current.portrait,
         items: snapshot.character.items.map((i) => ({ ...i, image: itemImages.get(i.id) })),
         abilities: snapshot.character.abilities.map((i) => ({ ...i, image: abilityImages.get(i.id) })),
+        // Журнал не откатывается вместе с версией: в нём остаётся всё, что было, плюс запись о возврате.
+        changeLog: appendNote(current.changeLog, `Возврат к версии от ${formatStamp(snapshot.at)}`, snapshot.character.level),
         updatedAt: Date.now(),
       };
       setAll(charactersRef.current.map((c) => (c.id === restored.id ? restored : c)));

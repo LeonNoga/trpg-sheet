@@ -1,23 +1,20 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useAppData } from '../state/useAppData';
 import { PasteImportButton } from './FileDialogs';
 import { exportBackup, importBackupFromFile } from '../storage/exportImport';
+import type { BackupPreview } from '../storage/exportImport';
+import { ImportDialog } from './ImportDialog';
+import type { ImportItem } from './ImportDialog';
 
 export function BackupPanel() {
   const { characters, lootTray, restoreBackup, updateMeta, meta, trash, restoreFromTrash } = useAppData();
   const fileInput = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<BackupPreview | null>(null);
 
   async function handleRestore(file: File | undefined) {
     if (!file) return;
     try {
-      const backup = await importBackupFromFile(file);
-      const ok = confirm(
-        `В копии: персонажей — ${backup.characters.length}, предметов в трее лута — ${backup.lootTray.length}.\n\n` +
-          'Персонажи и предметы с теми же id будут перезаписаны данными из копии, остальные останутся как есть. Продолжить?',
-      );
-      if (!ok) return;
-      restoreBackup(backup.characters, backup.lootTray);
-      alert(`Восстановлено персонажей: ${backup.characters.length}.`);
+      setPending(await importBackupFromFile(file));
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Не удалось прочитать файл резервной копии.');
     } finally {
@@ -25,8 +22,37 @@ export function BackupPanel() {
     }
   }
 
+  function confirmRestore() {
+    if (!pending) return;
+    restoreBackup(pending.characters, pending.lootTray);
+    alert(`Восстановлено персонажей: ${pending.characters.length}.`);
+    setPending(null);
+  }
+
+  // Показываем те записи, где что-то перезаписывается или переносится со старой схемы; остальные — одной строкой.
+  const pendingItems: ImportItem[] = pending
+    ? pending.characters
+        .map((incoming) => ({
+          incoming,
+          existing: characters.find((c) => c.id === incoming.id),
+          notes: pending.notes.get(incoming.id) ?? [],
+        }))
+        .filter((item) => item.existing || item.notes.length > 0)
+    : [];
+
   return (
     <div className="card" style={{ marginTop: 24 }}>
+      {pending && (
+        <ImportDialog
+          title="Восстановление из копии"
+          summary={`В копии: персонажей — ${pending.characters.length}, предметов в трее лута — ${pending.lootTray.length}. Персонажи и предметы с теми же id перезаписываются данными из копии, остальные остаются как есть.${
+            pending.characters.length > pendingItems.length ? ` Новых персонажей без особенностей: ${pending.characters.length - pendingItems.length}.` : ''
+          }`}
+          items={pendingItems}
+          onConfirm={confirmRestore}
+          onCancel={() => setPending(null)}
+        />
+      )}
       <h3 className="card-title">Резервная копия</h3>
       <p className="muted">
         Данные хранятся только в браузере этого устройства: очистка данных сайта или смена телефона их удалит.

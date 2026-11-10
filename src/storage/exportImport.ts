@@ -2,6 +2,8 @@ import { normalizeCharacter } from '../data/defaults';
 import { v4 as uuid } from 'uuid';
 import { saveJsonFile } from './saveFile';
 import { CURRENT_SCHEMA_VERSION, isFromNewerSchema } from '../data/migrations';
+import { migrationNotes } from '../data/importCheck';
+import type { ImportPreview } from '../data/importCheck';
 import type { BackupFile, Character, CharacterExportFile, EquipItem, TrayFile } from '../types';
 
 async function readJson(file: File): Promise<unknown> {
@@ -23,7 +25,11 @@ export function exportCharacter(character: Character): Promise<boolean> {
   return saveJsonFile(`${safeName}.json`, payload);
 }
 
-export async function importCharacterFromFile(file: File): Promise<Character> {
+const newerSchemaMessage = (version: number) =>
+  `Файл создан более новой версией приложения (схема ${version}, у вас — ${CURRENT_SCHEMA_VERSION}). Закройте и заново откройте приложение (чтобы оно обновилось) и повторите импорт.`;
+
+/** Читает файл персонажа и готовит предпросмотр: сам персонаж и что изменится при переносе со старой схемы. */
+export async function readCharacterFile(file: File): Promise<ImportPreview> {
   const parsed = await readJson(file);
 
   if ((parsed as { fileType?: string })?.fileType === 'trpg-sheet-backup') {
@@ -37,11 +43,14 @@ export async function importCharacterFromFile(file: File): Promise<Character> {
     throw new Error('Это не похоже на файл карточки персонажа.');
   }
 
-  if (isFromNewerSchema(character)) {
-    throw new Error('Файл создан более новой версией приложения. Закройте и заново откройте приложение (чтобы оно обновилось) и повторите импорт.');
-  }
+  if (isFromNewerSchema(character)) throw new Error(newerSchemaMessage(character.schemaVersion ?? 0));
 
-  return normalizeCharacter(character);
+  const normalized = normalizeCharacter(character);
+  return {
+    character: normalized,
+    fileVersion: character.schemaVersion ?? 0,
+    notes: migrationNotes(character as unknown as Record<string, unknown>, normalized),
+  };
 }
 
 export function exportBackup(characters: Character[], lootTray: EquipItem[]): Promise<boolean> {
@@ -56,7 +65,14 @@ export function exportBackup(characters: Character[], lootTray: EquipItem[]): Pr
   return saveJsonFile(`trpg-backup-${date}.json`, payload);
 }
 
-export async function importBackupFromFile(file: File): Promise<{ characters: Character[]; lootTray: EquipItem[] }> {
+export interface BackupPreview {
+  characters: Character[];
+  lootTray: EquipItem[];
+  /** По каждому персонажу копии: что изменится при переносе со старой схемы. */
+  notes: Map<string, string[]>;
+}
+
+export async function importBackupFromFile(file: File): Promise<BackupPreview> {
   const parsed = await readJson(file);
   const data = parsed as Partial<BackupFile>;
 
@@ -65,14 +81,20 @@ export async function importBackupFromFile(file: File): Promise<{ characters: Ch
   }
 
   if (data.characters.some((c) => c && isFromNewerSchema(c))) {
-    throw new Error('Копия создана более новой версией приложения. Закройте и заново откройте приложение (чтобы оно обновилось) и повторите.');
+    const newest = Math.max(...data.characters.map((c) => c?.schemaVersion ?? 0));
+    throw new Error(`Копия создана более новой версией приложения (схема ${newest}, у вас — ${CURRENT_SCHEMA_VERSION}). Закройте и заново откройте приложение (чтобы оно обновилось) и повторите.`);
   }
 
-  const characters = data.characters
-    .filter((c): c is Character => !!c && typeof c === 'object' && !!c.id && !!c.baseStats)
-    .map(normalizeCharacter);
+  const raws = data.characters.filter((c): c is Character => !!c && typeof c === 'object' && !!c.id && !!c.baseStats);
+  const notes = new Map<string, string[]>();
+  const characters = raws.map((raw) => {
+    const normalized = normalizeCharacter(raw);
+    const list = migrationNotes(raw as unknown as Record<string, unknown>, normalized);
+    if (list.length > 0) notes.set(raw.id, list);
+    return normalized;
+  });
 
-  return { characters, lootTray: Array.isArray(data.lootTray) ? data.lootTray : [] };
+  return { characters, lootTray: Array.isArray(data.lootTray) ? data.lootTray : [], notes };
 }
 
 export function exportTray(items: EquipItem[]): Promise<boolean> {

@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
 import { useAppData } from '../state/useAppData';
 import { PATH_LABELS } from '../data/statsConfig';
-import { importCharacterFromFile } from '../storage/exportImport';
+import { readCharacterFile } from '../storage/exportImport';
+import { ImportDialog } from './ImportDialog';
+import type { ImportItem } from './ImportDialog';
 import { PasteImportButton } from './FileDialogs';
-import type { Character, Roster } from '../types';
+import type { Roster } from '../types';
 
 interface Props {
   roster: Roster;
@@ -18,6 +20,7 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
   const { characters, importCharacter } = useAppData();
   const fileInput = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+  const [pending, setPending] = useState<ImportItem | null>(null);
   const all = characters.filter((c) => c.roster === roster);
   const q = query.trim().toLowerCase();
   const list = q
@@ -27,8 +30,11 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
   async function handleImport(file: File | undefined) {
     if (!file) return;
     try {
-      const character: Character = await importCharacterFromFile(file);
-      importCharacter(character, roster);
+      const preview = await readCharacterFile(file);
+      const existing = characters.find((c) => c.id === preview.character.id);
+      // Без перезаписи и без миграции — сразу в список; иначе сначала показываем, что изменится.
+      if (!existing && preview.notes.length === 0) importCharacter(preview.character, roster);
+      else setPending({ incoming: preview.character, existing, notes: preview.notes });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Не удалось импортировать файл.');
     } finally {
@@ -36,8 +42,29 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
     }
   }
 
+  function confirmImport(choice: 'replace' | 'copy') {
+    if (!pending) return;
+    const { incoming } = pending;
+    if (choice === 'copy') {
+      const name = incoming.characterName ? `${incoming.characterName} (импорт)` : '';
+      importCharacter({ ...incoming, id: crypto.randomUUID(), characterName: name }, roster);
+    } else {
+      importCharacter(incoming, roster);
+    }
+    setPending(null);
+  }
+
   return (
     <div>
+      {pending && (
+        <ImportDialog
+          title="Импорт персонажа"
+          items={[pending]}
+          allowCopy={!!pending.existing}
+          onConfirm={confirmImport}
+          onCancel={() => setPending(null)}
+        />
+      )}
       <div className="top-actions">
         {!hideCreate && (
           <button className="btn btn-primary" onClick={onCreate}>

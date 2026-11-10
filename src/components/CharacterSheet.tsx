@@ -34,6 +34,8 @@ import {
 import { CLASS_MIN_LEVEL, MAX_LEVEL, calcLevelPoints, maxBaseStat, nextLevelPoints } from '../data/progression';
 import { exportCharacter } from '../storage/exportImport';
 import { HistoryDialog } from './HistoryDialog';
+import { ChangeLogDialog } from './ChangeLogDialog';
+import { revertEntry } from '../data/changeLog';
 import { ShortRestDialog } from './ShortRestDialog';
 import type { SlotUseInfo } from './SlotUseButton';
 import {
@@ -120,6 +122,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const { characters, updateCharacter, removeCharacter, restoreFromTrash, cloneCharacter, updateMeta } = useAppData();
   const { showUndo } = useUndo();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [shortRestOpen, setShortRestOpen] = useState(false);
   const [absorbing, setAbsorbing] = useState<EquipItem | null>(null);
@@ -394,6 +397,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         <details className="more-menu">
           <summary className="btn">Ещё ▾</summary>
           <div className="more-menu-list">
+            <button className="btn btn-ghost" onClick={() => setLogOpen(true)}>
+              Журнал изменений
+            </button>
             <button className="btn btn-ghost" onClick={() => setHistoryOpen(true)}>
               История версий
             </button>
@@ -421,6 +427,9 @@ export function CharacterSheet({ characterId, onBack }: Props) {
             <button type="button" className="btn btn-ghost" onClick={() => void handleSaveImage()} disabled={imageBusy}>
               {imageBusy ? 'Рисуем…' : 'Сохранить картинкой'}
             </button>
+            <button type="button" className="btn btn-ghost" onClick={() => setLogOpen(true)}>
+              Журнал изменений
+            </button>
             <button type="button" className="btn btn-ghost" onClick={() => setHistoryOpen(true)}>
               История версий
             </button>
@@ -444,6 +453,13 @@ export function CharacterSheet({ characterId, onBack }: Props) {
         />
       )}
       {historyOpen && <HistoryDialog character={character} onClose={() => setHistoryOpen(false)} />}
+      {logOpen && (
+        <ChangeLogDialog
+          character={character}
+          onRevert={(entry) => patch((c) => revertEntry(c, entry) ?? c)}
+          onClose={() => setLogOpen(false)}
+        />
+      )}
 
       <CharacterInfo key={character.id} character={character}>
         <span className="pill-badge">{PATH_LABELS[character.path]}</span>
