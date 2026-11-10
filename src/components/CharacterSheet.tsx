@@ -1,5 +1,5 @@
 import { CharacterInfo } from './CharacterInfo';
-import { useContext, useLayoutEffect, useRef, useState } from 'react';
+import { useContext, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { CurrentResources } from './CurrentResources';
 import { StaticStats } from './StaticStats';
@@ -87,16 +87,33 @@ function tabsFor(path: Path): { key: Tab; label: string }[] {
 
 const FULL_STATS_KEY = 'trpg-full-stats';
 
-/** «Полный вид» характеристик: на телефоне по умолчанию выключен (компактный список), на компьютере — включён. */
+const PHONE_QUERY = '(max-width: 600px)';
+
+/** Телефон ли это (узкий экран): компактный вид характеристик и чекбокс «Полный вид» существуют только там. */
+function useIsPhone(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      const query = window.matchMedia(PHONE_QUERY);
+      query.addEventListener('change', notify);
+      // Запасной сигнал: поворот экрана или смена размера окна без события у медиазапроса.
+      window.addEventListener('resize', notify);
+      return () => {
+        query.removeEventListener('change', notify);
+        window.removeEventListener('resize', notify);
+      };
+    },
+    () => window.matchMedia(PHONE_QUERY).matches,
+    () => false,
+  );
+}
+
+/** «Полный вид» на телефоне: по умолчанию выключен — компактный список; выбор запоминается на устройстве. */
 function loadFullStats(): boolean {
   try {
-    const saved = localStorage.getItem(FULL_STATS_KEY);
-    if (saved === '1') return true;
-    if (saved === '0') return false;
+    return localStorage.getItem(FULL_STATS_KEY) === '1';
   } catch {
-    /* хранилище недоступно */
+    return false;
   }
-  return !(typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 600px)').matches);
 }
 
 export function CharacterSheet({ characterId, onBack }: Props) {
@@ -107,6 +124,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
   const [shortRestOpen, setShortRestOpen] = useState(false);
   const [absorbing, setAbsorbing] = useState<EquipItem | null>(null);
   const [fullStats, setFullStats] = useState(loadFullStats);
+  const isPhone = useIsPhone();
   const headerSlot = useContext(HeaderSlotContext);
   const character = characters.find((c) => c.id === characterId);
   const [tab, setTab] = useState<Tab>('character');
@@ -573,10 +591,12 @@ export function CharacterSheet({ characterId, onBack }: Props) {
                 <button className="btn btn-sm" onClick={handleNewDay} title="Сутки прошли: снять откаты и дневные ограничения">
                   ☀ Новый день
                 </button>
-                <label className="toggle full-stats-toggle" title="Показать характеристики вместе с показателями, как на бумажной карточке">
-                  <input type="checkbox" checked={fullStats} onChange={(e) => changeFullStats(e.target.checked)} />
-                  Полный вид
-                </label>
+                {isPhone && (
+                  <label className="toggle full-stats-toggle" title="Показать характеристики вместе с показателями, как на бумажной карточке">
+                    <input type="checkbox" checked={fullStats} onChange={(e) => changeFullStats(e.target.checked)} />
+                    Полный вид
+                  </label>
+                )}
                 <button className="btn btn-sm" onClick={handleLongRest} title="Долгий сон: здоровье +мод. Живучести, выносливость и ресурс до максимума, откаты снимаются">
                   🌙 Длительный отдых
                 </button>
@@ -592,7 +612,7 @@ export function CharacterSheet({ characterId, onBack }: Props) {
               />
             </div>
             <CharacteristicsPanel
-              full={fullStats}
+              full={!isPhone || fullStats}
               character={character}
               onChangeStat={changeStat}
               onChangePool={changePool}
