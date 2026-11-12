@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  deleteGroupSnapshots,
+  loadEnemyGroups,
+  loadGroupLogs,
+  loadGroupSnapshots,
+  loadMasterImages,
+  loadMasterLoot,
+  loadMembers,
+  pushGroupSnapshot,
+  saveEnemyGroups,
+  saveGroupLogs,
+  saveMasterImages,
+  saveMasterLoot,
+  saveMembers,
   loadEncounters,
   loadEnemies,
   loadGroups,
@@ -28,8 +41,10 @@ import { appendLog, appendNote, diffCharacter } from '../data/changeLog';
 import { followMaxChange } from '../data/gameClock';
 import { AppDataContext } from './useAppData';
 import type { AppDataContextValue } from './useAppData';
-import { createGroup, effectiveGroupId } from '../data/gm';
-import type { Character, Encounter, Enemy, EquipItem, Group, Path, Roster } from '../types';
+import { buildGroupSnapshot, createGroup, effectiveGroupId, inGroup, memberFromCharacter, reattachImages } from '../data/gm';
+import { applyDrafts, diffEncounters, diffEnemies, diffEnemyGroups, diffLoot, diffMembers } from '../data/groupLog';
+import type { LogDraft } from '../data/groupLog';
+import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, GroupSnapshot, LootImage, PartyMember, Path, Roster } from '../types';
 
 const formatStamp = (ms: number) =>
   new Date(ms).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -46,6 +61,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [groups, setGroups] = useState<Group[]>([]);
   const [enemies, setEnemies] = useState<Enemy[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [members, setMembers] = useState<PartyMember[]>([]);
+  const [enemyGroups, setEnemyGroups] = useState<EnemyGroup[]>([]);
+  const [masterLoot, setMasterLoot] = useState<EquipItem[]>([]);
+  const [masterImages, setMasterImages] = useState<LootImage[]>([]);
+  const [groupLogs, setGroupLogs] = useState<Record<string, GroupLogEntry[]>>({});
+  const membersRef = useRef<PartyMember[]>([]);
+  const enemyGroupsRef = useRef<EnemyGroup[]>([]);
+  const masterLootRef = useRef<EquipItem[]>([]);
+  const groupLogsRef = useRef<Record<string, GroupLogEntry[]>>({});
+  const lastGroupSnapRef = useRef(new Map<string, number>());
   const groupsRef = useRef<Group[]>([]);
   const enemiesRef = useRef<Enemy[]>([]);
   const encountersRef = useRef<Encounter[]>([]);
@@ -95,7 +120,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [chars, loot, loadedMeta, loadedTrash, loadedGroups, loadedEnemies, loadedEncounters] = await Promise.all([
+      const [chars0, loot, loadedMeta, loadedTrash, loadedGroups, loadedEnemies, loadedEncounters, loadedMembers, loadedEnemyGroups, loadedMasterLoot, loadedMasterImages, loadedLogs] = await Promise.all([
         loadAllCharacters(),
         loadLootTray(),
         loadMeta(),
@@ -103,6 +128,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         loadGroups(),
         loadEnemies(),
         loadEncounters(),
+        loadMembers(),
+        loadEnemyGroups(),
+        loadMasterLoot(),
+        loadMasterImages(),
+        loadGroupLogs(),
       ]);
       // Группа всегда есть хотя бы одна: записи без группы относятся к первой.
       const startGroups = loadedGroups.length > 0 ? loadedGroups : [createGroup('')];
@@ -114,6 +144,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setEnemies(loadedEnemies);
       setEncounters(loadedEncounters);
       metaRef.current = loadedMeta;
+      // Полные карточки игроков в мастер-виде больше не нужны: прежние превращаются в мини-карточки (с тем же id, чтобы
+      // сохранился порядок боя), а сами карточки остаются в обычном списке персонажей — их можно открыть там.
+      let startMembers = loadedMembers;
+      let chars = chars0;
+      const legacy = chars0.filter((c) => c.roster === 'gm-player');
+      if (legacy.length > 0) {
+        const known = new Set(loadedMembers.map((m) => m.id));
+        const created = legacy.filter((c) => !known.has(c.id)).map((c) => ({ ...memberFromCharacter(c, c.groupId), id: c.id }));
+        startMembers = [...loadedMembers, ...created];
+        if (created.length > 0) void saveMembers(startMembers);
+        chars = chars0.map((c) => (c.roster === 'gm-player' ? { ...c, roster: 'personal' as const, groupId: undefined } : c));
+        chars.filter((c, i) => c !== chars0[i]).forEach((c) => void saveCharacter(c));
+      }
+      membersRef.current = startMembers;
+      setMembers(startMembers);
+      enemyGroupsRef.current = loadedEnemyGroups;
+      setEnemyGroups(loadedEnemyGroups);
+      masterLootRef.current = loadedMasterLoot;
+      setMasterLoot(loadedMasterLoot);
+      setMasterImages(loadedMasterImages);
+      groupLogsRef.current = loadedLogs;
+      setGroupLogs(loadedLogs);
       persistedRef.current = new Map(chars.map((c) => [c.id, c]));
       setAll(chars);
       lootRef.current = loot;
@@ -241,10 +293,57 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [setAll],
   );
 
-  const updateLootTray = useCallback((items: EquipItem[]) => {
-    lootRef.current = items;
-    setLootTray(items);
-    void saveLootTray(items);
+  /** Записывает правки группы в журналы и, если давно не было, сохраняет снимок состояния ДО правки (история группы). */
+  const recordGroupChange = useCallback((drafts: LogDraft[]) => {
+    if (drafts.length === 0) return;
+    const now = Date.now();
+    for (const groupId of new Set(drafts.map((d) => d.groupId))) {
+      if (now - (lastGroupSnapRef.current.get(groupId) ?? 0) > 15 * 60 * 1000) {
+        lastGroupSnapRef.current.set(groupId, now);
+        const groups = groupsRef.current;
+        void pushGroupSnapshot(
+          buildGroupSnapshot(groupId, {
+            members: membersRef.current.filter((m) => inGroup(m, groupId, groups)),
+            enemies: enemiesRef.current.filter((e) => inGroup(e, groupId, groups)),
+            enemyGroups: enemyGroupsRef.current.filter((g) => inGroup(g, groupId, groups)),
+            encounter: encountersRef.current.find((e) => e.groupId === groupId),
+            loot: lootRef.current.filter((i) => inGroup(i, groupId, groups)),
+          }),
+        );
+      }
+    }
+    const next = applyDrafts(groupLogsRef.current, drafts, now);
+    groupLogsRef.current = next;
+    setGroupLogs(next);
+    void saveGroupLogs(next);
+  }, []);
+
+  const updateLootTray = useCallback(
+    (incoming: EquipItem[]) => {
+      // Новые записи получают дату добавления (по ней мастер фильтрует лут); старые остаются как были.
+      const known = new Set(lootRef.current.map((i) => i.id));
+      const now = Date.now();
+      const items = incoming.map((i) => (!known.has(i.id) && !i.addedAt ? { ...i, addedAt: now } : i));
+      recordGroupChange(diffLoot(lootRef.current, items, groupsRef.current));
+      lootRef.current = items;
+      setLootTray(items);
+      void saveLootTray(items);
+    },
+    [recordGroupChange],
+  );
+
+  const updateMasterLoot = useCallback((incoming: EquipItem[]) => {
+    const known = new Set(masterLootRef.current.map((i) => i.id));
+    const now = Date.now();
+    const items = incoming.map((i) => (!known.has(i.id) && !i.addedAt ? { ...i, addedAt: now } : i));
+    masterLootRef.current = items;
+    setMasterLoot(items);
+    void saveMasterLoot(items);
+  }, []);
+
+  const updateMasterImages = useCallback((images: LootImage[]) => {
+    setMasterImages(images);
+    void saveMasterImages(images);
   }, []);
 
   const addToLootTray = useCallback(
@@ -254,7 +353,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   // Слияние по id: совпавшие записи перезаписываются данными из копии, остальные остаются/добавляются.
   const restoreBackup = useCallback(
-    (backupCharacters: Character[], backupLoot: EquipItem[], extras: { groups?: Group[]; enemies?: Enemy[]; encounters?: Encounter[] } = {}) => {
+    (backupCharacters: Character[], backupLoot: EquipItem[], extras: {
+        groups?: Group[];
+        enemies?: Enemy[];
+        encounters?: Encounter[];
+        members?: PartyMember[];
+        enemyGroups?: EnemyGroup[];
+        masterLoot?: EquipItem[];
+        masterImages?: LootImage[];
+        groupLogs?: Record<string, GroupLogEntry[]>;
+      } = {}) => {
       const mergeById = <T extends { id: string }>(current: T[], incoming: T[]): T[] => {
         const incomingIds = new Set(incoming.map((i) => i.id));
         return [...incoming, ...current.filter((c) => !incomingIds.has(c.id))];
@@ -286,6 +394,41 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         enemiesRef.current = merged;
         setEnemies(merged);
         void saveEnemies(merged);
+      }
+      if (extras.members?.length) {
+        const merged = mergeById(membersRef.current, extras.members);
+        membersRef.current = merged;
+        setMembers(merged);
+        void saveMembers(merged);
+      }
+      if (extras.enemyGroups?.length) {
+        const merged = mergeById(enemyGroupsRef.current, extras.enemyGroups);
+        enemyGroupsRef.current = merged;
+        setEnemyGroups(merged);
+        void saveEnemyGroups(merged);
+      }
+      if (extras.masterLoot?.length) {
+        const merged = mergeById(masterLootRef.current, extras.masterLoot);
+        masterLootRef.current = merged;
+        setMasterLoot(merged);
+        void saveMasterLoot(merged);
+      }
+      if (extras.masterImages?.length) {
+        setMasterImages((prev) => {
+          const merged = mergeById(prev, extras.masterImages ?? []);
+          void saveMasterImages(merged);
+          return merged;
+        });
+      }
+      if (extras.groupLogs) {
+        const merged = { ...groupLogsRef.current };
+        for (const [gid, entries] of Object.entries(extras.groupLogs)) {
+          const have = new Set((merged[gid] ?? []).map((e) => e.id));
+          merged[gid] = [...(merged[gid] ?? []), ...entries.filter((e) => !have.has(e.id))].sort((a, b) => a.at - b.at).slice(-500);
+        }
+        groupLogsRef.current = merged;
+        setGroupLogs(merged);
+        void saveGroupLogs(merged);
       }
       if (extras.encounters?.length) {
         const merged = mergeById(encountersRef.current, extras.encounters);
@@ -327,17 +470,97 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     void saveGroups(next);
   }, []);
 
-  const updateEnemies = useCallback((next: Enemy[]) => {
-    enemiesRef.current = next;
-    setEnemies(next);
-    void saveEnemies(next);
-  }, []);
+  const updateEnemies = useCallback(
+    (next: Enemy[]) => {
+      recordGroupChange(diffEnemies(enemiesRef.current, next, groupsRef.current));
+      enemiesRef.current = next;
+      setEnemies(next);
+      void saveEnemies(next);
+    },
+    [recordGroupChange],
+  );
 
-  const updateEncounters = useCallback((next: Encounter[]) => {
-    encountersRef.current = next;
-    setEncounters(next);
-    void saveEncounters(next);
-  }, []);
+  const updateMembers = useCallback(
+    (next: PartyMember[]) => {
+      recordGroupChange(diffMembers(membersRef.current, next, groupsRef.current));
+      membersRef.current = next;
+      setMembers(next);
+      void saveMembers(next);
+    },
+    [recordGroupChange],
+  );
+
+  const updateEnemyGroups = useCallback(
+    (next: EnemyGroup[]) => {
+      recordGroupChange(diffEnemyGroups(enemyGroupsRef.current, next, groupsRef.current));
+      enemyGroupsRef.current = next;
+      setEnemyGroups(next);
+      void saveEnemyGroups(next);
+    },
+    [recordGroupChange],
+  );
+
+  const updateEncounters = useCallback(
+    (next: Encounter[]) => {
+      const nameOf = (p: { kind: string; refId: string }) =>
+        (p.kind === 'player' ? membersRef.current.find((m) => m.id === p.refId)?.name : enemiesRef.current.find((e) => e.id === p.refId)?.name) || 'без имени';
+      recordGroupChange(diffEncounters(encountersRef.current, next, nameOf));
+      encountersRef.current = next;
+      setEncounters(next);
+      void saveEncounters(next);
+    },
+    [recordGroupChange],
+  );
+
+  const getGroupSnapshots = useCallback((groupId: string) => loadGroupSnapshots(groupId), []);
+
+  /** Возврат группы к снимку: текущее состояние само попадает в историю, картинки возвращаются записям по id. */
+  const restoreGroupSnapshot = useCallback(
+    (snapshot: GroupSnapshot) => {
+      const groupId = snapshot.groupId;
+      const groups = groupsRef.current;
+      const mine = <T extends { groupId?: string }>(list: T[]) => list.filter((x) => inGroup(x, groupId, groups));
+      const rest = <T extends { groupId?: string }>(list: T[]) => list.filter((x) => !inGroup(x, groupId, groups));
+      void pushGroupSnapshot(
+        buildGroupSnapshot(groupId, {
+          members: mine(membersRef.current),
+          enemies: mine(enemiesRef.current),
+          enemyGroups: mine(enemyGroupsRef.current),
+          encounter: encountersRef.current.find((e) => e.groupId === groupId),
+          loot: mine(lootRef.current),
+        }),
+      );
+      const stamp = <T extends { groupId?: string }>(list: T[]) => list.map((x) => ({ ...x, groupId }));
+      const nextMembers = [...stamp(snapshot.members), ...rest(membersRef.current)];
+      membersRef.current = nextMembers;
+      setMembers(nextMembers);
+      void saveMembers(nextMembers);
+      const nextEnemies = [...stamp(reattachImages(snapshot.enemies, mine(enemiesRef.current))), ...rest(enemiesRef.current)];
+      enemiesRef.current = nextEnemies;
+      setEnemies(nextEnemies);
+      void saveEnemies(nextEnemies);
+      const nextEnemyGroups = [...stamp(snapshot.enemyGroups), ...rest(enemyGroupsRef.current)];
+      enemyGroupsRef.current = nextEnemyGroups;
+      setEnemyGroups(nextEnemyGroups);
+      void saveEnemyGroups(nextEnemyGroups);
+      const nextEncounters = [...encountersRef.current.filter((e) => e.groupId !== groupId), ...(snapshot.encounter ? [snapshot.encounter] : [])];
+      encountersRef.current = nextEncounters;
+      setEncounters(nextEncounters);
+      void saveEncounters(nextEncounters);
+      const nextLoot = [...stamp(reattachImages(snapshot.loot, mine(lootRef.current))), ...rest(lootRef.current)];
+      lootRef.current = nextLoot;
+      setLootTray(nextLoot);
+      void saveLootTray(nextLoot);
+      const logs = applyDrafts(
+        groupLogsRef.current,
+        [{ groupId, entry: { kind: 'note', text: `Возврат группы к версии от ${new Date(snapshot.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` } }],
+      );
+      groupLogsRef.current = logs;
+      setGroupLogs(logs);
+      void saveGroupLogs(logs);
+    },
+    [],
+  );
 
   const restoreFromTrash = useCallback(
     (id: string) => {
@@ -376,10 +599,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       });
       updateLootTray(lootRef.current.map((i) => (belongs(i.groupId) ? { ...i, groupId: target } : i)));
       updateEnemies(enemiesRef.current.map((e) => (belongs(e.groupId) ? { ...e, groupId: target } : e)));
+      updateMembers(membersRef.current.map((m) => (belongs(m.groupId) ? { ...m, groupId: target } : m)));
+      updateEnemyGroups(enemyGroupsRef.current.map((g) => (belongs(g.groupId) ? { ...g, groupId: target } : g)));
+      const { [id]: _droppedLog, ...keptLogs } = groupLogsRef.current;
+      groupLogsRef.current = keptLogs;
+      setGroupLogs(keptLogs);
+      void saveGroupLogs(keptLogs);
+      void deleteGroupSnapshots(id);
       updateEncounters(encountersRef.current.filter((e) => e.groupId !== id));
       if (metaRef.current.activeGroupId === id) updateMeta({ activeGroupId: target });
     },
-    [setAll, updateEncounters, updateEnemies, updateLootTray, updateMeta],
+    [setAll, updateEncounters, updateEnemies, updateEnemyGroups, updateLootTray, updateMembers, updateMeta],
   );
 
   const getSnapshots = useCallback((id: string) => loadSnapshots(id), []);
@@ -421,6 +651,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       activeGroupId: effectiveGroupId(meta.activeGroupId, groups),
       enemies,
       encounters,
+      members,
+      updateMembers,
+      enemyGroups,
+      updateEnemyGroups,
+      masterLoot,
+      updateMasterLoot,
+      masterImages,
+      updateMasterImages,
+      groupLogs,
+      getGroupSnapshots,
+      restoreGroupSnapshot,
       setActiveGroup,
       addGroup,
       renameGroup,
@@ -449,6 +690,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       groups,
       enemies,
       encounters,
+      members,
+      updateMembers,
+      enemyGroups,
+      updateEnemyGroups,
+      masterLoot,
+      updateMasterLoot,
+      masterImages,
+      updateMasterImages,
+      groupLogs,
+      getGroupSnapshots,
+      restoreGroupSnapshot,
       setActiveGroup,
       addGroup,
       renameGroup,

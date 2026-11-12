@@ -4,7 +4,8 @@ import { CharacterList } from './CharacterList';
 import { CombatTab } from './CombatTab';
 import { EnemiesTab } from './EnemiesTab';
 import { GroupBar } from './GroupBar';
-import { LootTray } from './LootTray';
+import { LootList } from './LootList';
+import { PlayersTab } from './PlayersTab';
 import { inGroup } from '../data/gm';
 
 interface Props {
@@ -12,14 +13,14 @@ interface Props {
   onCreateMasterCharacter: () => void;
 }
 
-type Tab = 'players' | 'enemies' | 'combat' | 'master' | 'loot';
+type Tab = 'players' | 'enemies' | 'combat' | 'master' | 'loot' | 'masterLoot';
 
-/** Мастер-вид: сверху выбор группы игроков, внутри группы — игроки, противники, бой, персонажи мастера и лут. */
+/** Мастер-вид: сверху выбор группы игроков, внутри группы — игроки (мини-карточки), противники, бой, персонажи мастера и лут; общий лут мастера — отдельно. */
 export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
   const [tab, setTab] = useState<Tab>('players');
-  const { activeGroupId, groups, characters, enemies, lootTray, encounters } = useAppData();
+  const { activeGroupId, groups, characters, enemies, members, lootTray, masterLoot, encounters } = useAppData();
 
-  const players = characters.filter((c) => c.roster === 'gm-player' && inGroup(c, activeGroupId, groups)).length;
+  const players = members.filter((m) => inGroup(m, activeGroupId, groups)).length;
   const master = characters.filter((c) => c.roster === 'gm-master' && inGroup(c, activeGroupId, groups)).length;
   const groupEnemies = enemies.filter((e) => inGroup(e, activeGroupId, groups)).length;
   const loot = lootTray.filter((i) => inGroup(i, activeGroupId, groups)).length;
@@ -30,12 +31,16 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
     { key: 'enemies', label: `Противники (${groupEnemies})` },
     { key: 'combat', label: fighting ? '⚔ Бой (идёт)' : '⚔ Бой' },
     { key: 'master', label: `Персонажи мастера (${master})` },
-    { key: 'loot', label: `Трей (${loot})` },
+    { key: 'loot', label: `Лут группы (${loot})` },
+    { key: 'masterLoot', label: `📦 Лут мастера (${masterLoot.length})` },
   ];
+  const groupless = tab === 'masterLoot';
 
   return (
     <div>
-      <GroupBar />
+      <div className={groupless ? 'group-bar-dim' : undefined}>
+        <GroupBar />
+      </div>
       <div className="section-tabs">
         {tabs.map((t) => (
           <button key={t.key} className={`nav-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
@@ -44,17 +49,7 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
         ))}
       </div>
 
-      {tab === 'players' && (
-        <CharacterList
-          roster="gm-player"
-          groupId={activeGroupId}
-          onOpen={onOpenCharacter}
-          onCreate={() => {}}
-          hideCreate
-          importLabel="Импортировать JSON игрока"
-          emptyHint="В этой группе пока нет игроков. Импортируйте JSON-файлы, присланные игроками."
-        />
-      )}
+      {tab === 'players' && <PlayersTab />}
 
       {tab === 'enemies' && <EnemiesTab />}
 
@@ -71,7 +66,9 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
         />
       )}
 
-      {tab === 'loot' && <LootTray groupId={activeGroupId} />}
+      {tab === 'loot' && <LootList scope="group" groupId={activeGroupId} />}
+
+      {tab === 'masterLoot' && <LootList scope="master" />}
     </div>
   );
 }

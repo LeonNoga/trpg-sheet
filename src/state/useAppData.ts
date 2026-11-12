@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { AppMeta, Snapshot, TrashEntry } from '../storage/db';
-import type { Character, Encounter, Enemy, EquipItem, Group, Path, Roster } from '../types';
+import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, GroupSnapshot, LootImage, PartyMember, Path, Roster } from '../types';
 
 export interface AppDataContextValue {
   loading: boolean;
@@ -20,6 +20,20 @@ export interface AppDataContextValue {
   renameGroup: (id: string, name: string) => void;
   /** Удаляет группу: персонажи, противники и лут переходят в первую из оставшихся, бой группы сбрасывается. */
   deleteGroup: (id: string) => void;
+  /** Мини-карточки игроков мастер-вида. */
+  members: PartyMember[];
+  updateMembers: (members: PartyMember[]) => void;
+  enemyGroups: EnemyGroup[];
+  updateEnemyGroups: (groups: EnemyGroup[]) => void;
+  /** Общий лут мастера (не привязан к группе) и его картинки. */
+  masterLoot: EquipItem[];
+  updateMasterLoot: (items: EquipItem[]) => void;
+  masterImages: LootImage[];
+  updateMasterImages: (images: LootImage[]) => void;
+  /** Журналы и история групп. */
+  groupLogs: Record<string, GroupLogEntry[]>;
+  getGroupSnapshots: (groupId: string) => Promise<GroupSnapshot[]>;
+  restoreGroupSnapshot: (snapshot: GroupSnapshot) => void;
   updateEnemies: (enemies: Enemy[]) => void;
   updateEncounters: (encounters: Encounter[]) => void;
   createCharacter: (path: Path, roster?: Roster) => Character;
@@ -28,7 +42,20 @@ export interface AppDataContextValue {
   /** Копия персонажа с новым id (для «Клонировать»). */
   cloneCharacter: (id: string) => Character | null;
   importCharacter: (character: Character, roster?: Roster, groupId?: string) => void;
-  restoreBackup: (characters: Character[], lootTray: EquipItem[], extras?: { groups?: Group[]; enemies?: Enemy[]; encounters?: Encounter[] }) => void;
+  restoreBackup: (
+    characters: Character[],
+    lootTray: EquipItem[],
+    extras?: {
+      groups?: Group[];
+      enemies?: Enemy[];
+      encounters?: Encounter[];
+      members?: PartyMember[];
+      enemyGroups?: EnemyGroup[];
+      masterLoot?: EquipItem[];
+      masterImages?: LootImage[];
+      groupLogs?: Record<string, GroupLogEntry[]>;
+    },
+  ) => void;
   updateLootTray: (items: EquipItem[]) => void;
   /** Добавляет в начало трея (безопасно вызывать подряд из асинхронного цикла). */
   addToLootTray: (items: EquipItem[]) => void;

@@ -1,6 +1,6 @@
 import { createStore, get, set, del, keys } from 'idb-keyval';
 import { normalizeCharacter } from '../data/defaults';
-import type { Character, Encounter, Enemy, EquipItem, Group } from '../types';
+import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, GroupSnapshot, LootImage, PartyMember } from '../types';
 
 const charactersStore = createStore('trpg-sheet-characters', 'characters');
 const settingsStore = createStore('trpg-sheet-settings', 'settings');
@@ -59,6 +59,46 @@ export async function loadEncounters(): Promise<Encounter[]> {
 
 export async function saveEncounters(encounters: Encounter[]): Promise<void> {
   await set('gmEncounters', encounters, settingsStore);
+}
+
+export async function loadMembers(): Promise<PartyMember[]> {
+  return (await get<PartyMember[]>('gmMembers', settingsStore)) ?? [];
+}
+
+export async function saveMembers(members: PartyMember[]): Promise<void> {
+  await set('gmMembers', members, settingsStore);
+}
+
+export async function loadEnemyGroups(): Promise<EnemyGroup[]> {
+  return (await get<EnemyGroup[]>('gmEnemyGroups', settingsStore)) ?? [];
+}
+
+export async function saveEnemyGroups(groups: EnemyGroup[]): Promise<void> {
+  await set('gmEnemyGroups', groups, settingsStore);
+}
+
+export async function loadMasterLoot(): Promise<EquipItem[]> {
+  return (await get<EquipItem[]>('gmMasterLoot', settingsStore)) ?? [];
+}
+
+export async function saveMasterLoot(items: EquipItem[]): Promise<void> {
+  await set('gmMasterLoot', items, settingsStore);
+}
+
+export async function loadMasterImages(): Promise<LootImage[]> {
+  return (await get<LootImage[]>('gmMasterImages', settingsStore)) ?? [];
+}
+
+export async function saveMasterImages(images: LootImage[]): Promise<void> {
+  await set('gmMasterImages', images, settingsStore);
+}
+
+export async function loadGroupLogs(): Promise<Record<string, GroupLogEntry[]>> {
+  return (await get<Record<string, GroupLogEntry[]>>('gmLogs', settingsStore)) ?? {};
+}
+
+export async function saveGroupLogs(logs: Record<string, GroupLogEntry[]>): Promise<void> {
+  await set('gmLogs', logs, settingsStore);
 }
 
 // ---------- служебные данные (напоминания о копии, подсказки) ----------
@@ -141,4 +181,21 @@ export async function addToTrash(character: Character): Promise<void> {
 export async function removeFromTrash(characterId: string): Promise<void> {
   const list = await loadTrash();
   await set('trash', list.filter((e) => e.character.id !== characterId), historyStore);
+}
+
+// ---------- история групп мастер-вида ----------
+
+const MAX_GROUP_SNAPSHOTS = 8;
+
+export async function loadGroupSnapshots(groupId: string): Promise<GroupSnapshot[]> {
+  return (await get<GroupSnapshot[]>(`gsnap:${groupId}`, historyStore)) ?? [];
+}
+
+export async function pushGroupSnapshot(snapshot: GroupSnapshot): Promise<void> {
+  const list = await loadGroupSnapshots(snapshot.groupId);
+  await set(`gsnap:${snapshot.groupId}`, [snapshot, ...list].slice(0, MAX_GROUP_SNAPSHOTS), historyStore);
+}
+
+export async function deleteGroupSnapshots(groupId: string): Promise<void> {
+  await del(`gsnap:${groupId}`, historyStore);
 }

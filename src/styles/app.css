@@ -2517,3 +2517,159 @@ input[list]::-webkit-calendar-picker-indicator {
     justify-content: space-between;
   }
 }
+
+/* ---------- Мастер-вид: игроки, подгруппы противников, лут, картинки ---------- */
+
+.group-bar-dim {
+  opacity: 0.45;
+}
+
+.member-card {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.member-name {
+  flex: 2 1 160px;
+  font-weight: 700;
+}
+
+.member-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+  margin: 10px 0 6px;
+}
+
+.member-number {
+  display: flex;
+  flex-direction: column;
+  width: 72px;
+  font-size: 11px;
+}
+
+.member-number input {
+  width: 100%;
+  text-align: center;
+  font-weight: 700;
+  padding: 5px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.member-hp {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: auto;
+  min-width: 150px;
+}
+
+.enemy-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.enemy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.enemy-subgroup {
+  margin-bottom: 14px;
+}
+
+.enemy-subgroup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.enemy-subgroup .enemy-card {
+  background: var(--surface-2);
+}
+
+.date-filter {
+  align-items: center;
+}
+
+.date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.date-field input {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.loot-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -6px 0 10px 4px;
+  font-size: 12px;
+}
+
+.given-tag {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text, var(--accent));
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.image-tile {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.image-tile.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.image-tile img {
+  display: block;
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.image-check {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+
+.image-caption {
+  padding: 4px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -7,7 +7,7 @@ import { ImportDialog } from './ImportDialog';
 import type { ImportItem } from './ImportDialog';
 
 export function BackupPanel() {
-  const { characters, lootTray, groups, enemies, encounters, restoreBackup, updateMeta, meta, trash, restoreFromTrash } = useAppData();
+  const { characters, lootTray, groups, enemies, encounters, members, enemyGroups, masterLoot, masterImages, groupLogs, restoreBackup, updateMeta, meta, trash, restoreFromTrash } = useAppData();
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<BackupPreview | null>(null);
 
@@ -24,7 +24,16 @@ export function BackupPanel() {
 
   function confirmRestore() {
     if (!pending) return;
-    restoreBackup(pending.characters, pending.lootTray, { groups: pending.groups, enemies: pending.enemies, encounters: pending.encounters });
+    restoreBackup(pending.characters, pending.lootTray, {
+      groups: pending.groups,
+      enemies: pending.enemies,
+      encounters: pending.encounters,
+      members: pending.members,
+      enemyGroups: pending.enemyGroups,
+      masterLoot: pending.masterLoot,
+      masterImages: pending.masterImages,
+      groupLogs: pending.groupLogs,
+    });
     alert(`Восстановлено персонажей: ${pending.characters.length}.`);
     setPending(null);
   }
@@ -45,7 +54,7 @@ export function BackupPanel() {
       {pending && (
         <ImportDialog
           title="Восстановление из копии"
-          summary={`В копии: персонажей — ${pending.characters.length}, предметов в трее лута — ${pending.lootTray.length}, противников — ${pending.enemies?.length ?? 0}, групп — ${pending.groups?.length ?? 0}. Персонажи и предметы с теми же id перезаписываются данными из копии, остальные остаются как есть.${
+          summary={`В копии: персонажей — ${pending.characters.length}, предметов в трее лута — ${pending.lootTray.length}, противников — ${pending.enemies?.length ?? 0}, игроков — ${pending.members?.length ?? 0}, групп — ${pending.groups?.length ?? 0}. Персонажи и предметы с теми же id перезаписываются данными из копии, остальные остаются как есть.${
             pending.characters.length > pendingItems.length ? ` Новых персонажей без особенностей: ${pending.characters.length - pendingItems.length}.` : ''
           }`}
           items={pendingItems}
@@ -62,7 +71,7 @@ export function BackupPanel() {
         <button
           className="btn btn-primary"
           onClick={async () => {
-            if (await exportBackup(characters, lootTray, { groups, enemies, encounters })) updateMeta({ lastBackupAt: Date.now() });
+            if (await exportBackup(characters, lootTray, { groups, enemies, encounters, members, enemyGroups, masterLoot, masterImages, groupLogs })) updateMeta({ lastBackupAt: Date.now() });
           }}
           disabled={characters.length === 0 && lootTray.length === 0 && enemies.length === 0}
         >

@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useAppData } from '../state/useAppData';
+import { GroupHistoryDialog, GroupLogDialog } from './GroupDialogs';
 
 /** Выбор группы игроков («подпапки» мастер-вида) и управление ими: создать, переименовать, удалить. */
 export function GroupBar() {
   const { groups, activeGroupId, setActiveGroup, addGroup, renameGroup, deleteGroup } = useAppData();
   const active = groups.find((g) => g.id === activeGroupId);
+  const [dialog, setDialog] = useState<'log' | 'history' | null>(null);
 
   return (
     <div className="group-bar">
@@ -32,6 +35,12 @@ export function GroupBar() {
             ⋯
           </summary>
           <div className="more-menu-list">
+            <button className="btn btn-ghost" onClick={() => setDialog('log')}>
+              Журнал группы
+            </button>
+            <button className="btn btn-ghost" onClick={() => setDialog('history')}>
+              История группы
+            </button>
             <button
               className="btn btn-ghost"
               onClick={() => {
@@ -62,6 +71,8 @@ export function GroupBar() {
           </div>
         </details>
       )}
+      {active && dialog === 'log' && <GroupLogDialog group={active} onClose={() => setDialog(null)} />}
+      {active && dialog === 'history' && <GroupHistoryDialog group={active} onClose={() => setDialog(null)} />}
     </div>
   );
 }

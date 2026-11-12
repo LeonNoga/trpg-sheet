@@ -1,4 +1,5 @@
-import type { Encounter, EncounterParticipant, Enemy, Group } from '../types';
+import { computeDerivedStats } from './formulas';
+import type { Character, Encounter, EncounterParticipant, Enemy, EnemyGroup, EquipItem, Group, GroupSnapshot, PartyMember } from '../types';
 
 // ---------- группы ----------
 
@@ -18,7 +19,61 @@ export function inGroup(entity: { groupId?: string }, groupId: string, groups: G
   return effectiveGroupId(entity.groupId, groups) === groupId;
 }
 
+// ---------- мини-карточки игроков ----------
+
+export function createBlankMember(groupId: string | undefined, now: number = Date.now()): PartyMember {
+  return {
+    id: crypto.randomUUID(),
+    groupId,
+    name: '',
+    playerName: '',
+    type: '',
+    level: 1,
+    hp: 10,
+    hpMax: 10,
+    defense: 10,
+    speed: 0,
+    passivePerception: 10,
+    initiative: 0,
+    resistance: 10,
+    note: '',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Мини-карточка по полной карточке персонажа (из файла игрока): основные числа берутся из расчёта. */
+export function memberFromCharacter(character: Character, groupId: string | undefined, now: number = Date.now()): PartyMember {
+  const d = computeDerivedStats(character);
+  return {
+    id: crypto.randomUUID(),
+    groupId,
+    name: character.characterName,
+    playerName: character.playerName,
+    type: character.species,
+    level: character.level,
+    hp: Math.min(character.pools.hp, d.hp),
+    hpMax: d.hp,
+    defense: d.defense,
+    speed: d.speed,
+    passivePerception: d.passivePerception,
+    initiative: d.initiative,
+    resistance: d.resistance,
+    note: '',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 // ---------- противники ----------
+
+/** Типы противников для выбора в карточке. */
+export const ENEMY_KINDS = ['Зомби', 'Монстр', 'NPC'];
+
+export function createEnemyGroup(groupId: string | undefined, name: string, description = '', now: number = Date.now()): EnemyGroup {
+  return { id: crypto.randomUUID(), groupId, name: name.trim() || 'Подгруппа', description, createdAt: now };
+}
+
 
 export function createBlankEnemy(groupId: string | undefined, now: number = Date.now()): Enemy {
   return {
@@ -147,4 +202,34 @@ export function removeParticipant(encounter: Encounter, id: string, isOut: (p: E
 
 export function updateParticipant(encounter: Encounter, id: string, patch: Partial<EncounterParticipant>): Encounter {
   return { ...encounter, participants: encounter.participants.map((p) => (p.id === id ? { ...p, ...patch } : p)) };
+}
+
+// ---------- история группы ----------
+
+const withoutImage = <T extends { image?: string }>(item: T): T => {
+  const { image: _image, ...rest } = item;
+  return rest as T;
+};
+
+/** Снимок данных группы (без картинок — они тяжёлые; при возврате их вернут записи, оставшиеся по id). */
+export function buildGroupSnapshot(
+  groupId: string,
+  data: { members: PartyMember[]; enemies: Enemy[]; enemyGroups: EnemyGroup[]; encounter?: Encounter; loot: EquipItem[] },
+  now: number = Date.now(),
+): GroupSnapshot {
+  return {
+    at: now,
+    groupId,
+    members: data.members,
+    enemies: data.enemies.map(withoutImage),
+    enemyGroups: data.enemyGroups,
+    encounter: data.encounter,
+    loot: data.loot.map(withoutImage),
+  };
+}
+
+/** Картинки текущих записей возвращаются тем записям снимка, у которых тот же id. */
+export function reattachImages<T extends { id: string; image?: string }>(restored: T[], current: T[]): T[] {
+  const images = new Map(current.map((c) => [c.id, c.image]));
+  return restored.map((r) => (images.get(r.id) ? { ...r, image: images.get(r.id) } : r));
 }

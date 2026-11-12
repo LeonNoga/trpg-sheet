@@ -74,8 +74,13 @@ export interface EquipItem {
   cast?: string;
   duration?: string;
   statBonuses: Partial<Record<BonusKey, number>>;
-  /** Для записей трея мастера: в какой группе лежит. */
+  /** Для записей лута мастера: в какой группе лежит. */
   groupId?: string;
+  /** Когда запись добавлена в лут мастера (мс) — для фильтра по дате. */
+  addedAt?: number;
+  /** Кому выдано (имя игрока) и когда — отметка в луте группы. */
+  givenTo?: string;
+  givenAt?: number;
   /** Для умений: бонусы (и штрафы), которые действуют только пока активно умение (временный эффект после применения). */
   activeBonuses?: Partial<Record<BonusKey, number>>;
   equipped: boolean;
@@ -112,6 +117,72 @@ export interface Group {
   createdAt: number;
 }
 
+/** Мини-карточка игрока в мастер-виде: только то, что мастеру нужно в бою; значения мастер вносит и правит сам. */
+export interface PartyMember {
+  id: string;
+  groupId?: string;
+  /** Имя персонажа. */
+  name: string;
+  playerName: string;
+  /** Тип: вид / класс / модель — свободный текст. */
+  type: string;
+  level: number;
+  hp: number;
+  hpMax: number;
+  defense: number;
+  speed: number;
+  passivePerception: number;
+  initiative: number;
+  resistance: number;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Подгруппа противников внутри группы: название, описание и свои противники. */
+export interface EnemyGroup {
+  id: string;
+  groupId?: string;
+  name: string;
+  description: string;
+  createdAt: number;
+}
+
+/** Картинка в «Луте мастера»: фото карточки, которое мастер пачкой отправляет игрокам (они сами распознают у себя). */
+export interface LootImage {
+  id: string;
+  name: string;
+  image: string;
+  addedAt: number;
+}
+
+/** Запись журнала группы (см. data/groupLog.ts). */
+export interface GroupLogEntry {
+  id: string;
+  at: number;
+  kind: 'note' | 'hp' | 'value';
+  /** Кто или что: имя игрока, противника, предмета. */
+  label?: string;
+  /** Что меняется («Инициатива», «Уровень»). */
+  field?: string;
+  from?: number | string;
+  to?: number | string;
+  text?: string;
+  /** По ключу слитые подряд правки одного значения. */
+  key?: string;
+}
+
+/** Снимок данных группы для истории (без картинок). */
+export interface GroupSnapshot {
+  at: number;
+  groupId: string;
+  members: PartyMember[];
+  enemies: Enemy[];
+  enemyGroups: EnemyGroup[];
+  encounter?: Encounter;
+  loot: EquipItem[];
+}
+
 /** Своё поле карточки противника: название и значение произвольным текстом. */
 export interface EnemyField {
   id: string;
@@ -123,8 +194,10 @@ export interface EnemyField {
 export interface Enemy {
   id: string;
   groupId?: string;
+  /** Подгруппа противников (например, «Орда у склада»); без неё — в общем списке. */
+  enemyGroupId?: string;
   name: string;
-  /** Тип: «Зомби», «Монстр», «NPC» — свободный текст. */
+  /** Тип: «Зомби», «Монстр», «NPC» (выбор из списка; прежние свободные значения тоже сохраняются). */
   kind: string;
   level?: number;
   hp: number;
@@ -311,6 +384,11 @@ export interface BackupFile {
   groups?: Group[];
   enemies?: Enemy[];
   encounters?: Encounter[];
+  members?: PartyMember[];
+  enemyGroups?: EnemyGroup[];
+  masterLoot?: EquipItem[];
+  masterImages?: LootImage[];
+  groupLogs?: Record<string, GroupLogEntry[]>;
 }
 
 export interface TrayFile {

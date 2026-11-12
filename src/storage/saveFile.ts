@@ -9,14 +9,22 @@ export const IMAGE_FALLBACK_EVENT = 'trpg-image-fallback';
 export interface ExportFallbackDetail {
   fileName: string;
   text: string;
+  /** Своё название окна и пояснение (например, для «Текстом» в луте мастера). */
+  title?: string;
+  intro?: string;
 }
 
 function isTouchFirstDevice(): boolean {
   return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
 }
 
-function showFallback(fileName: string, text: string): void {
-  window.dispatchEvent(new CustomEvent<ExportFallbackDetail>(EXPORT_FALLBACK_EVENT, { detail: { fileName, text } }));
+function showFallback(fileName: string, text: string, extra: Pick<ExportFallbackDetail, 'title' | 'intro'> = {}): void {
+  window.dispatchEvent(new CustomEvent<ExportFallbackDetail>(EXPORT_FALLBACK_EVENT, { detail: { fileName, text, ...extra } }));
+}
+
+/** Показать текст для копирования (отправить игроку сообщением). */
+export function showTextToCopy(fileName: string, text: string, title: string, intro: string): void {
+  showFallback(fileName, text, { title, intro });
 }
 
 /** Обычное скачивание текстового файла (в Chrome на Android и на компьютере оно работает, во встроенных браузерах — нет). */

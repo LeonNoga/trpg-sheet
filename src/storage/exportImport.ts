@@ -4,7 +4,7 @@ import { saveJsonFile } from './saveFile';
 import { CURRENT_SCHEMA_VERSION, isFromNewerSchema } from '../data/migrations';
 import { migrationNotes } from '../data/importCheck';
 import type { ImportPreview } from '../data/importCheck';
-import type { BackupFile, Character, CharacterExportFile, Encounter, Enemy, EquipItem, Group, TrayFile } from '../types';
+import type { BackupFile, Character, CharacterExportFile, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, LootImage, PartyMember, TrayFile } from '../types';
 
 async function readJson(file: File): Promise<unknown> {
   const text = await file.text();
@@ -57,6 +57,11 @@ export interface BackupExtras {
   groups?: Group[];
   enemies?: Enemy[];
   encounters?: Encounter[];
+  members?: PartyMember[];
+  enemyGroups?: EnemyGroup[];
+  masterLoot?: EquipItem[];
+  masterImages?: LootImage[];
+  groupLogs?: Record<string, GroupLogEntry[]>;
 }
 
 export function exportBackup(characters: Character[], lootTray: EquipItem[], extras: BackupExtras = {}): Promise<boolean> {
@@ -108,8 +113,25 @@ export async function importBackupFromFile(file: File): Promise<BackupPreview> {
     groups: list<Group>(data.groups),
     enemies: list<Enemy>(data.enemies),
     encounters: list<Encounter>(data.encounters),
+    members: list<PartyMember>(data.members),
+    enemyGroups: list<EnemyGroup>(data.enemyGroups),
+    masterLoot: list<EquipItem>(data.masterLoot),
+    masterImages: list<LootImage>(data.masterImages),
+    groupLogs: data.groupLogs && typeof data.groupLogs === 'object' ? (data.groupLogs as Record<string, GroupLogEntry[]>) : {},
     notes,
   };
+}
+
+/** Служебные пометки мастера (группа, дата, кому выдано) игроку не нужны. */
+export function stripMasterFields(item: EquipItem): EquipItem {
+  const { groupId: _g, addedAt: _a, givenTo: _t, givenAt: _ga, ...rest } = item;
+  return rest;
+}
+
+/** Содержимое файла лута для игрока — текстом (чтобы отправить сообщением). */
+export function trayFileText(items: EquipItem[]): string {
+  const payload: TrayFile = { fileType: 'trpg-sheet-tray', version: 1, exportedAt: new Date().toISOString(), items: items.map(stripMasterFields) };
+  return JSON.stringify(payload, null, 2);
 }
 
 export function exportTray(items: EquipItem[]): Promise<boolean> {
@@ -117,7 +139,7 @@ export function exportTray(items: EquipItem[]): Promise<boolean> {
     fileType: 'trpg-sheet-tray',
     version: 1,
     exportedAt: new Date().toISOString(),
-    items,
+    items: items.map(stripMasterFields),
   };
   const date = new Date().toISOString().slice(0, 10);
   return saveJsonFile(`trpg-tray-${date}.json`, payload);

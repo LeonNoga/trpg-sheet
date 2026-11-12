@@ -35,12 +35,12 @@ export function ExportFallbackDialog() {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal-box">
-        <h3 className="card-title">Не получилось отправить файл</h3>
-        <p className="muted">
+        <h3 className="card-title">{detail.title ?? 'Не получилось отправить файл'}</h3>
+        {detail.intro ? <p className="muted">{detail.intro}</p> : <p className="muted">
           Не удалось открыть меню «Поделиться». Попробуйте «Скачать файл»; если он не скачивается, скопируйте текст и отправьте его себе (в «Избранное» Telegram, заметки,
           почту) — потом на нужном устройстве нажмите «Вставить текстом» рядом с кнопкой импорта. Либо откройте страницу
           в Safari/Chrome (меню «…» → «Открыть в Safari») и повторите — там файл отправляется напрямую.
-        </p>
+        </p>}
         <textarea ref={area} className="notes-textarea" readOnly value={detail.text} onFocus={(e) => e.target.select()} />
         <div className="item-actions">
           <button className="btn btn-primary" onClick={() => downloadTextFile(detail.fileName, detail.text)}>
