@@ -5,6 +5,7 @@ import { readCharacterFile } from '../storage/exportImport';
 import { ImportDialog } from './ImportDialog';
 import type { ImportItem } from './ImportDialog';
 import { PasteImportButton } from './FileDialogs';
+import { inGroup } from '../data/gm';
 import type { Roster } from '../types';
 
 interface Props {
@@ -14,14 +15,16 @@ interface Props {
   emptyHint?: string;
   hideCreate?: boolean;
   importLabel?: string;
+  /** Мастер-вид: показывать только персонажей этой группы, импортировать в неё и разрешить переносить между группами. */
+  groupId?: string;
 }
 
-export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate, importLabel }: Props) {
-  const { characters, importCharacter } = useAppData();
+export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate, importLabel, groupId }: Props) {
+  const { characters, importCharacter, groups, updateCharacter } = useAppData();
   const fileInput = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [pending, setPending] = useState<ImportItem | null>(null);
-  const all = characters.filter((c) => c.roster === roster);
+  const all = characters.filter((c) => c.roster === roster && (!groupId || inGroup(c, groupId, groups)));
   const q = query.trim().toLowerCase();
   const list = q
     ? all.filter((c) => `${c.characterName} ${c.playerName} ${c.species}`.toLowerCase().includes(q))
@@ -33,7 +36,7 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
       const preview = await readCharacterFile(file);
       const existing = characters.find((c) => c.id === preview.character.id);
       // Без перезаписи и без миграции — сразу в список; иначе сначала показываем, что изменится.
-      if (!existing && preview.notes.length === 0) importCharacter(preview.character, roster);
+      if (!existing && preview.notes.length === 0) importCharacter(preview.character, roster, groupId);
       else setPending({ incoming: preview.character, existing, notes: preview.notes });
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Не удалось импортировать файл.');
@@ -47,9 +50,9 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
     const { incoming } = pending;
     if (choice === 'copy') {
       const name = incoming.characterName ? `${incoming.characterName} (импорт)` : '';
-      importCharacter({ ...incoming, id: crypto.randomUUID(), characterName: name }, roster);
+      importCharacter({ ...incoming, id: crypto.randomUUID(), characterName: name }, roster, groupId);
     } else {
-      importCharacter(incoming, roster);
+      importCharacter(incoming, roster, groupId);
     }
     setPending(null);
   }
@@ -101,14 +104,30 @@ export function CharacterList({ roster, onOpen, onCreate, emptyHint, hideCreate,
       ) : (
         <div className="char-list-grid">
           {list.map((c) => (
-            <button className={`char-list-card theme-${c.path}`} key={c.id} onClick={() => onOpen(c.id)}>
-              {c.portrait && <img className="list-portrait" src={c.portrait} alt="" />}
-              <span className="pill-badge">{PATH_LABELS[c.path]}</span>
-              <h3>{c.characterName || 'Без имени'}</h3>
-              <span className="meta">
-                {c.playerName || 'Игрок не указан'} · Ур. {c.level}
-              </span>
-            </button>
+            <div className="char-list-item" key={c.id}>
+              <button className={`char-list-card theme-${c.path}`} onClick={() => onOpen(c.id)}>
+                {c.portrait && <img className="list-portrait" src={c.portrait} alt="" />}
+                <span className="pill-badge">{PATH_LABELS[c.path]}</span>
+                <h3>{c.characterName || 'Без имени'}</h3>
+                <span className="meta">
+                  {c.playerName || 'Игрок не указан'} · Ур. {c.level}
+                </span>
+              </button>
+              {groupId && groups.length > 1 && (
+                <select
+                  className="group-move"
+                  value={groupId}
+                  title="Перенести в другую группу"
+                  onChange={(e) => updateCharacter({ ...c, groupId: e.target.value })}
+                >
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      📁 {g.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           ))}
         </div>
       )}

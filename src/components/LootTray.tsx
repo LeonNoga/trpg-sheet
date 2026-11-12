@@ -10,6 +10,7 @@ import { BulkCardUpload } from './BulkCardUpload';
 import { PasteImportButton } from './FileDialogs';
 import { SelectionToolbar } from './SelectionToolbar';
 import { useUndo } from '../state/useUndo';
+import { inGroup } from '../data/gm';
 import { reinsertRemoved } from '../utils/undoHelpers';
 import type { BonusKey, EquipItem, ItemPath, Rarity } from '../types';
 
@@ -20,8 +21,22 @@ type BonusFilter = 'all' | BonusKey;
 
 const PATH_FILTER_ORDER: ItemPath[] = ['genetic', 'magic', 'tech', 'none'];
 
-export function LootTray() {
-  const { lootTray, updateLootTray, addToLootTray, characters, updateCharacter } = useAppData();
+interface TrayProps {
+  /** Группа, чей трей показывается: у каждой группы свой лут. */
+  groupId: string;
+}
+
+export function LootTray({ groupId }: TrayProps) {
+  const { lootTray: fullTray, updateLootTray: updateFullTray, addToLootTray: addToFullTray, characters, updateCharacter, groups } = useAppData();
+  // Записи без группы числятся за первой. В трей группы входят только её записи; остальные при сохранении не трогаем.
+  const lootTray = useMemo(() => fullTray.filter((i) => inGroup(i, groupId, groups)), [fullTray, groupId, groups]);
+  const stamp = (items: EquipItem[]) => items.map((i) => ({ ...i, groupId }));
+  const updateLootTray = (items: EquipItem[]) =>
+    updateFullTray([...stamp(items), ...trayRefAll.current.filter((i) => !inGroup(i, groupId, groups))]);
+  const addToLootTray = (items: EquipItem[]) => addToFullTray(stamp(items));
+  const charactersRef = useRef(characters);
+  const characterNow = (id: string) => charactersRef.current.find((c) => c.id === id);
+  const recipients = characters.filter((c) => c.roster !== 'personal' && inGroup(c, groupId, groups));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creatingKind, setCreatingKind] = useState<'item' | 'ability' | null>(null);
   const [giveTarget, setGiveTarget] = useState<Record<string, string>>({});
@@ -35,9 +50,14 @@ export function LootTray() {
   const trayInput = useRef<HTMLInputElement>(null);
   const { showUndo } = useUndo();
   const trayRef = useRef(lootTray);
+  const trayRefAll = useRef(fullTray);
   useEffect(() => {
     trayRef.current = lootTray;
+    trayRefAll.current = fullTray;
+    charactersRef.current = characters;
   });
+  const [batchTarget, setBatchTarget] = useState('');
+  const [moveTarget, setMoveTarget] = useState('');
 
   const filtersActive = kindFilter !== 'all' || rarityFilter !== 'all' || pathFilter !== 'all' || bonusFilter !== 'all' || query.trim() !== '';
 
@@ -115,6 +135,44 @@ export function LootTray() {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Не удалось прочитать файл трея.');
     }
+  }
+
+  const selectedItems = lootTray.filter((i) => selected.has(i.id));
+
+  /** Выданные предметы попадают в инвентарь «снятыми», умения — как есть; метка группы трея в карточку не переносится. */
+  function giveSelected() {
+    const target = characters.find((c) => c.id === batchTarget);
+    if (!target || selectedItems.length === 0) return;
+    const copies = selectedItems.map(({ groupId: _group, ...item }) => ({
+      ...item,
+      id: crypto.randomUUID(),
+      equipped: item.kind === 'ability',
+    }));
+    updateCharacter({
+      ...target,
+      items: [...target.items, ...copies.filter((i) => i.kind === 'item')],
+      abilities: [...target.abilities, ...copies.filter((i) => i.kind === 'ability')],
+    });
+    // Выданное из трея убираем — у мастера в трее остаётся то, что ещё не роздано.
+    const givenIds = new Set(selectedItems.map((i) => i.id));
+    updateLootTray(lootTray.filter((i) => !givenIds.has(i.id)));
+    setSelected(new Set());
+    showUndo(`Выдано персонажу «${target.characterName || 'Без имени'}»: ${copies.length}`, () => {
+      const current = characterNow(target.id);
+      if (current) {
+        const ids = new Set<string>(copies.map((c) => c.id));
+        updateCharacter({ ...current, items: current.items.filter((i) => !ids.has(i.id)), abilities: current.abilities.filter((i) => !ids.has(i.id)) });
+      }
+      updateFullTray([...stamp(selectedItems), ...trayRefAll.current]);
+    });
+  }
+
+  function moveSelected() {
+    if (!moveTarget || selectedItems.length === 0) return;
+    const ids = new Set(selectedItems.map((i) => i.id));
+    updateFullTray([...trayRefAll.current.map((i) => (ids.has(i.id) ? { ...i, groupId: moveTarget } : i))]);
+    setSelected(new Set());
+    setMoveTarget('');
   }
 
   const editorForNew = creatingKind ? createBlankEquipItem(creatingKind) : null;
@@ -210,6 +268,49 @@ export function LootTray() {
         Показано {filtered.length} из {lootTray.length}
       </p>
 
+      {selectedItems.length > 0 && (
+        <div className="card batch-actions">
+          <b>Выбрано: {selectedItems.length}</b>
+          <div className="row">
+            <select value={batchTarget} onChange={(e) => setBatchTarget(e.target.value)}>
+              <option value="">Выдать персонажу…</option>
+              {recipients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.characterName || 'Без имени'}
+                </option>
+              ))}
+            </select>
+            <button className="btn btn-sm" disabled={!batchTarget} onClick={giveSelected}>
+              Выдать выбранные
+            </button>
+            <button
+              className="btn btn-sm"
+              title="Файл с выбранными карточками для игрока: он загружает его на вкладке «Лут» у своего персонажа"
+              onClick={() => void exportTray(selectedItems)}
+            >
+              Файл для игрока
+            </button>
+          </div>
+          {groups.length > 1 && (
+            <div className="row">
+              <select value={moveTarget} onChange={(e) => setMoveTarget(e.target.value)}>
+                <option value="">Перенести в группу…</option>
+                {groups
+                  .filter((g) => g.id !== groupId)
+                  .map((g) => (
+                    <option key={g.id} value={g.id}>
+                      📁 {g.name}
+                    </option>
+                  ))}
+              </select>
+              <button className="btn btn-sm" disabled={!moveTarget} onClick={moveSelected}>
+                Перенести
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <SelectionToolbar
         allItems={lootTray}
         visibleItems={filtered}
@@ -257,7 +358,7 @@ export function LootTray() {
                 onChange={(e) => setGiveTarget((t) => ({ ...t, [item.id]: e.target.value }))}
               >
                 <option value="">Выдать персонажу...</option>
-                {characters.map((c) => (
+                {recipients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.characterName || 'Без имени'}
                   </option>

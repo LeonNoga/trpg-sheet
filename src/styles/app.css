@@ -2305,3 +2305,215 @@ input[list]::-webkit-calendar-picker-indicator {
 .effect-chip.permanent {
   border: 1px dashed currentColor;
 }
+
+/* ---------- Мастер-вид: группы, противники, бой ---------- */
+
+.group-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.char-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.char-list-item > .char-list-card {
+  flex: 1;
+}
+
+.group-move {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.batch-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-color: var(--accent);
+}
+
+.enemy-card {
+  padding: 10px 12px;
+}
+
+.enemy-card.down {
+  opacity: 0.7;
+}
+
+.enemy-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+
+.enemy-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.enemy-title {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.enemy-title h4 {
+  margin: 0;
+}
+
+.enemy-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.enemy-numbers b {
+  color: var(--text);
+}
+
+.enemy-hp {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.enemy-hp-bar {
+  position: relative;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, color-mix(in srgb, #d6455d 45%, transparent) var(--fill, 100%), var(--surface-2) var(--fill, 100%));
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+}
+
+.enemy-body {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dotted var(--border);
+}
+
+.enemy-image {
+  display: block;
+  max-width: min(420px, 100%);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.enemy-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+.combat-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.combat-row {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.combat-row.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.combat-row.out {
+  opacity: 0.6;
+}
+
+.combat-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.combat-turn {
+  width: 16px;
+  color: var(--accent-text, var(--accent));
+  font-weight: 700;
+}
+
+.combat-init {
+  display: flex;
+  flex-direction: column;
+  width: 64px;
+  font-size: 11px;
+}
+
+.combat-init input {
+  width: 100%;
+  text-align: center;
+  font-weight: 700;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.combat-name {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.combat-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.combat-pools {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.combat-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.condition-adder {
+  flex: 1 1 320px;
+}
+
+@media (max-width: 600px) {
+  .combat-main {
+    gap: 6px;
+  }
+
+  .combat-hp {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

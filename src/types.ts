@@ -74,6 +74,8 @@ export interface EquipItem {
   cast?: string;
   duration?: string;
   statBonuses: Partial<Record<BonusKey, number>>;
+  /** Для записей трея мастера: в какой группе лежит. */
+  groupId?: string;
   /** Для умений: бонусы (и штрафы), которые действуют только пока активно умение (временный эффект после применения). */
   activeBonuses?: Partial<Record<BonusKey, number>>;
   equipped: boolean;
@@ -102,6 +104,72 @@ export interface ActiveEffect {
 }
 
 export type Roster = 'personal' | 'gm-player' | 'gm-master';
+
+/** Группа (пачка) игроков в мастер-виде: своя «подпапка» с персонажами, противниками, боем и лутом. */
+export interface Group {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+/** Своё поле карточки противника: название и значение произвольным текстом. */
+export interface EnemyField {
+  id: string;
+  label: string;
+  value: string;
+}
+
+/** Противник мастера (зомби, монстр, NPC): основные числа, описание, картинка, свои поля. */
+export interface Enemy {
+  id: string;
+  groupId?: string;
+  name: string;
+  /** Тип: «Зомби», «Монстр», «NPC» — свободный текст. */
+  kind: string;
+  level?: number;
+  hp: number;
+  hpMax: number;
+  defense: number;
+  speed: number;
+  passivePerception: number;
+  initiative: number;
+  resistance: number;
+  /** Основные характеристики по системе — необязательные. */
+  stats: Partial<Record<StatKey, number>>;
+  /** Атаки и умения, как их удобно записать мастеру. */
+  attacks: string;
+  description: string;
+  image?: string;
+  fields: EnemyField[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface EncounterCondition {
+  id: string;
+  name: string;
+  /** Сколько раундов осталось; без числа — пока не снимут. */
+  rounds?: number;
+}
+
+export interface EncounterParticipant {
+  id: string;
+  kind: 'player' | 'enemy';
+  /** id персонажа или противника. */
+  refId: string;
+  initiative: number;
+  conditions: EncounterCondition[];
+}
+
+/** Бой группы: порядок инициативы, раунд, чей ход. */
+export interface Encounter {
+  id: string;
+  groupId: string;
+  active: boolean;
+  round: number;
+  currentId?: string;
+  participants: EncounterParticipant[];
+}
 
 export type PoolKey = 'hp' | 'staminaPoints' | 'resourcePoints';
 
@@ -174,6 +242,8 @@ export interface Character {
   /** Версия схемы данных (см. data/migrations.ts); у карточек, созданных до её введения, отсутствует. */
   schemaVersion?: number;
   roster: Roster;
+  /** Для персонажей мастер-вида: в какой группе игроков состоит. */
+  groupId?: string;
   playerName: string;
   characterName: string;
   /** Вид / Класс / Модель (зависит от пути); по игровой механике — класс персонажа. */
@@ -238,6 +308,9 @@ export interface BackupFile {
   exportedAt: string;
   characters: Character[];
   lootTray: EquipItem[];
+  groups?: Group[];
+  enemies?: Enemy[];
+  encounters?: Encounter[];
 }
 
 export interface TrayFile {

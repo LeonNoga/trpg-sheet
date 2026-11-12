@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { AppMeta, Snapshot, TrashEntry } from '../storage/db';
-import type { Character, EquipItem, Path, Roster } from '../types';
+import type { Character, Encounter, Enemy, EquipItem, Group, Path, Roster } from '../types';
 
 export interface AppDataContextValue {
   loading: boolean;
@@ -9,13 +9,26 @@ export interface AppDataContextValue {
   meta: AppMeta;
   /** Недавно удалённые персонажи (хранятся 30 дней, не больше 5). */
   trash: TrashEntry[];
+  /** Группы игроков мастер-вида (всегда есть хотя бы одна). */
+  groups: Group[];
+  /** Выбранная сейчас группа. */
+  activeGroupId: string;
+  enemies: Enemy[];
+  encounters: Encounter[];
+  setActiveGroup: (id: string) => void;
+  addGroup: (name: string) => Group;
+  renameGroup: (id: string, name: string) => void;
+  /** Удаляет группу: персонажи, противники и лут переходят в первую из оставшихся, бой группы сбрасывается. */
+  deleteGroup: (id: string) => void;
+  updateEnemies: (enemies: Enemy[]) => void;
+  updateEncounters: (encounters: Encounter[]) => void;
   createCharacter: (path: Path, roster?: Roster) => Character;
   updateCharacter: (character: Character) => void;
   removeCharacter: (id: string) => void;
   /** Копия персонажа с новым id (для «Клонировать»). */
   cloneCharacter: (id: string) => Character | null;
-  importCharacter: (character: Character, roster?: Roster) => void;
-  restoreBackup: (characters: Character[], lootTray: EquipItem[]) => void;
+  importCharacter: (character: Character, roster?: Roster, groupId?: string) => void;
+  restoreBackup: (characters: Character[], lootTray: EquipItem[], extras?: { groups?: Group[]; enemies?: Enemy[]; encounters?: Encounter[] }) => void;
   updateLootTray: (items: EquipItem[]) => void;
   /** Добавляет в начало трея (безопасно вызывать подряд из асинхронного цикла). */
   addToLootTray: (items: EquipItem[]) => void;

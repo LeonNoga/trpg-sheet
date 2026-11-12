@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import { NumberField } from './NumberField';
 import { SpeciesBonusesCard } from './TraitBlocks';
+import { PasteImportButton } from './FileDialogs';
+import { importTrayFromFile } from '../storage/exportImport';
 import { absorbFromPearl, fillPearl } from '../data/development';
 import type { Character, DevelopmentPearl, TraitList } from '../types';
 
@@ -113,9 +115,61 @@ export function LootTab({ character, onPatch }: Props) {
   const pearls = character.pearls ?? [];
   const dust = character.dust ?? [];
   const openPearl = pearls.find((p) => p.id === pearlId) ?? null;
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  /** Лут от мастера: файл с карточками предметов и умений (кнопка «Файл для игрока» у мастера) добавляется в инвентарь. */
+  async function handleMasterLoot(file: File | undefined) {
+    if (fileInput.current) fileInput.current.value = '';
+    if (!file) return;
+    try {
+      const incoming = await importTrayFromFile(file);
+      if (incoming.length === 0) {
+        alert('В файле нет карточек.');
+        return;
+      }
+      const gear = incoming.filter((i) => i.kind === 'item').length;
+      const skills = incoming.length - gear;
+      if (!confirm(`Добавить от мастера: предметов — ${gear}, умений — ${skills}? Предметы попадут в «Снаряжение» снятыми.`)) return;
+      onPatch((c) => {
+        const fresh = incoming.map(({ groupId: _group, ...item }) => ({
+          ...item,
+          id: crypto.randomUUID(),
+          equipped: item.kind === 'ability',
+        }));
+        return {
+          ...c,
+          items: [...c.items, ...fresh.filter((i) => i.kind === 'item')],
+          abilities: [...c.abilities, ...fresh.filter((i) => i.kind === 'ability')],
+        };
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Не удалось прочитать файл.');
+    }
+  }
 
   return (
     <div>
+      <div className="card">
+        <h3 className="card-title">Лут от мастера</h3>
+        <p className="muted">
+          Мастер присылает файл с выданными карточками («Файл для игрока»). Загрузите его здесь — предметы появятся в
+          «Снаряжении», умения — на вкладке умений.
+        </p>
+        <div className="top-actions" style={{ marginBottom: 0 }}>
+          <button className="btn" onClick={() => fileInput.current?.click()}>
+            Загрузить файл от мастера
+          </button>
+          <PasteImportButton onFile={handleMasterLoot} label="Вставить текстом" />
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => handleMasterLoot(e.target.files?.[0])}
+          />
+        </div>
+      </div>
+
       <div className="card">
         <h3 className="card-title">Очки развития</h3>
         <div className="field" style={{ maxWidth: 200 }}>

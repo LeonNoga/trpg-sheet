@@ -58,3 +58,20 @@ describe('сверка с тем, что уже есть', () => {
     expect(compareCharacters(current, { ...current, updatedAt: 3000 }).incomingOlder).toBe(false);
   });
 });
+
+describe('резервная копия мастер-вида', () => {
+  it('группы, противники и бои читаются из копии; старые копии без них тоже', async () => {
+    const { importBackupFromFile } = await import('../storage/exportImport');
+    const group = { id: 'g1', name: 'Пятница', createdAt: 1 };
+    const enemy = { id: 'e1', groupId: 'g1', name: 'Зомби' };
+    const full = await importBackupFromFile(
+      asFile({ fileType: 'trpg-sheet-backup', version: 1, characters: [], lootTray: [], groups: [group], enemies: [enemy], encounters: [{ id: 'x' }] }),
+    );
+    expect(full.groups).toEqual([group]);
+    expect(full.enemies).toHaveLength(1);
+    expect(full.encounters).toHaveLength(1);
+    const old = await importBackupFromFile(asFile({ fileType: 'trpg-sheet-backup', version: 1, characters: [], lootTray: [] }));
+    expect(old.groups).toEqual([]);
+    expect(old.enemies).toEqual([]);
+  });
+});

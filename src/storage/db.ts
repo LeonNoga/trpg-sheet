@@ -1,6 +1,6 @@
 import { createStore, get, set, del, keys } from 'idb-keyval';
 import { normalizeCharacter } from '../data/defaults';
-import type { Character, EquipItem } from '../types';
+import type { Character, Encounter, Enemy, EquipItem, Group } from '../types';
 
 const charactersStore = createStore('trpg-sheet-characters', 'characters');
 const settingsStore = createStore('trpg-sheet-settings', 'settings');
@@ -35,6 +35,32 @@ export async function saveLootTray(items: EquipItem[]): Promise<void> {
   await set(LOOT_TRAY_KEY, items, settingsStore);
 }
 
+// ---------- мастер-вид: группы, противники, бои ----------
+
+export async function loadGroups(): Promise<Group[]> {
+  return (await get<Group[]>('gmGroups', settingsStore)) ?? [];
+}
+
+export async function saveGroups(groups: Group[]): Promise<void> {
+  await set('gmGroups', groups, settingsStore);
+}
+
+export async function loadEnemies(): Promise<Enemy[]> {
+  return (await get<Enemy[]>('gmEnemies', settingsStore)) ?? [];
+}
+
+export async function saveEnemies(enemies: Enemy[]): Promise<void> {
+  await set('gmEnemies', enemies, settingsStore);
+}
+
+export async function loadEncounters(): Promise<Encounter[]> {
+  return (await get<Encounter[]>('gmEncounters', settingsStore)) ?? [];
+}
+
+export async function saveEncounters(encounters: Encounter[]): Promise<void> {
+  await set('gmEncounters', encounters, settingsStore);
+}
+
 // ---------- служебные данные (напоминания о копии, подсказки) ----------
 
 export interface AppMeta {
@@ -44,6 +70,8 @@ export interface AppMeta {
   backupSnoozeUntil?: number;
   /** Скрыта ли подсказка «Добавить на экран Домой». */
   installHintDismissed?: boolean;
+  /** Выбранная группа в мастер-виде. */
+  activeGroupId?: string;
 }
 
 const META_KEY = 'meta';

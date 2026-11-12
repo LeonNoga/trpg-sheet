@@ -4,7 +4,7 @@ import { saveJsonFile } from './saveFile';
 import { CURRENT_SCHEMA_VERSION, isFromNewerSchema } from '../data/migrations';
 import { migrationNotes } from '../data/importCheck';
 import type { ImportPreview } from '../data/importCheck';
-import type { BackupFile, Character, CharacterExportFile, EquipItem, TrayFile } from '../types';
+import type { BackupFile, Character, CharacterExportFile, Encounter, Enemy, EquipItem, Group, TrayFile } from '../types';
 
 async function readJson(file: File): Promise<unknown> {
   const text = await file.text();
@@ -53,19 +53,26 @@ export async function readCharacterFile(file: File): Promise<ImportPreview> {
   };
 }
 
-export function exportBackup(characters: Character[], lootTray: EquipItem[]): Promise<boolean> {
+export interface BackupExtras {
+  groups?: Group[];
+  enemies?: Enemy[];
+  encounters?: Encounter[];
+}
+
+export function exportBackup(characters: Character[], lootTray: EquipItem[], extras: BackupExtras = {}): Promise<boolean> {
   const payload: BackupFile = {
     fileType: 'trpg-sheet-backup',
     version: 1,
     exportedAt: new Date().toISOString(),
     characters,
     lootTray,
+    ...extras,
   };
   const date = new Date().toISOString().slice(0, 10);
   return saveJsonFile(`trpg-backup-${date}.json`, payload);
 }
 
-export interface BackupPreview {
+export interface BackupPreview extends BackupExtras {
   characters: Character[];
   lootTray: EquipItem[];
   /** По каждому персонажу копии: что изменится при переносе со старой схемы. */
@@ -94,7 +101,15 @@ export async function importBackupFromFile(file: File): Promise<BackupPreview> {
     return normalized;
   });
 
-  return { characters, lootTray: Array.isArray(data.lootTray) ? data.lootTray : [], notes };
+  const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+  return {
+    characters,
+    lootTray: list<EquipItem>(data.lootTray),
+    groups: list<Group>(data.groups),
+    enemies: list<Enemy>(data.enemies),
+    encounters: list<Encounter>(data.encounters),
+    notes,
+  };
 }
 
 export function exportTray(items: EquipItem[]): Promise<boolean> {
