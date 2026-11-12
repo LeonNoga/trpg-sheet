@@ -199,6 +199,8 @@ export async function readGroupBackup(file: File): Promise<GroupBackupFile> {
     enemyGroups: list(parsed.enemyGroups),
     encounter: parsed.encounter,
     loot: list(parsed.loot),
+    masterLoot: parsed.masterLoot ? list(parsed.masterLoot) : undefined,
+    masterImages: parsed.masterImages ? list(parsed.masterImages) : undefined,
     log: list(parsed.log),
     characters: characters.map(normalizeCharacter),
   };

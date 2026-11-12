@@ -69,6 +69,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const membersRef = useRef<PartyMember[]>([]);
   const enemyGroupsRef = useRef<EnemyGroup[]>([]);
   const masterLootRef = useRef<EquipItem[]>([]);
+  const masterImagesRef = useRef<LootImage[]>([]);
   const groupLogsRef = useRef<Record<string, GroupLogEntry[]>>({});
   const lastGroupSnapRef = useRef(new Map<string, number>());
   const groupsRef = useRef<Group[]>([]);
@@ -163,6 +164,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setEnemyGroups(loadedEnemyGroups);
       masterLootRef.current = loadedMasterLoot;
       setMasterLoot(loadedMasterLoot);
+      masterImagesRef.current = loadedMasterImages;
       setMasterImages(loadedMasterImages);
       groupLogsRef.current = loadedLogs;
       setGroupLogs(loadedLogs);
@@ -308,6 +310,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             enemyGroups: enemyGroupsRef.current.filter((g) => inGroup(g, groupId, groups)),
             encounter: encountersRef.current.find((e) => e.groupId === groupId),
             loot: lootRef.current.filter((i) => inGroup(i, groupId, groups)),
+            masterLoot: masterLootRef.current.filter((i) => inGroup(i, groupId, groups)),
           }),
         );
       }
@@ -342,6 +345,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateMasterImages = useCallback((images: LootImage[]) => {
+    masterImagesRef.current = images;
     setMasterImages(images);
     void saveMasterImages(images);
   }, []);
@@ -414,11 +418,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         void saveMasterLoot(merged);
       }
       if (extras.masterImages?.length) {
-        setMasterImages((prev) => {
-          const merged = mergeById(prev, extras.masterImages ?? []);
-          void saveMasterImages(merged);
-          return merged;
-        });
+        const merged = mergeById(masterImagesRef.current, extras.masterImages);
+        masterImagesRef.current = merged;
+        setMasterImages(merged);
+        void saveMasterImages(merged);
       }
       if (extras.groupLogs) {
         const merged = { ...groupLogsRef.current };
@@ -528,6 +531,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           enemyGroups: mine(enemyGroupsRef.current),
           encounter: encountersRef.current.find((e) => e.groupId === groupId),
           loot: mine(lootRef.current),
+          masterLoot: mine(masterLootRef.current),
         }),
       );
       const stamp = <T extends { groupId?: string }>(list: T[]) => list.map((x) => ({ ...x, groupId }));
@@ -551,6 +555,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lootRef.current = nextLoot;
       setLootTray(nextLoot);
       void saveLootTray(nextLoot);
+      if (snapshot.masterLoot) {
+        const nextMaster = [...stamp(reattachImages(snapshot.masterLoot, mine(masterLootRef.current))), ...rest(masterLootRef.current)];
+        masterLootRef.current = nextMaster;
+        setMasterLoot(nextMaster);
+        void saveMasterLoot(nextMaster);
+      }
       const logs = applyDrafts(
         groupLogsRef.current,
         [{ groupId, entry: { kind: 'note', text: `Возврат группы к версии от ${new Date(snapshot.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` } }],
@@ -578,6 +588,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             enemyGroups: mineNow(enemyGroupsRef.current),
             encounter: encountersRef.current.find((e) => e.groupId === groupId),
             loot: mineNow(lootRef.current),
+            masterLoot: mineNow(masterLootRef.current),
           }),
         );
       } else {
@@ -610,6 +621,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       lootRef.current = nextLoot;
       setLootTray(nextLoot);
       void saveLootTray(nextLoot);
+      if (data.masterLoot) {
+        const nextMaster = [...stamp(data.masterLoot), ...rest(masterLootRef.current)];
+        masterLootRef.current = nextMaster;
+        setMasterLoot(nextMaster);
+        void saveMasterLoot(nextMaster);
+      }
+      if (data.masterImages) {
+        const nextImages = [...stamp(data.masterImages), ...rest(masterImagesRef.current)];
+        masterImagesRef.current = nextImages;
+        setMasterImages(nextImages);
+        void saveMasterImages(nextImages);
+      }
 
       // Персонажи мастера группы: совпавшие по id заменяются, остальные добавляются.
       if (data.characters.length > 0) {
@@ -672,6 +695,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLootTray(lootRef.current.map((i) => (belongs(i.groupId) ? { ...i, groupId: target } : i)));
       updateEnemies(enemiesRef.current.map((e) => (belongs(e.groupId) ? { ...e, groupId: target } : e)));
       updateMembers(membersRef.current.map((m) => (belongs(m.groupId) ? { ...m, groupId: target } : m)));
+      updateMasterLoot(masterLootRef.current.map((i) => (belongs(i.groupId) ? { ...i, groupId: target } : i)));
+      updateMasterImages(masterImagesRef.current.map((i) => (belongs(i.groupId) ? { ...i, groupId: target } : i)));
       updateEnemyGroups(enemyGroupsRef.current.map((g) => (belongs(g.groupId) ? { ...g, groupId: target } : g)));
       const { [id]: _droppedLog, ...keptLogs } = groupLogsRef.current;
       groupLogsRef.current = keptLogs;
@@ -681,7 +706,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateEncounters(encountersRef.current.filter((e) => e.groupId !== id));
       if (metaRef.current.activeGroupId === id) updateMeta({ activeGroupId: target });
     },
-    [setAll, updateEncounters, updateEnemies, updateEnemyGroups, updateLootTray, updateMembers, updateMeta],
+    [setAll, updateEncounters, updateEnemies, updateEnemyGroups, updateLootTray, updateMasterImages, updateMasterLoot, updateMembers, updateMeta],
   );
 
   const getSnapshots = useCallback((id: string) => loadSnapshots(id), []);

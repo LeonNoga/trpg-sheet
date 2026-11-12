@@ -151,6 +151,8 @@ export interface EnemyGroup {
 /** Картинка в «Луте мастера»: фото карточки, которое мастер пачкой отправляет игрокам (они сами распознают у себя). */
 export interface LootImage {
   id: string;
+  /** Группа, чьему луту мастера принадлежит картинка. */
+  groupId?: string;
   name: string;
   image: string;
   addedAt: number;
@@ -181,6 +183,7 @@ export interface GroupSnapshot {
   enemyGroups: EnemyGroup[];
   encounter?: Encounter;
   loot: EquipItem[];
+  masterLoot?: EquipItem[];
 }
 
 /** Своё поле карточки противника: название и значение произвольным текстом. */
@@ -402,6 +405,9 @@ export interface GroupBackupFile {
   enemyGroups: EnemyGroup[];
   encounter?: Encounter;
   loot: EquipItem[];
+  /** Лут мастера этой группы (карточки и картинки). */
+  masterLoot?: EquipItem[];
+  masterImages?: LootImage[];
   log: GroupLogEntry[];
   characters: Character[];
 }

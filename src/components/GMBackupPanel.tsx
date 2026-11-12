@@ -27,7 +27,7 @@ function GroupImportDialog({
         <p className="muted">Копия от {formatStamp(file.exportedAt)}.</p>
         <p>
           В файле: игроков — <b>{file.members.length}</b>, противников — <b>{file.enemies.length}</b>, подгрупп противников —{' '}
-          <b>{file.enemyGroups.length}</b>, лута — <b>{file.loot.length}</b>, персонажей мастера — <b>{file.characters.length}</b>, записей
+          <b>{file.enemyGroups.length}</b>, лута группы — <b>{file.loot.length}</b>, лута мастера — <b>{file.masterLoot?.length ?? 0}</b>, картинок — <b>{file.masterImages?.length ?? 0}</b>, персонажей мастера — <b>{file.characters.length}</b>, записей
           журнала — <b>{file.log.length}</b>
           {file.encounter?.active ? ', бой идёт' : ''}.
         </p>
@@ -87,7 +87,17 @@ export function GMBackupPanel() {
   async function saveGroup() {
     if (!group) return;
     await exportGroupBackup(
-      buildGroupBackup(group, groups, { members, enemies, enemyGroups, encounters, loot: lootTray, characters, log: groupLogs[group.id] ?? [] }),
+      buildGroupBackup(group, groups, {
+        members,
+        enemies,
+        enemyGroups,
+        encounters,
+        loot: lootTray,
+        characters,
+        log: groupLogs[group.id] ?? [],
+        masterLoot,
+        masterImages,
+      }),
     );
   }
 

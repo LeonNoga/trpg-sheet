@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { useAppData } from '../state/useAppData';
 import { useUndo } from '../state/useUndo';
+import { inGroup } from '../data/gm';
 import { saveImageFiles } from '../storage/saveFile';
 import { fileToImageDataUrl } from '../utils/file';
 import type { LootImage } from '../types';
@@ -17,8 +18,11 @@ function dataUrlToBlob(dataUrl: string): Blob {
 const formatDate = (ms: number) => new Date(ms).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
 /** Картинки карточек в луте мастера: хранятся как есть и отправляются игрокам пачкой — игроки сами распознают их у себя. */
-export function MasterImages() {
-  const { masterImages, updateMasterImages } = useAppData();
+export function MasterImages({ groupId }: { groupId: string }) {
+  const { masterImages: allImages, updateMasterImages, groups } = useAppData();
+  const masterImages = allImages.filter((i) => inGroup(i, groupId, groups));
+  const otherGroups = groups.filter((g) => g.id !== groupId);
+  const [targetGroup, setTargetGroup] = useState('');
   const { showUndo } = useUndo();
   const fileInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -34,9 +38,9 @@ export function MasterImages() {
       const added: LootImage[] = [];
       const now = Date.now();
       for (const file of Array.from(files)) {
-        added.push({ id: crypto.randomUUID(), name: file.name.replace(/\.[^.]+$/, ''), image: await fileToImageDataUrl(file), addedAt: now });
+        added.push({ id: crypto.randomUUID(), groupId, name: file.name.replace(/\.[^.]+$/, ''), image: await fileToImageDataUrl(file), addedAt: now });
       }
-      updateMasterImages([...added, ...masterImages]);
+      updateMasterImages([...added, ...allImages]);
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = '';
@@ -51,10 +55,21 @@ export function MasterImages() {
     await saveImageFiles(files);
   }
 
+  /** Картинки в лут мастера другой группы: копия (здесь остаются) или перенос. */
+  function transfer(move: boolean) {
+    if (!targetGroup || selectedImages.length === 0) return;
+    const now = Date.now();
+    const ids = new Set(selectedImages.map((i) => i.id));
+    const copies = selectedImages.map((i) => ({ ...i, id: crypto.randomUUID(), groupId: targetGroup, addedAt: now }));
+    updateMasterImages([...copies, ...(move ? allImages.filter((i) => !ids.has(i.id)) : allImages)]);
+    setSelected(new Set());
+    setTargetGroup('');
+  }
+
   function removeSelected() {
     if (!confirm(`Удалить выбранные картинки: ${selectedImages.length}?`)) return;
-    const before = masterImages;
-    updateMasterImages(masterImages.filter((i) => !selected.has(i.id)));
+    const before = allImages;
+    updateMasterImages(allImages.filter((i) => !selected.has(i.id)));
     setSelected(new Set());
     showUndo(`Удалено картинок: ${selectedImages.length}`, () => updateMasterImages(before));
   }
@@ -93,6 +108,24 @@ export function MasterImages() {
             <button className="btn btn-sm btn-primary" onClick={() => void sendSelected()}>
               Отправить картинками
             </button>
+            {otherGroups.length > 0 && (
+              <>
+                <select value={targetGroup} onChange={(e) => setTargetGroup(e.target.value)}>
+                  <option value="">В другую группу…</option>
+                  {otherGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      📁 {g.name}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn btn-sm" disabled={!targetGroup} onClick={() => transfer(false)}>
+                  Копировать
+                </button>
+                <button className="btn btn-sm" disabled={!targetGroup} onClick={() => transfer(true)}>
+                  Переместить
+                </button>
+              </>
+            )}
             <button className="btn btn-sm btn-ghost" onClick={removeSelected}>
               Удалить
             </button>

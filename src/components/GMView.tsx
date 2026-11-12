@@ -25,6 +25,7 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
   const master = characters.filter((c) => c.roster === 'gm-master' && inGroup(c, activeGroupId, groups)).length;
   const groupEnemies = enemies.filter((e) => inGroup(e, activeGroupId, groups)).length;
   const loot = lootTray.filter((i) => inGroup(i, activeGroupId, groups)).length;
+  const masterCount = masterLoot.filter((i) => inGroup(i, activeGroupId, groups)).length;
   const fighting = encounters.some((e) => e.groupId === activeGroupId && e.active);
 
   const tabs: { key: Tab; label: string }[] = [
@@ -33,16 +34,13 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
     { key: 'combat', label: fighting ? '⚔ Бой (идёт)' : '⚔ Бой' },
     { key: 'master', label: `Персонажи мастера (${master})` },
     { key: 'loot', label: `Лут группы (${loot})` },
-    { key: 'masterLoot', label: `📦 Лут мастера (${masterLoot.length})` },
+    { key: 'masterLoot', label: `📦 Лут мастера (${masterCount})` },
   ];
-  const groupless = tab === 'masterLoot';
 
   return (
     <div>
       <GMBackupPanel />
-      <div className={groupless ? 'group-bar-dim' : undefined}>
-        <GroupBar />
-      </div>
+      <GroupBar />
       <div className="section-tabs">
         {tabs.map((t) => (
           <button key={t.key} className={`nav-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
@@ -70,7 +68,7 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
 
       {tab === 'loot' && <LootList scope="group" groupId={activeGroupId} />}
 
-      {tab === 'masterLoot' && <LootList scope="master" />}
+      {tab === 'masterLoot' && <LootList scope="master" groupId={activeGroupId} />}
     </div>
   );
 }

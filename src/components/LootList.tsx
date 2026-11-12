@@ -64,7 +64,7 @@ export function LootList({ scope, groupId = '' }: Props) {
   const isMaster = scope === 'master';
 
   const items = useMemo(
-    () => (isMaster ? masterLoot : fullTray.filter((i) => inGroup(i, groupId, groups))),
+    () => (isMaster ? masterLoot : fullTray).filter((i) => inGroup(i, groupId, groups)),
     [isMaster, masterLoot, fullTray, groupId, groups],
   );
   const latest = useRef({ items, fullTray, masterLoot });
@@ -75,7 +75,9 @@ export function LootList({ scope, groupId = '' }: Props) {
   const stamp = (list: EquipItem[]) => list.map((i) => ({ ...i, groupId }));
   /** Заменяет записи этого лута целиком; записи других групп не трогает. */
   const setItems = (next: EquipItem[]) =>
-    isMaster ? updateMasterLoot(next) : updateFullTray([...stamp(next), ...latest.current.fullTray.filter((i) => !inGroup(i, groupId, groups))]);
+    isMaster
+      ? updateMasterLoot([...stamp(next), ...latest.current.masterLoot.filter((i) => !inGroup(i, groupId, groups))])
+      : updateFullTray([...stamp(next), ...latest.current.fullTray.filter((i) => !inGroup(i, groupId, groups))]);
   const addItems = (added: EquipItem[]) => setItems([...added, ...latest.current.items]);
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -93,6 +95,7 @@ export function LootList({ scope, groupId = '' }: Props) {
   const [expand, setExpand] = useState<ExpandCommand>({ open: false, version: 0 });
   const [recipient, setRecipient] = useState('');
   const [targetGroup, setTargetGroup] = useState('');
+  const [masterTarget, setMasterTarget] = useState('');
   const trayInput = useRef<HTMLInputElement>(null);
   const { showUndo } = useUndo();
 
@@ -236,6 +239,18 @@ export function LootList({ scope, groupId = '' }: Props) {
     setTargetGroup('');
   }
 
+  /** Лут мастера этой группы → лут мастера другой группы: копия или перенос. */
+  function toOtherMaster(move: boolean) {
+    if (!masterTarget || selectedItems.length === 0) return;
+    const now = currentTime();
+    const copies = selectedItems.map((i) => ({ ...i, id: crypto.randomUUID(), groupId: masterTarget, addedAt: now, givenTo: undefined, givenAt: undefined }));
+    const ids = new Set(selectedItems.map((i) => i.id));
+    const rest = move ? latest.current.masterLoot.filter((i) => !ids.has(i.id)) : latest.current.masterLoot;
+    updateMasterLoot([...copies, ...rest]);
+    setSelected(new Set());
+    setMasterTarget('');
+  }
+
   /** Лут группы → другая группа. */
   function moveToGroup() {
     if (!targetGroup || selectedItems.length === 0) return;
@@ -255,7 +270,7 @@ export function LootList({ scope, groupId = '' }: Props) {
         <h3 className="card-title">{isMaster ? 'Лут мастера' : 'Лут группы'}</h3>
         <p className="muted">
           {isMaster
-            ? 'Общий запас мастера, не привязанный к группе: карточки и картинки, которые вы готовите заранее. Отсюда их можно копировать или переносить в лут группы и отправлять игрокам.'
+            ? 'Запас мастера под эту команду: карточки и картинки, которые вы готовите заранее. У каждой группы он свой. Отсюда записи можно копировать или переносить в лут группы или в лут мастера другой группы и отправлять игрокам.'
             : 'Всё, что выпало этой группе, но ещё не роздано. Карточки можно загрузить фото пачкой — текст распознаётся и поля заполняются сами (проверьте результат). У каждой записи есть дата добавления.'}
         </p>
 
@@ -399,7 +414,7 @@ export function LootList({ scope, groupId = '' }: Props) {
             {isMaster && groups.length > 0 && (
               <div className="row">
                 <select value={targetGroup} onChange={(e) => setTargetGroup(e.target.value)}>
-                  <option value="">В лут группы…</option>
+                  <option value="">В лут группы (не мастера)…</option>
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>
                       📁 {g.name}
@@ -410,6 +425,24 @@ export function LootList({ scope, groupId = '' }: Props) {
                   Копировать
                 </button>
                 <button className="btn btn-sm" disabled={!targetGroup} onClick={() => toGroup(true)}>
+                  Переместить
+                </button>
+              </div>
+            )}
+            {isMaster && otherGroups.length > 0 && (
+              <div className="row">
+                <select value={masterTarget} onChange={(e) => setMasterTarget(e.target.value)}>
+                  <option value="">В лут мастера другой группы…</option>
+                  {otherGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      📁 {g.name}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn btn-sm" disabled={!masterTarget} onClick={() => toOtherMaster(false)} title="Здесь запись остаётся">
+                  Копировать
+                </button>
+                <button className="btn btn-sm" disabled={!masterTarget} onClick={() => toOtherMaster(true)}>
                   Переместить
                 </button>
               </div>
@@ -476,7 +509,7 @@ export function LootList({ scope, groupId = '' }: Props) {
         )}
       </div>
 
-      {isMaster && <MasterImages />}
+      {isMaster && <MasterImages groupId={groupId} />}
     </div>
   );
 }

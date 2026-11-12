@@ -4,7 +4,8 @@ import { useUndo } from '../state/useUndo';
 import { useGroupEncounter } from '../hooks/useGroupEncounter';
 import { AmountAdjust } from './AmountAdjust';
 import { NumberField } from './NumberField';
-import { ENEMY_KINDS, addParticipant, cloneEnemy, createBlankEnemy, createEnemyGroup, hasEnemyDetails, inGroup } from '../data/gm';
+import { ENEMY_KINDS, addParticipant, cloneEnemy, copyEnemiesToGroup, copySubgroupToGroup, createBlankEnemy, createEnemyGroup, hasEnemyDetails, inGroup } from '../data/gm';
+import { GroupTransferDialog } from './GroupTransferDialog';
 import { STAT_LABELS, STAT_ORDER } from '../data/statsConfig';
 import { fileToImageDataUrl } from '../utils/file';
 import { EnemyDetails } from './EnemyDetails';
@@ -242,12 +243,14 @@ interface CardProps {
   onChangeHp: (hp: number) => void;
   onEdit: () => void;
   onClone: () => void;
+  /** Скопировать или перенести в другую группу (есть, только если групп больше одной). */
+  onTransfer?: () => void;
   onToCombat: () => void;
   onDelete: () => void;
 }
 
 /** Мини-карточка противника: всё основное (в том числе изменить, копировать, в бой, умер) доступно, не разворачивая её. */
-function EnemyCard({ enemy, inCombat, selected, onSelect, onChangeHp, onEdit, onClone, onToCombat, onDelete }: CardProps) {
+function EnemyCard({ enemy, inCombat, selected, onSelect, onChangeHp, onEdit, onClone, onTransfer, onToCombat, onDelete }: CardProps) {
   const [open, setOpen] = useState(false);
   const down = enemy.hp <= 0;
   const fill = Math.max(0, Math.min(100, (enemy.hp / Math.max(1, enemy.hpMax)) * 100));
@@ -289,6 +292,11 @@ function EnemyCard({ enemy, inCombat, selected, onSelect, onChangeHp, onEdit, on
         <button className="btn btn-sm" onClick={onClone}>
           ⧉ Копии
         </button>
+        {onTransfer && (
+          <button className="btn btn-sm" onClick={onTransfer} title="Скопировать или перенести в другую группу">
+            📁 В группу
+          </button>
+        )}
         <button className="btn btn-sm" disabled={inCombat} onClick={onToCombat}>
           {inCombat ? 'В бою' : '⚔ В бой'}
         </button>
@@ -328,6 +336,7 @@ export function EnemiesTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [amount, setAmount] = useState('');
   const [moveTo, setMoveTo] = useState('');
+  const [transfer, setTransfer] = useState<{ kind: 'enemies'; ids: string[] } | { kind: 'subgroup'; id: string } | null>(null);
   // Свёрнутые подгруппы запоминаются на устройстве.
   const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
 
@@ -428,6 +437,53 @@ export function EnemiesTab() {
     setCollapsedIds(next);
   }
 
+  /** Копирование и перенос противников и подгрупп в другую группу — так мастер собирает шаблоны и раздаёт их командам. */
+  function doTransfer(targetId: string, mode: 'copy' | 'move') {
+    if (!transfer) return;
+    const targetName = groups.find((g) => g.id === targetId)?.name ?? '';
+    const beforeEnemies = enemies;
+    const beforeGroups = enemyGroups;
+    const beforeEncounter = encounter;
+    let message = '';
+
+    if (transfer.kind === 'enemies') {
+      const ids = new Set(transfer.ids);
+      const list = enemies.filter((e) => ids.has(e.id));
+      if (mode === 'copy') {
+        updateEnemies([...enemies, ...copyEnemiesToGroup(list, targetId)]);
+        message = `Скопировано в «${targetName}»: ${list.length}`;
+      } else {
+        updateEnemies(enemies.map((e) => (ids.has(e.id) ? { ...e, groupId: targetId, enemyGroupId: undefined } : e)));
+        saveEncounter({ ...encounter, participants: encounter.participants.filter((p) => !(p.kind === 'enemy' && ids.has(p.refId))) });
+        message = `Перенесено в «${targetName}»: ${list.length}`;
+      }
+    } else {
+      const sub = enemyGroups.find((g) => g.id === transfer.id);
+      if (!sub) return;
+      const members = enemies.filter((e) => e.enemyGroupId === sub.id);
+      if (mode === 'copy') {
+        const targetNames = enemyGroups.filter((g) => inGroup(g, targetId, groups)).map((g) => g.name);
+        const copy = copySubgroupToGroup(sub, members, targetId, targetNames);
+        updateEnemyGroups([...enemyGroups, copy.group]);
+        updateEnemies([...enemies, ...copy.enemies]);
+        message = `Подгруппа «${sub.name}» скопирована в «${targetName}» (противников: ${members.length})`;
+      } else {
+        const ids = new Set(members.map((e) => e.id));
+        updateEnemyGroups(enemyGroups.map((g) => (g.id === sub.id ? { ...g, groupId: targetId } : g)));
+        updateEnemies(enemies.map((e) => (ids.has(e.id) ? { ...e, groupId: targetId } : e)));
+        saveEncounter({ ...encounter, participants: encounter.participants.filter((p) => !(p.kind === 'enemy' && ids.has(p.refId))) });
+        message = `Подгруппа «${sub.name}» перенесена в «${targetName}» (противников: ${members.length})`;
+      }
+    }
+    setTransfer(null);
+    setSelected(new Set());
+    showUndo(message, () => {
+      updateEnemies(beforeEnemies);
+      updateEnemyGroups(beforeGroups);
+      saveEncounter(beforeEncounter);
+    });
+  }
+
   function toggle(id: string, on: boolean) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -476,6 +532,7 @@ export function EnemiesTab() {
       onChangeHp={(hp) => setHp(enemy.id, hp)}
       onEdit={() => setEditing(enemy)}
       onClone={() => clone(enemy)}
+      onTransfer={groups.length > 1 ? () => setTransfer({ kind: 'enemies', ids: [enemy.id] }) : undefined}
       onToCombat={() => toCombat([enemy])}
       onDelete={() => remove(enemy)}
     />
@@ -491,8 +548,22 @@ export function EnemiesTab() {
   const dmg = Number(amount);
   const dmgValid = amount.trim() !== '' && Number.isFinite(dmg) && dmg !== 0;
 
+  const transferSummary =
+    transfer?.kind === 'subgroup'
+      ? `Подгруппа «${enemyGroups.find((g) => g.id === transfer.id)?.name ?? ''}» со всеми её противниками.`
+      : `Выбранных противников: ${transfer?.ids.length ?? 0}. Подгруппы при копировании отдельных противников не переносятся — копируйте подгруппу целиком из её меню «⋯».`;
+
   return (
     <div>
+      {transfer && (
+        <GroupTransferDialog
+          title={transfer.kind === 'subgroup' ? 'Подгруппа в другую группу' : 'Противники в другую группу'}
+          summary={transferSummary}
+          groups={groups.filter((g) => g.id !== activeGroupId)}
+          onConfirm={doTransfer}
+          onCancel={() => setTransfer(null)}
+        />
+      )}
       <div className="top-actions">
         <button className="btn btn-primary" onClick={() => setEditing(createBlankEnemy(activeGroupId))}>
           + Противник
@@ -612,6 +683,11 @@ export function EnemiesTab() {
                 </button>
               </>
             )}
+            {groups.length > 1 && (
+              <button className="btn btn-sm" onClick={() => setTransfer({ kind: 'enemies', ids: selectedEnemies.map((e) => e.id) })}>
+                📁 В другую группу…
+              </button>
+            )}
             <button className="btn btn-sm btn-ghost" onClick={massDelete}>
               Удалить
             </button>
@@ -677,6 +753,11 @@ export function EnemiesTab() {
                     <button className="btn btn-ghost" onClick={() => duplicateSubgroup(group)}>
                       Копировать подгруппу
                     </button>
+                    {groups.length > 1 && (
+                      <button className="btn btn-ghost" onClick={() => setTransfer({ kind: 'subgroup', id: group.id })}>
+                        В другую группу игроков…
+                      </button>
+                    )}
                     <button className="btn btn-ghost btn-danger" onClick={() => deleteSubgroup(group)}>
                       Удалить подгруппу
                     </button>

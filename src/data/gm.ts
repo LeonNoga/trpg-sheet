@@ -1,5 +1,5 @@
 import { computeDerivedStats } from './formulas';
-import type { Character, Encounter, EncounterParticipant, Enemy, EnemyGroup, EquipItem, Group, GroupBackupFile, GroupLogEntry, GroupSnapshot, PartyMember } from '../types';
+import type { Character, Encounter, EncounterParticipant, Enemy, EnemyGroup, EquipItem, Group, GroupBackupFile, GroupLogEntry, GroupSnapshot, LootImage, PartyMember } from '../types';
 
 // ---------- группы ----------
 
@@ -218,7 +218,7 @@ const withoutImage = <T extends { image?: string }>(item: T): T => {
 /** Снимок данных группы (без картинок — они тяжёлые; при возврате их вернут записи, оставшиеся по id). */
 export function buildGroupSnapshot(
   groupId: string,
-  data: { members: PartyMember[]; enemies: Enemy[]; enemyGroups: EnemyGroup[]; encounter?: Encounter; loot: EquipItem[] },
+  data: { members: PartyMember[]; enemies: Enemy[]; enemyGroups: EnemyGroup[]; encounter?: Encounter; loot: EquipItem[]; masterLoot?: EquipItem[] },
   now: number = Date.now(),
 ): GroupSnapshot {
   return {
@@ -229,6 +229,7 @@ export function buildGroupSnapshot(
     enemyGroups: data.enemyGroups,
     encounter: data.encounter,
     loot: data.loot.map(withoutImage),
+    masterLoot: data.masterLoot?.map(withoutImage),
   };
 }
 
@@ -252,6 +253,8 @@ export function buildGroupBackup(
     loot: EquipItem[];
     characters: Character[];
     log: GroupLogEntry[];
+    masterLoot?: EquipItem[];
+    masterImages?: LootImage[];
   },
   now: Date = new Date(),
 ): GroupBackupFile {
@@ -266,6 +269,8 @@ export function buildGroupBackup(
     enemyGroups: mine(data.enemyGroups),
     encounter: data.encounters.find((e) => e.groupId === group.id),
     loot: mine(data.loot),
+    masterLoot: mine(data.masterLoot ?? []),
+    masterImages: mine(data.masterImages ?? []),
     log: data.log,
     characters: mine(data.characters.filter((c) => c.roster === 'gm-master')),
   };
@@ -312,7 +317,44 @@ export function remapGroupBackup(file: GroupBackupFile, existingNames: string[] 
     enemyGroups: file.enemyGroups.map((g) => ({ ...g, id: enemyGroups.get(g.id)!, groupId })),
     encounter,
     loot: file.loot.map((i) => ({ ...i, id: newId(), groupId })),
+    masterLoot: (file.masterLoot ?? []).map((i) => ({ ...i, id: newId(), groupId })),
+    masterImages: (file.masterImages ?? []).map((i) => ({ ...i, id: newId(), groupId })),
     log: file.log.map((e) => ({ ...e, id: newId() })),
     characters: file.characters.map((c) => ({ ...c, id: newId(), groupId })),
   };
+}
+
+// ---------- копирование между группами ----------
+
+/** Копии противников для другой группы: новые id, полное здоровье, без подгруппы (подгруппы переносятся целиком отдельно). */
+export function copyEnemiesToGroup(enemies: Enemy[], targetGroupId: string, now: number = Date.now()): Enemy[] {
+  return enemies.map((e) => ({
+    ...e,
+    id: crypto.randomUUID(),
+    groupId: targetGroupId,
+    enemyGroupId: undefined,
+    hp: e.hpMax,
+    fields: e.fields.map((f) => ({ ...f, id: crypto.randomUUID() })),
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
+
+/** Копия подгруппы противников со всеми её противниками для другой группы (шаблон «Орда у склада» готов к бою). */
+export function copySubgroupToGroup(
+  subgroup: EnemyGroup,
+  members: Enemy[],
+  targetGroupId: string,
+  existingNames: string[] = [],
+  now: number = Date.now(),
+): { group: EnemyGroup; enemies: Enemy[] } {
+  const group: EnemyGroup = {
+    ...subgroup,
+    id: crypto.randomUUID(),
+    groupId: targetGroupId,
+    name: existingNames.includes(subgroup.name) ? `${subgroup.name} (копия)` : subgroup.name,
+    createdAt: now,
+  };
+  const enemies = copyEnemiesToGroup(members, targetGroupId, now).map((e) => ({ ...e, enemyGroupId: group.id }));
+  return { group, enemies };
 }

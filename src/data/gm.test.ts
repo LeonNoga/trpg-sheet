@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   addParticipant,
   buildGroupBackup,
+  copyEnemiesToGroup,
+  copySubgroupToGroup,
+  createEnemyGroup,
   remapGroupBackup,
   cloneEnemy,
   createBlankEnemy,
@@ -142,5 +145,42 @@ describe('копия группы', () => {
     expect(copy.encounter!.groupId).toBe(copy.group.id);
     expect(copy.encounter!.currentId).toBe(copy.encounter!.participants.find((p) => p.refId === copy.members[0].id)!.id);
     expect(remapGroupBackup(file, []).group.name).toBe('Пятница');
+  });
+});
+
+describe('копирование между группами', () => {
+  const a = createGroup('Первая');
+  const b = createGroup('Вторая');
+  const sub = createEnemyGroup(a.id, 'Орда');
+  const zombie = { ...createBlankEnemy(a.id), name: 'Зомби', hp: 3, hpMax: 12, enemyGroupId: sub.id };
+
+  it('противники копируются с новыми id, полным здоровьем и без подгруппы', () => {
+    const [copy] = copyEnemiesToGroup([zombie], b.id);
+    expect(copy.id).not.toBe(zombie.id);
+    expect([copy.groupId, copy.hp, copy.enemyGroupId, copy.name]).toEqual([b.id, 12, undefined, 'Зомби']);
+    expect(zombie.hp).toBe(3);
+  });
+
+  it('подгруппа копируется целиком, противники привязаны к новой подгруппе; одинаковое имя помечается', () => {
+    const { group, enemies } = copySubgroupToGroup(sub, [zombie, { ...zombie, id: 'z2', name: 'Бегун' }], b.id, ['Орда']);
+    expect(group.id).not.toBe(sub.id);
+    expect([group.groupId, group.name]).toEqual([b.id, 'Орда (копия)']);
+    expect(enemies.map((e) => e.name)).toEqual(['Зомби', 'Бегун']);
+    expect(enemies.every((e) => e.enemyGroupId === group.id && e.groupId === b.id)).toBe(true);
+    expect(copySubgroupToGroup(sub, [zombie], b.id, []).group.name).toBe('Орда');
+  });
+
+  it('копия группы включает лут мастера и картинки только этой группы', () => {
+    const item = (id: string, groupId: string) => ({ id, kind: 'item' as const, name: id, equipped: false, statBonuses: {}, groupId });
+    const file = buildGroupBackup(a, [a, b], {
+      members: [], enemies: [], enemyGroups: [], encounters: [], loot: [], characters: [], log: [],
+      masterLoot: [item('m1', a.id), item('m2', b.id)],
+      masterImages: [{ id: 'i1', groupId: a.id, name: 'x', image: 'data:', addedAt: 1 }, { id: 'i2', groupId: b.id, name: 'y', image: 'data:', addedAt: 1 }],
+    });
+    expect(file.masterLoot?.map((i) => i.id)).toEqual(['m1']);
+    expect(file.masterImages?.map((i) => i.id)).toEqual(['i1']);
+    const copy = remapGroupBackup(file);
+    expect(copy.masterLoot![0].id).not.toBe('m1');
+    expect(copy.masterLoot![0].groupId).toBe(copy.group.id);
   });
 });
