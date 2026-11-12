@@ -395,37 +395,6 @@ export function CombatTab() {
                   {missing ? ' запись удалена' : ''}
                 </div>
               </div>
-              {enemy && (
-                <span className="combat-links">
-                  {enemy.image && (
-                    <FloatingPanel title="Картинка противника" panel={<img className="enemy-image" src={enemy.image} alt={enemy.name} />}>
-                      <img className="combat-thumb" src={enemy.image} alt="" />
-                    </FloatingPanel>
-                  )}
-                  <FloatingPanel
-                    title="Карточка противника: при наведении, нажмите, чтобы закрепить"
-                    panel={
-                      <div className="enemy-popup">
-                        <h4 style={{ margin: 0 }}>{enemy.name}</h4>
-                        <div className="muted">
-                          {[enemy.kind, enemy.level ? `ур. ${enemy.level}` : ''].filter(Boolean).join(' · ') || 'Противник'} · ❤ {enemy.hp} / {enemy.hpMax}
-                        </div>
-                        <div className="combat-stats" style={{ margin: '8px 0' }}>
-                          {[['ПЗ', enemy.defense], ['С', enemy.speed], ['ПВ', enemy.passivePerception], ['И', enemy.initiative], ['СС', enemy.resistance]].map(([label, value]) => (
-                            <div className="stat-box" key={label}>
-                              <span>{label}</span>
-                              <b>{value}</b>
-                            </div>
-                          ))}
-                        </div>
-                        <EnemyDetails enemy={enemy} />
-                      </div>
-                    }
-                  >
-                    <span className="btn btn-sm">📄 Карточка</span>
-                  </FloatingPanel>
-                </span>
-              )}
               {stats && (
                 <div className="combat-stats" aria-label="Основные числа">
                   {[['ПЗ', stats.defense], ['С', stats.speed], ['ПВ', stats.passivePerception], ['СС', stats.resistance]].map(([label, value]) => (
@@ -459,6 +428,37 @@ export function CombatTab() {
             </div>
 
             <div className="combat-conditions">
+              {enemy && (
+                <span className="combat-links">
+                  {enemy.image && (
+                    <FloatingPanel title="Картинка противника" panel={<img className="enemy-image" src={enemy.image} alt={enemy.name} />}>
+                      <img className="combat-thumb" src={enemy.image} alt="" />
+                    </FloatingPanel>
+                  )}
+                  <FloatingPanel
+                    title="Карточка противника: при наведении, нажмите, чтобы закрепить"
+                    panel={
+                      <div className="enemy-popup">
+                        <h4 style={{ margin: 0 }}>{enemy.name}</h4>
+                        <div className="muted">
+                          {[enemy.kind, enemy.level ? `ур. ${enemy.level}` : ''].filter(Boolean).join(' · ') || 'Противник'} · ❤ {enemy.hp} / {enemy.hpMax}
+                        </div>
+                        <div className="combat-stats" style={{ margin: '8px 0' }}>
+                          {[['ПЗ', enemy.defense], ['С', enemy.speed], ['ПВ', enemy.passivePerception], ['И', enemy.initiative], ['СС', enemy.resistance]].map(([label, value]) => (
+                            <div className="stat-box" key={label}>
+                              <span>{label}</span>
+                              <b>{value}</b>
+                            </div>
+                          ))}
+                        </div>
+                        <EnemyDetails enemy={enemy} />
+                      </div>
+                    }
+                  >
+                    <span className="btn btn-sm">📄 Карточка</span>
+                  </FloatingPanel>
+                </span>
+              )}
               {p.conditions.map((c) => (
                 <span key={c.id} className="effect-chip neg">
                   <span className="effect-name">{c.name}</span>

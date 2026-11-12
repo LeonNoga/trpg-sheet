@@ -2804,3 +2804,13 @@ input[list]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   font-weight: 600;
 }
+.combat-conditions .combat-links {
+  margin-right: 4px;
+}
+
+/* Одинаковая ширина блока здоровья — числа в строках игроков и противников выстраиваются в колонки. */
+@media (min-width: 900px) {
+  .combat-hp {
+    min-width: 340px;
+  }
+}
