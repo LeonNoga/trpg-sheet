@@ -3,6 +3,7 @@ import { useAppData } from '../state/useAppData';
 import { CharacterList } from './CharacterList';
 import { CombatTab } from './CombatTab';
 import { EnemiesTab } from './EnemiesTab';
+import { GMBackupPanel } from './GMBackupPanel';
 import { GroupBar } from './GroupBar';
 import { LootList } from './LootList';
 import { PlayersTab } from './PlayersTab';
@@ -38,6 +39,7 @@ export function GMView({ onOpenCharacter, onCreateMasterCharacter }: Props) {
 
   return (
     <div>
+      <GMBackupPanel />
       <div className={groupless ? 'group-bar-dim' : undefined}>
         <GroupBar />
       </div>

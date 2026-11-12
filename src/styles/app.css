@@ -2673,3 +2673,134 @@ input[list]::-webkit-calendar-picker-indicator {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---------- Бой: цвета сторон, крупные числа, окошко карточки ---------- */
+
+.combat-row.side-player {
+  border-left: 5px solid #3b82c4;
+  background: color-mix(in srgb, #3b82c4 9%, var(--surface));
+}
+
+.combat-row.side-enemy {
+  border-left: 5px solid #d6455d;
+  background: color-mix(in srgb, #d6455d 9%, var(--surface));
+}
+
+.combat-row.current {
+  box-shadow: 0 0 0 2px var(--text);
+}
+
+.side-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.side-badge.player {
+  background: color-mix(in srgb, #3b82c4 22%, transparent);
+  color: #4a95dc;
+}
+
+.side-badge.enemy {
+  background: color-mix(in srgb, #d6455d 22%, transparent);
+  color: #e8566e;
+}
+
+.combat-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  line-height: 1.15;
+}
+
+.stat-box span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.stat-box b {
+  font-size: 19px;
+}
+
+.combat-hp > span {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.combat-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.combat-thumb {
+  display: block;
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: zoom-in;
+}
+
+.floating-anchor {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.floating-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  visibility: hidden;
+  width: min(440px, 92vw);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  cursor: default;
+}
+
+.floating-panel.pinned {
+  pointer-events: auto;
+}
+
+.floating-panel .enemy-image {
+  max-width: 100%;
+  margin: 0;
+}
+
+.enemy-subgroup-title {
+  cursor: pointer;
+  user-select: none;
+}
+
+.gm-backup {
+  margin-bottom: 12px;
+}
+
+.gm-backup > summary {
+  cursor: pointer;
+  font-weight: 600;
+}

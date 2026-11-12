@@ -3,6 +3,8 @@ import { useAppData } from '../state/useAppData';
 import { useGroupEncounter } from '../hooks/useGroupEncounter';
 import { AmountAdjust } from './AmountAdjust';
 import { NumberField } from './NumberField';
+import { FloatingPanel } from './FloatingPanel';
+import { EnemyDetails } from './EnemyDetails';
 import {
   addParticipant,
   endEncounter,
@@ -368,7 +370,7 @@ export function CombatTab() {
         const name = member?.name || enemy?.name || 'Удалён';
         const stats = member ?? enemy;
         return (
-          <div key={p.id} className={`card combat-row ${current ? 'current' : ''} ${out ? 'out' : ''}`}>
+          <div key={p.id} className={`card combat-row ${member ? 'side-player' : enemy ? 'side-enemy' : ''} ${current ? 'current' : ''} ${out ? 'out' : ''}`}>
             <div className="combat-main">
               <input type="checkbox" checked={selected.has(p.id)} onChange={(e) => toggle(p.id, e.target.checked)} aria-label={`Выбрать «${name}»`} />
               <span className="combat-turn" aria-hidden="true">
@@ -383,6 +385,7 @@ export function CombatTab() {
                   {out && !missing ? '💀 ' : ''}
                   {name}
                 </b>
+                <span className={`side-badge ${member ? 'player' : 'enemy'}`}>{member ? 'Игрок' : enemy ? 'Противник' : ''}</span>
                 <div className="muted">
                   {member
                     ? `Игрок${member.playerName ? ` ${member.playerName}` : ''} · ур. ${member.level}${member.type ? ` · ${member.type}` : ''}`
@@ -392,6 +395,47 @@ export function CombatTab() {
                   {missing ? ' запись удалена' : ''}
                 </div>
               </div>
+              {enemy && (
+                <span className="combat-links">
+                  {enemy.image && (
+                    <FloatingPanel title="Картинка противника" panel={<img className="enemy-image" src={enemy.image} alt={enemy.name} />}>
+                      <img className="combat-thumb" src={enemy.image} alt="" />
+                    </FloatingPanel>
+                  )}
+                  <FloatingPanel
+                    title="Карточка противника: при наведении, нажмите, чтобы закрепить"
+                    panel={
+                      <div className="enemy-popup">
+                        <h4 style={{ margin: 0 }}>{enemy.name}</h4>
+                        <div className="muted">
+                          {[enemy.kind, enemy.level ? `ур. ${enemy.level}` : ''].filter(Boolean).join(' · ') || 'Противник'} · ❤ {enemy.hp} / {enemy.hpMax}
+                        </div>
+                        <div className="combat-stats" style={{ margin: '8px 0' }}>
+                          {[['ПЗ', enemy.defense], ['С', enemy.speed], ['ПВ', enemy.passivePerception], ['И', enemy.initiative], ['СС', enemy.resistance]].map(([label, value]) => (
+                            <div className="stat-box" key={label}>
+                              <span>{label}</span>
+                              <b>{value}</b>
+                            </div>
+                          ))}
+                        </div>
+                        <EnemyDetails enemy={enemy} />
+                      </div>
+                    }
+                  >
+                    <span className="btn btn-sm">📄 Карточка</span>
+                  </FloatingPanel>
+                </span>
+              )}
+              {stats && (
+                <div className="combat-stats" aria-label="Основные числа">
+                  {[['ПЗ', stats.defense], ['С', stats.speed], ['ПВ', stats.passivePerception], ['СС', stats.resistance]].map(([label, value]) => (
+                    <div className="stat-box" key={label}>
+                      <span>{label}</span>
+                      <b>{value}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
               {!missing && (
                 <div className="combat-hp">
                   <span>
@@ -413,12 +457,6 @@ export function CombatTab() {
                 ✕
               </button>
             </div>
-
-            {stats && (
-              <div className="combat-pools muted">
-                ПЗ {stats.defense} · С {stats.speed} · ПВ {stats.passivePerception} · СС {stats.resistance}
-              </div>
-            )}
 
             <div className="combat-conditions">
               {p.conditions.map((c) => (

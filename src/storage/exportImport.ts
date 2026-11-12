@@ -4,7 +4,7 @@ import { saveJsonFile } from './saveFile';
 import { CURRENT_SCHEMA_VERSION, isFromNewerSchema } from '../data/migrations';
 import { migrationNotes } from '../data/importCheck';
 import type { ImportPreview } from '../data/importCheck';
-import type { BackupFile, Character, CharacterExportFile, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, LootImage, PartyMember, TrayFile } from '../types';
+import type { BackupFile, GroupBackupFile, Character, CharacterExportFile, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, LootImage, PartyMember, TrayFile } from '../types';
 
 async function readJson(file: File): Promise<unknown> {
   const text = await file.text();
@@ -64,7 +64,7 @@ export interface BackupExtras {
   groupLogs?: Record<string, GroupLogEntry[]>;
 }
 
-export function exportBackup(characters: Character[], lootTray: EquipItem[], extras: BackupExtras = {}): Promise<boolean> {
+export function exportBackup(characters: Character[], lootTray: EquipItem[], extras: BackupExtras = {}, fileLabel = 'backup'): Promise<boolean> {
   const payload: BackupFile = {
     fileType: 'trpg-sheet-backup',
     version: 1,
@@ -74,7 +74,7 @@ export function exportBackup(characters: Character[], lootTray: EquipItem[], ext
     ...extras,
   };
   const date = new Date().toISOString().slice(0, 10);
-  return saveJsonFile(`trpg-backup-${date}.json`, payload);
+  return saveJsonFile(`trpg-${fileLabel}-${date}.json`, payload);
 }
 
 export interface BackupPreview extends BackupExtras {
@@ -166,4 +166,40 @@ export async function importTrayFromFile(file: File): Promise<EquipItem[]> {
         equipped: typeof i.equipped === 'boolean' ? i.equipped : kind === 'ability',
       };
     });
+}
+
+/** Сохраняет копию одной группы мастер-вида. */
+export function exportGroupBackup(file: GroupBackupFile): Promise<boolean> {
+  const date = file.exportedAt.slice(0, 10);
+  const safeName = file.group.name.trim().replace(/[\\/:*?"<>|]+/g, '_') || 'group';
+  return saveJsonFile(`trpg-group-${safeName}-${date}.json`, file);
+}
+
+/** Читает файл копии группы; повреждённые записи отбрасываются, недостающие списки считаются пустыми. */
+export async function readGroupBackup(file: File): Promise<GroupBackupFile> {
+  const parsed = (await readJson(file)) as Partial<GroupBackupFile> | null;
+  if ((parsed as { fileType?: string } | null)?.fileType === 'trpg-sheet-backup') {
+    throw new Error('Это файл общей копии — загрузите его кнопкой «Восстановить мастер-вид».');
+  }
+  if (parsed?.fileType !== 'trpg-sheet-group' || !parsed.group || typeof parsed.group !== 'object' || !parsed.group.id) {
+    throw new Error('Это не файл копии группы. Выберите файл, сохранённый кнопкой «Копия группы».');
+  }
+  const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+  const characters = list<Character>(parsed.characters).filter((c) => !!c && !!c.id && !!c.baseStats);
+  if (characters.some((c) => isFromNewerSchema(c))) {
+    throw new Error('Копия создана более новой версией приложения. Закройте и заново откройте приложение (чтобы оно обновилось) и повторите.');
+  }
+  return {
+    fileType: 'trpg-sheet-group',
+    version: 1,
+    exportedAt: parsed.exportedAt ?? new Date().toISOString(),
+    group: parsed.group,
+    members: list(parsed.members),
+    enemies: list(parsed.enemies),
+    enemyGroups: list(parsed.enemyGroups),
+    encounter: parsed.encounter,
+    loot: list(parsed.loot),
+    log: list(parsed.log),
+    characters: characters.map(normalizeCharacter),
+  };
 }

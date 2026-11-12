@@ -1,5 +1,5 @@
 import { computeDerivedStats } from './formulas';
-import type { Character, Encounter, EncounterParticipant, Enemy, EnemyGroup, EquipItem, Group, GroupSnapshot, PartyMember } from '../types';
+import type { Character, Encounter, EncounterParticipant, Enemy, EnemyGroup, EquipItem, Group, GroupBackupFile, GroupLogEntry, GroupSnapshot, PartyMember } from '../types';
 
 // ---------- группы ----------
 
@@ -18,6 +18,10 @@ export function effectiveGroupId(groupId: string | undefined, groups: Group[]): 
 export function inGroup(entity: { groupId?: string }, groupId: string, groups: Group[]): boolean {
   return effectiveGroupId(entity.groupId, groups) === groupId;
 }
+
+/** Есть ли у противника что показать в подробностях (кроме картинки). */
+export const hasEnemyDetails = (enemy: Enemy): boolean =>
+  Object.keys(enemy.stats).length > 0 || !!enemy.attacks || !!enemy.description || enemy.fields.some((f) => f.label || f.value);
 
 // ---------- мини-карточки игроков ----------
 
@@ -232,4 +236,83 @@ export function buildGroupSnapshot(
 export function reattachImages<T extends { id: string; image?: string }>(restored: T[], current: T[]): T[] {
   const images = new Map(current.map((c) => [c.id, c.image]));
   return restored.map((r) => (images.get(r.id) ? { ...r, image: images.get(r.id) } : r));
+}
+
+// ---------- резервная копия группы ----------
+
+/** Всё, что относится к группе, одним файлом (для переноса на другое устройство и бекапа). */
+export function buildGroupBackup(
+  group: Group,
+  groups: Group[],
+  data: {
+    members: PartyMember[];
+    enemies: Enemy[];
+    enemyGroups: EnemyGroup[];
+    encounters: Encounter[];
+    loot: EquipItem[];
+    characters: Character[];
+    log: GroupLogEntry[];
+  },
+  now: Date = new Date(),
+): GroupBackupFile {
+  const mine = <T extends { groupId?: string }>(list: T[]) => list.filter((x) => inGroup(x, group.id, groups));
+  return {
+    fileType: 'trpg-sheet-group',
+    version: 1,
+    exportedAt: now.toISOString(),
+    group,
+    members: mine(data.members),
+    enemies: mine(data.enemies),
+    enemyGroups: mine(data.enemyGroups),
+    encounter: data.encounters.find((e) => e.groupId === group.id),
+    loot: mine(data.loot),
+    log: data.log,
+    characters: mine(data.characters.filter((c) => c.roster === 'gm-master')),
+  };
+}
+
+/** Копия файла группы с новыми id (группа, игроки, противники, подгруппы, лут, персонажи, бой): импорт «как новой группы» ничего не перезаписывает. */
+export function remapGroupBackup(file: GroupBackupFile, existingNames: string[] = []): GroupBackupFile {
+  const newId = () => crypto.randomUUID();
+  const groupId = newId();
+  const members = new Map(file.members.map((m) => [m.id, newId()]));
+  const enemies = new Map(file.enemies.map((e) => [e.id, newId()]));
+  const enemyGroups = new Map(file.enemyGroups.map((g) => [g.id, newId()]));
+  const baseName = file.group.name;
+  const name = existingNames.includes(baseName) ? `${baseName} (импорт)` : baseName;
+  const encounter: Encounter | undefined = file.encounter
+    ? {
+        ...file.encounter,
+        id: newId(),
+        groupId,
+        currentId: undefined,
+        participants: file.encounter.participants.map((p) => ({
+          ...p,
+          id: newId(),
+          refId: (p.kind === 'player' ? members.get(p.refId) : enemies.get(p.refId)) ?? p.refId,
+        })),
+      }
+    : undefined;
+  // Текущий ход указывал на старый id участника — пересчитываем по позиции.
+  if (encounter && file.encounter?.currentId) {
+    const idx = file.encounter.participants.findIndex((p) => p.id === file.encounter!.currentId);
+    if (idx >= 0) encounter.currentId = encounter.participants[idx].id;
+  }
+  return {
+    ...file,
+    group: { ...file.group, id: groupId, name },
+    members: file.members.map((m) => ({ ...m, id: members.get(m.id)!, groupId })),
+    enemies: file.enemies.map((e) => ({
+      ...e,
+      id: enemies.get(e.id)!,
+      groupId,
+      enemyGroupId: e.enemyGroupId ? enemyGroups.get(e.enemyGroupId) : undefined,
+      fields: e.fields.map((f) => ({ ...f, id: newId() })),
+    })),
+    enemyGroups: file.enemyGroups.map((g) => ({ ...g, id: enemyGroups.get(g.id)!, groupId })),
+    encounter,
+    loot: file.loot.map((i) => ({ ...i, id: newId(), groupId })),
+    log: file.log.map((e) => ({ ...e, id: newId() })),
+    characters: file.characters.map((c) => ({ ...c, id: newId(), groupId })),
+  };
 }

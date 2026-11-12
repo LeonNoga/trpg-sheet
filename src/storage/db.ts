@@ -112,6 +112,8 @@ export interface AppMeta {
   installHintDismissed?: boolean;
   /** Выбранная группа в мастер-виде. */
   activeGroupId?: string;
+  /** Когда последний раз сохраняли общую копию мастер-вида (мс). */
+  lastMasterBackupAt?: number;
 }
 
 const META_KEY = 'meta';

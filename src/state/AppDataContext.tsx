@@ -41,10 +41,10 @@ import { appendLog, appendNote, diffCharacter } from '../data/changeLog';
 import { followMaxChange } from '../data/gameClock';
 import { AppDataContext } from './useAppData';
 import type { AppDataContextValue } from './useAppData';
-import { buildGroupSnapshot, createGroup, effectiveGroupId, inGroup, memberFromCharacter, reattachImages } from '../data/gm';
+import { buildGroupSnapshot, createGroup, effectiveGroupId, inGroup, memberFromCharacter, reattachImages, remapGroupBackup } from '../data/gm';
 import { applyDrafts, diffEncounters, diffEnemies, diffEnemyGroups, diffLoot, diffMembers } from '../data/groupLog';
 import type { LogDraft } from '../data/groupLog';
-import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, GroupSnapshot, LootImage, PartyMember, Path, Roster } from '../types';
+import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupBackupFile, GroupLogEntry, GroupSnapshot, LootImage, PartyMember, Path, Roster } from '../types';
 
 const formatStamp = (ms: number) =>
   new Date(ms).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -562,6 +562,78 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const importGroupBackup = useCallback(
+    (original: GroupBackupFile, mode: 'replace' | 'copy') => {
+      const data = mode === 'copy' ? remapGroupBackup(original, groupsRef.current.map((g) => g.name)) : original;
+      const groupId = data.group.id;
+      const existed = groupsRef.current.some((g) => g.id === groupId);
+      if (existed) {
+        // Заменяемая группа сначала сохраняется в историю — импорт можно откатить.
+        const current = groupsRef.current;
+        const mineNow = <T extends { groupId?: string }>(list: T[]) => list.filter((x) => inGroup(x, groupId, current));
+        void pushGroupSnapshot(
+          buildGroupSnapshot(groupId, {
+            members: mineNow(membersRef.current),
+            enemies: mineNow(enemiesRef.current),
+            enemyGroups: mineNow(enemyGroupsRef.current),
+            encounter: encountersRef.current.find((e) => e.groupId === groupId),
+            loot: mineNow(lootRef.current),
+          }),
+        );
+      } else {
+        const nextGroups = [...groupsRef.current, data.group];
+        groupsRef.current = nextGroups;
+        setGroups(nextGroups);
+        void saveGroups(nextGroups);
+      }
+      const groups = groupsRef.current;
+      const rest = <T extends { groupId?: string }>(list: T[]) => list.filter((x) => !inGroup(x, groupId, groups));
+      const stamp = <T extends { groupId?: string }>(list: T[]) => list.map((x) => ({ ...x, groupId }));
+
+      const nextMembers = [...stamp(data.members), ...rest(membersRef.current)];
+      membersRef.current = nextMembers;
+      setMembers(nextMembers);
+      void saveMembers(nextMembers);
+      const nextEnemies = [...stamp(data.enemies), ...rest(enemiesRef.current)];
+      enemiesRef.current = nextEnemies;
+      setEnemies(nextEnemies);
+      void saveEnemies(nextEnemies);
+      const nextEnemyGroups = [...stamp(data.enemyGroups), ...rest(enemyGroupsRef.current)];
+      enemyGroupsRef.current = nextEnemyGroups;
+      setEnemyGroups(nextEnemyGroups);
+      void saveEnemyGroups(nextEnemyGroups);
+      const nextEncounters = [...encountersRef.current.filter((e) => e.groupId !== groupId), ...(data.encounter ? [{ ...data.encounter, groupId }] : [])];
+      encountersRef.current = nextEncounters;
+      setEncounters(nextEncounters);
+      void saveEncounters(nextEncounters);
+      const nextLoot = [...stamp(data.loot), ...rest(lootRef.current)];
+      lootRef.current = nextLoot;
+      setLootTray(nextLoot);
+      void saveLootTray(nextLoot);
+
+      // Персонажи мастера группы: совпавшие по id заменяются, остальные добавляются.
+      if (data.characters.length > 0) {
+        const incoming = data.characters.map((c) => ({ ...c, roster: 'gm-master' as const, groupId }));
+        const ids = new Set(incoming.map((c) => c.id));
+        incoming.forEach((c) => {
+          const old = charactersRef.current.find((x) => x.id === c.id);
+          if (old) void pushSnapshot(old);
+          persistedRef.current.set(c.id, c);
+          void saveCharacter(c);
+        });
+        setAll([...incoming, ...charactersRef.current.filter((c) => !ids.has(c.id))]);
+      }
+
+      const stampText = new Date(data.exportedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const log = [...data.log, { id: crypto.randomUUID(), at: Date.now(), kind: 'note' as const, text: `Группа ${existed ? 'заменена данными' : 'импортирована'} из файла копии от ${stampText}` }];
+      groupLogsRef.current = { ...groupLogsRef.current, [groupId]: log.slice(-500) };
+      setGroupLogs(groupLogsRef.current);
+      void saveGroupLogs(groupLogsRef.current);
+      updateMeta({ activeGroupId: groupId });
+    },
+    [setAll, updateMeta],
+  );
+
   const restoreFromTrash = useCallback(
     (id: string) => {
       void (async () => {
@@ -662,6 +734,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       groupLogs,
       getGroupSnapshots,
       restoreGroupSnapshot,
+      importGroupBackup,
       setActiveGroup,
       addGroup,
       renameGroup,
@@ -701,6 +774,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       groupLogs,
       getGroupSnapshots,
       restoreGroupSnapshot,
+      importGroupBackup,
       setActiveGroup,
       addGroup,
       renameGroup,

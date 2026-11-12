@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { AppMeta, Snapshot, TrashEntry } from '../storage/db';
-import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupLogEntry, GroupSnapshot, LootImage, PartyMember, Path, Roster } from '../types';
+import type { Character, Encounter, Enemy, EnemyGroup, EquipItem, Group, GroupBackupFile, GroupLogEntry, GroupSnapshot, LootImage, PartyMember, Path, Roster } from '../types';
 
 export interface AppDataContextValue {
   loading: boolean;
@@ -34,6 +34,8 @@ export interface AppDataContextValue {
   groupLogs: Record<string, GroupLogEntry[]>;
   getGroupSnapshots: (groupId: string) => Promise<GroupSnapshot[]>;
   restoreGroupSnapshot: (snapshot: GroupSnapshot) => void;
+  /** Импорт копии группы: replace — заменить данные группы с тем же id (или добавить её), copy — добавить как новую группу. */
+  importGroupBackup: (file: GroupBackupFile, mode: 'replace' | 'copy') => void;
   updateEnemies: (enemies: Enemy[]) => void;
   updateEncounters: (encounters: Encounter[]) => void;
   createCharacter: (path: Path, roster?: Roster) => Character;

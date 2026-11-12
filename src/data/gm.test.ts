@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   addParticipant,
+  buildGroupBackup,
+  remapGroupBackup,
   cloneEnemy,
   createBlankEnemy,
+  createBlankMember,
   createEncounter,
   createGroup,
   effectiveGroupId,
@@ -100,5 +103,44 @@ describe('бой', () => {
   it('один и тот же участник не добавляется дважды', () => {
     const e = encounterWith([['a', 1]]);
     expect(addParticipant(e, { kind: 'enemy', refId: 'a', initiative: 5 })).toBe(e);
+  });
+});
+
+describe('копия группы', () => {
+  const group = createGroup('Пятница');
+  const other = createGroup('Среда');
+  const member = { ...createBlankMember(group.id), name: 'Анна' };
+  const enemy = { ...createBlankEnemy(group.id), name: 'Зомби' };
+  const foreign = { ...createBlankEnemy(other.id), name: 'Чужой' };
+  const encounter = startEncounter(addParticipant(addParticipant(createEncounter(group.id), { kind: 'player', refId: member.id, initiative: 3 }), { kind: 'enemy', refId: enemy.id, initiative: 1 }));
+
+  it('в копию попадает только то, что относится к группе', () => {
+    const file = buildGroupBackup(group, [group, other], {
+      members: [member],
+      enemies: [enemy, foreign],
+      enemyGroups: [],
+      encounters: [encounter, createEncounter(other.id)],
+      loot: [{ id: 'l1', kind: 'item', name: 'Амулет', equipped: false, statBonuses: {}, groupId: group.id }, { id: 'l2', kind: 'item', name: 'Чужой', equipped: false, statBonuses: {}, groupId: other.id }],
+      characters: [],
+      log: [],
+    });
+    expect(file.fileType).toBe('trpg-sheet-group');
+    expect(file.enemies.map((e) => e.name)).toEqual(['Зомби']);
+    expect(file.loot.map((i) => i.name)).toEqual(['Амулет']);
+    expect(file.encounter?.groupId).toBe(group.id);
+  });
+
+  it('импорт «как новой группы» даёт новые id и сохраняет связи боя', () => {
+    const file = buildGroupBackup(group, [group], { members: [member], enemies: [enemy], enemyGroups: [], encounters: [encounter], loot: [], characters: [], log: [] });
+    const copy = remapGroupBackup(file, ['Пятница']);
+    expect(copy.group.id).not.toBe(group.id);
+    expect(copy.group.name).toBe('Пятница (импорт)');
+    expect(copy.members[0].id).not.toBe(member.id);
+    expect(copy.members[0].groupId).toBe(copy.group.id);
+    const refs = copy.encounter!.participants.map((p) => p.refId);
+    expect(refs).toEqual([copy.members[0].id, copy.enemies[0].id].sort((a) => (a === copy.members[0].id ? -1 : 1)));
+    expect(copy.encounter!.groupId).toBe(copy.group.id);
+    expect(copy.encounter!.currentId).toBe(copy.encounter!.participants.find((p) => p.refId === copy.members[0].id)!.id);
+    expect(remapGroupBackup(file, []).group.name).toBe('Пятница');
   });
 });

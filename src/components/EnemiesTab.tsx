@@ -4,9 +4,10 @@ import { useUndo } from '../state/useUndo';
 import { useGroupEncounter } from '../hooks/useGroupEncounter';
 import { AmountAdjust } from './AmountAdjust';
 import { NumberField } from './NumberField';
-import { ENEMY_KINDS, addParticipant, cloneEnemy, createBlankEnemy, createEnemyGroup, inGroup } from '../data/gm';
+import { ENEMY_KINDS, addParticipant, cloneEnemy, createBlankEnemy, createEnemyGroup, hasEnemyDetails, inGroup } from '../data/gm';
 import { STAT_LABELS, STAT_ORDER } from '../data/statsConfig';
 import { fileToImageDataUrl } from '../utils/file';
+import { EnemyDetails } from './EnemyDetails';
 import type { Encounter, Enemy, EnemyGroup } from '../types';
 
 const NUMBER_FIELDS: { key: 'defense' | 'speed' | 'passivePerception' | 'initiative' | 'resistance'; label: string; short: string }[] = [
@@ -223,6 +224,16 @@ function EnemyGroupEditor({ group, onSave, onCancel }: { group: EnemyGroup; onSa
   );
 }
 
+const COLLAPSED_KEY = 'trpg-collapsed-subgroups';
+
+function loadCollapsed(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(COLLAPSED_KEY) ?? '[]') as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
 interface CardProps {
   enemy: Enemy;
   inCombat: boolean;
@@ -240,8 +251,7 @@ function EnemyCard({ enemy, inCombat, selected, onSelect, onChangeHp, onEdit, on
   const [open, setOpen] = useState(false);
   const down = enemy.hp <= 0;
   const fill = Math.max(0, Math.min(100, (enemy.hp / Math.max(1, enemy.hpMax)) * 100));
-  const stats = STAT_ORDER.filter((k) => enemy.stats[k] !== undefined);
-  const hasDetails = !!(enemy.image || stats.length || enemy.attacks || enemy.description || enemy.fields.some((f) => f.label || f.value));
+  const hasDetails = !!enemy.image || hasEnemyDetails(enemy);
 
   return (
     <div className={`card enemy-card ${down ? 'down' : ''} ${selected ? 'selected' : ''}`}>
@@ -298,31 +308,7 @@ function EnemyCard({ enemy, inCombat, selected, onSelect, onChangeHp, onEdit, on
 
       {open && (
         <div className="enemy-body">
-          {enemy.image && <img className="enemy-image" src={enemy.image} alt={enemy.name} />}
-          {stats.length > 0 && (
-            <div className="enemy-numbers" style={{ marginBottom: 8 }}>
-              {stats.map((k) => (
-                <span key={k}>
-                  {STAT_LABELS[k]} <b>{enemy.stats[k]}</b>
-                </span>
-              ))}
-            </div>
-          )}
-          {enemy.attacks && (
-            <p className="item-effect">
-              <b>Атаки и умения:</b>
-              <br />
-              {enemy.attacks}
-            </p>
-          )}
-          {enemy.description && <p className="item-effect">{enemy.description}</p>}
-          {enemy.fields
-            .filter((f) => f.label || f.value)
-            .map((f) => (
-              <p className="item-effect" key={f.id}>
-                <b>{f.label || 'Поле'}:</b> {f.value}
-              </p>
-            ))}
+          <EnemyDetails enemy={enemy} showImage />
         </div>
       )}
     </div>
@@ -342,6 +328,8 @@ export function EnemiesTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [amount, setAmount] = useState('');
   const [moveTo, setMoveTo] = useState('');
+  // Свёрнутые подгруппы запоминаются на устройстве.
+  const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
 
   const mine = useMemo(() => enemies.filter((e) => inGroup(e, activeGroupId, groups)), [enemies, activeGroupId, groups]);
   const myGroups = useMemo(() => enemyGroups.filter((g) => inGroup(g, activeGroupId, groups)), [enemyGroups, activeGroupId, groups]);
@@ -424,6 +412,22 @@ export function EnemiesTab() {
     setMoveTo('');
   }
 
+  function setCollapsedIds(next: Set<string>) {
+    setCollapsed(next);
+    try {
+      localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
+    } catch {
+      /* не страшно: свёрнутость просто не запомнится */
+    }
+  }
+
+  function toggleCollapsed(id: string) {
+    const next = new Set(collapsed);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCollapsedIds(next);
+  }
+
   function toggle(id: string, on: boolean) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -497,6 +501,17 @@ export function EnemiesTab() {
           + Подгруппа
         </button>
       </div>
+
+      {myGroups.length > 1 && (
+        <div className="top-actions" style={{ marginTop: -4 }}>
+          <button className="btn btn-sm btn-ghost" onClick={() => setCollapsedIds(new Set(myGroups.map((g) => g.id)))}>
+            ▸ Свернуть все подгруппы
+          </button>
+          <button className="btn btn-sm btn-ghost" onClick={() => setCollapsedIds(new Set())}>
+            ▾ Развернуть все
+          </button>
+        </div>
+      )}
 
       {mine.length > 0 && (
         <div className="tray-filters">
@@ -619,14 +634,24 @@ export function EnemiesTab() {
         const inside = shown.filter((e) => e.enemyGroupId === group.id);
         const all = mine.filter((e) => e.enemyGroupId === group.id);
         if (filtersActive && inside.length === 0) return null;
+        const isCollapsed = collapsed.has(group.id);
+        const down = all.filter((e) => e.hp <= 0).length;
+        const fighting = all.filter((e) => inCombat.has(e.id)).length;
         return (
           <div className="card enemy-subgroup" key={group.id}>
             <div className="enemy-subgroup-head">
-              <div>
+              <div className="enemy-subgroup-title" onClick={() => toggleCollapsed(group.id)} role="button" tabIndex={0} aria-expanded={!isCollapsed}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleCollapsed(group.id)}>
                 <h3 className="card-title" style={{ margin: 0 }}>
-                  📂 {group.name} <span className="muted">({all.length})</span>
+                  {isCollapsed ? '▸' : '▾'} 📂 {group.name} <span className="muted">({all.length}{filtersActive ? `, найдено ${inside.length}` : ''})</span>
                 </h3>
-                {group.description && <p className="muted" style={{ margin: '4px 0 0' }}>{group.description}</p>}
+                {isCollapsed ? (
+                  <p className="muted" style={{ margin: '4px 0 0' }}>
+                    {[down ? `мертвы: ${down}` : '', fighting ? `в бою: ${fighting}` : '', group.description].filter(Boolean).join(' · ') || 'Нажмите, чтобы развернуть'}
+                  </p>
+                ) : (
+                  group.description && <p className="muted" style={{ margin: '4px 0 0' }}>{group.description}</p>
+                )}
               </div>
               <div className="enemy-actions">
                 <button
@@ -659,8 +684,8 @@ export function EnemiesTab() {
                 </details>
               </div>
             </div>
-            {inside.length === 0 && <p className="muted">В подгруппе пока нет противников.</p>}
-            {inside.map(card)}
+            {!isCollapsed && inside.length === 0 && <p className="muted">В подгруппе пока нет противников.</p>}
+            {!isCollapsed && inside.map(card)}
           </div>
         );
       })}

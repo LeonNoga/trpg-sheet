@@ -391,6 +391,21 @@ export interface BackupFile {
   groupLogs?: Record<string, GroupLogEntry[]>;
 }
 
+/** Резервная копия одной группы мастер-вида: игроки, противники, подгруппы, бой, лут, журнал, персонажи мастера группы. */
+export interface GroupBackupFile {
+  fileType: 'trpg-sheet-group';
+  version: 1;
+  exportedAt: string;
+  group: Group;
+  members: PartyMember[];
+  enemies: Enemy[];
+  enemyGroups: EnemyGroup[];
+  encounter?: Encounter;
+  loot: EquipItem[];
+  log: GroupLogEntry[];
+  characters: Character[];
+}
+
 export interface TrayFile {
   fileType: 'trpg-sheet-tray';
   version: 1;
